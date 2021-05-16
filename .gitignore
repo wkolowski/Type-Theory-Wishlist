@@ -1,0 +1,13 @@
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.gz
+*fls
+*fdb_latexmk
+*vrb
+*.synctex(busy)
+*.synctex.gz
+_minted-Slides
