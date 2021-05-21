@@ -1,0 +1,42 @@
+// Also integers, but differently.
+data Z' : Type :=
+  | (_, _) : nat -> nat -> Z' :=
+    | (S n) (S m) => (n, m)
+
+// A type of integers modulo 2...
+data Z2 : Type :=
+  | z : Z2
+  | s : Z2 -> Z2 :=
+    | s k => k
+
+// Also integers mod 2, but an alternative implementation.
+data Z2' : Type :=
+  | in : nat -> Z2' :=
+    | S (S n) => in n
+
+// Lists of natural numbers without consecutive repetitions.
+
+data WList : Type :=
+  | wnil : WList
+  | wcons : nat -> WList -> WList :=
+    | n (wcons m w) =>
+        if n =? m then wcons m w else canonical
+
+// Here the keyword `canonical` denotes that in the given case the constructor
+// does not compute.
+// So we have `wcons 0 (wcons 0 wnil) => wcons 0 wnil` but
+// `wcons 1 (wcons 0 (wcons 1 wnil))` is in canonical form.
+
+data UList : Type :=
+  | unil : UList
+  | ucons : nat -> UList -> UList :=
+    | n w => if elem n w then w else canonical
+
+with
+elem : nat -> UList -> bool :=
+| _ unil => false
+| n (ucons m u) => n =? m || elem n u
+
+// We have `ucons 5 (ucons 0 (ucons 5 unil)) => ucons 0 (ucons 5 nil)`.
+
+

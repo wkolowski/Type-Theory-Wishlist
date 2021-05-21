@@ -1,0 +1,61 @@
+// The type of free monoids on type A. 
+data FM (A : Type) : Type :=
+  | e : FM A
+  | in : A -> FM A
+  | op : FM A -> FM A -> FM A :=
+    | e y        => y
+    | (op x y) z => op x (op y z)
+    | x e        => x
+
+// Convert a free monoid expression to a list.
+f : {A : Type} -> FM A -> list A :=
+| e      => []
+| in a   => [a]
+| op x y => f x ++ f y
+
+// Convert a list to a free monoid expression.
+g : {A : Type} -> list A -> FM A :=
+| []     => e
+| h :: t => op (in h) (g t)
+
+fg : {A : Type} (x : FM A) -> g (f x) = x :=
+| e           => refl
+| in a        => refl
+| op (in a) y => ap (op (in a)) (fg y)
+
+// The `e` and `in a` cases are trivial.
+// In the `op (in a) y` case:
+
+// Note that we don't need to match the cases `op e _` or `op (op _ _) _` because
+// they are not canonical forms of FM A. This is because they get computed away
+// by the constructor `op`. So it suffices to consider `op (in a) y`.
+
+// LHS: g (f (op (in a) y)) => g (f (in a) ++ f y) => g ([a] ++ f y) => g (a :: f y) => op (in a) (g (f y))
+// RHS: op (in a) y
+
+// So the goal is convertible with `op (in a) (g (f y)) = op (in a) y`.
+// The recursive call tives us `fg y : g (f y) = y`.
+// It suffices to prepend `op (in a)` on both sides of the equation.
+
+gf : {A : Type} (l : list A) -> f (g l) = l :=
+| []     => refl
+| h :: t => ap (h ::) (gf t)
+
+// The `[]` case is trivial.
+// In the `h :: t` case:
+
+// LHS: `f (g (h :: t)) => f (op (in h) (g t)) => f (in h) ++ f (g t) => [h] ++ f (g t) => h :: f (g t)`
+// RHS: `h :: t`
+
+// So the goal is convertible with `h :: f (g t) = h :: t`.
+// The recursive call gives us `gf t : f (g t) = t`.
+// It suffices to prepend `h ::` on both sides of the equation.
+
+list-is-free-mon : (A : Type) -> FM A = list A :=
+  ... // by univalence, as (f, g, fg, gf) is an equivalence
+
+// It is not possible to define the free group with this approach, because we
+// encounter non-linear patterns when trying to enforce x(x^-1) = e.
+
+// | op : FG A -> FG A -> FG A with
+//   | op x (inv x) => e
