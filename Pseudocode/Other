@@ -1,7 +1,56 @@
-// Also integers, but differently.
-data Z' : Type :=
-  | (_, _) : nat -> nat -> Z' :=
+data Z : Type :=
+  | (_, _) : nat -> nat -> Z :=
     | (S n) (S m) => (n, m)
+
+// A different definition of integers, more akin to the classical one in which
+// an integer k is represented by a pair (n, m) such that n - m = k. This one
+// is better, however, because we don't need any complicated quotients or
+// higher inductive types - the constructor just computes a normal form for the
+// the pair (n, m).
+
+// We use overlapping and order independent patterns.
+
+z : Z := (0, 0)
+
+s : Z -> Z :=
+| (n, m) => (S n, m)
+
+p : Z -> Z :=
+| (n, m) => (n, S m)
+
+abs : Z -> Z :=
+| (n, 0) => (n, 0)
+| (0, m) => (m, 0)
+
+// We don't need to match on (S _, S _) because it's not a canonical form.
+
+neg : Z -> Z :=
+| (n, m) => (m, n)
+
+add : Z -> Z -> Z :=
+| (n1, m1) (n2, m2) => (n1 + n2, m1 + m2)
+
+sub : Z -> Z -> Z :=
+| k l => add k (neg l)
+
+sub-spec : (k l : Z) -> sub k l = add k (neg l) :=
+| k l => refl
+
+abs-neg : (k : Z) -> abs (neg k) = abs k :=
+| (n, 0) => refl
+| (0, m) => refl
+
+// LHS: `abs (neg (n, 0)) => abs (0, n) => (n, 0)`, RHS: `abs (n, 0) => (n, 0)`
+// LHS: `abs (neg (0, m)) => abs (m, 0) => (m, 0)`, RHS: `abs (0, m) => (m, 0)`
+
+
+add-assoc : (k l m : Z) -> add (add k l) m = add k (add l m) :=
+| (n1, m1) (n2, m2) (n3, m3) i =>
+    (Nat.add-assoc n1 n2 n3 i, Nat.add-assoc m1 m2 m3 i)
+
+
+add-z : (k : Z) -> add k z = k :=
+
 
 // A type of integers modulo 2...
 data Z2 : Type :=
@@ -13,6 +62,18 @@ data Z2 : Type :=
 data Z2' : Type :=
   | in : nat -> Z2' :=
     | S (S n) => in n
+
+// Integers mod n in general?
+
+data Zmod (n : nat) : Type :=
+  | in : nat -> Zmod n :=
+    | in k => if k <? n then canonical else in (mod k n)
+
+// Native integers mod n?
+data Zmod' (n : nat) : Type :=
+  | z : Zmod' (S n)
+  | s : Zmod' n -> Zmod' (S n) :=
+    | looks like this doesn't work
 
 // Lists of natural numbers without consecutive repetitions.
 
@@ -38,5 +99,3 @@ elem : nat -> UList -> bool :=
 | n (ucons m u) => n =? m || elem n u
 
 // We have `ucons 5 (ucons 0 (ucons 5 unil)) => ucons 0 (ucons 5 nil)`.
-
-

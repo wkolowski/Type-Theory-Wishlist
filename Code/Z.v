@@ -171,13 +171,3 @@ Proof.
     rewrite add_z_r. reflexivity.
     rewrite IHk. cbn.
 Abort.
-
-Lemma normalize_add :
-  forall k l : Z,
-    normalize (add (normalize k) (normalize l)) = normalize (add k l).
-Proof.
-  intro k.
-  functional induction normalize k; cbn; intros.
-    rewrite normalize_idempotent. reflexivity.
-    rewrite <- IHz0, e0. cbn. destruct (normalize (add k'' (normalize l))); cbn.
-Abort.
