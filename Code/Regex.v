@@ -18,6 +18,52 @@ Inductive Regex (A : Type) : Type :=
 Arguments Empty {A}.
 Arguments Epsilon {A}.
 
+Require Import Recdef.
+
+Fixpoint containsEpsilon
+  {A : Type} (r : Regex A) : bool :=
+match r with
+    | Empty => false
+    | Epsilon => true
+    | Char _ => false
+    | Seq r1 r2 => containsEpsilon r1 && containsEpsilon r2
+    | Or r1 r2 => containsEpsilon r1 || containsEpsilon r2
+    | Star _ => true
+end.
+
+Function normalize {A : Type} (r : Regex A) : Regex A :=
+match r with
+    | Empty => Empty
+    | Epsilon => Epsilon
+    | Char x => Char x
+    | Seq r1 r2 =>
+        match normalize r1, normalize r2 with
+            | Empty, _ => Empty
+            | _, Empty => Empty
+            | Epsilon, r2' => r2'
+            | r1', Epsilon => r1'
+            | (Seq r11 r12), r2 => Seq r11 (Seq r12 r2)
+            | (Or r11 r12), r2 => Or (Seq r11 r2) (Seq r12 r2)
+            | r1', r2' => Seq r1' r2'
+        end
+    | Or r1 r2 =>
+        match normalize r1, normalize r2 with
+            | Empty, r2' => r2'
+            | r1', Empty => r1'
+(*             | Epsilon, r2' => if containsEpsilon r2' then r2' else Or Epsilon r2' *)
+(*             | r1', Epsilon => if containsEpsilon r1' then r1' else Or r1' Epsilon *)
+            | (Or r11 r12), r2 => Or r11 (Or r12 r2)
+            | r1', r2' => Or r1' r2'
+        end
+    | Star r' =>
+        match normalize r' with
+            | Empty => Epsilon
+            | Epsilon => Epsilon
+            | Star r'' => Star r''
+            | r'' => Star r''
+        end
+end.
+
 Record MEpsilon {A : Type} (l : list A) : Type :=
 {
     mepsilon : l = [];
