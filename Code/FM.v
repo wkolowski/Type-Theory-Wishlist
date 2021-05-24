@@ -143,26 +143,14 @@ Proof.
   induction X; intros.
     inv X. reflexivity.
     inv X. reflexivity.
+    inv X; firstorder congruence.
     inv X.
-      apply IHX2. assumption.
-      apply IHX1 in X0. congruence.
-      apply IHX1 in X0. congruence.
-      apply IHX1 in X0. congruence.
-    inv X.
-      apply IHX1 in X0. congruence.
-      apply IHX1 in X0. inv X0. apply IHX2 in X3. inv X3. reflexivity.
-      apply IHX1 in X0. congruence.
-      apply IHX1 in X0. congruence.
-    inv X.
-      apply IHX1 in X0. congruence.
-      apply IHX1 in X0. congruence.
-      apply IHX1 in X0. congruence.
-      apply IHX1 in X0. inv X0. apply IHX2 in X3. subst. congruence.
-    inv X.
-      apply IHX1 in X0. congruence.
-      apply IHX1 in X0. congruence.
-      apply IHX2 in X3. congruence.
-      apply IHX1 in X0. apply IHX2 in X3. congruence.
+      firstorder congruence.
+      apply IHX1 in X0. inv X0. firstorder congruence.
+      firstorder congruence.
+      firstorder congruence.
+    inv X; firstorder congruence.
+    inv X; firstorder congruence.
 Qed.
 
 Lemma normalize_eq :
@@ -201,22 +189,3 @@ Proof.
           inv H1.
           inv H1.
 Qed.
-
-(*   intros. functional induction normalize x.
-    constructor.
-    constructor.
-    assumption.
-    rewrite e1 in IHf. inv IHf. constructor.
-      inv H1.
-        contradiction.
-        constructor.
-          assumption.
-          intro. rewrite H in IHf0.
-    constructor.
-
- *)
-Restart.
-  induction x.
-    cbn. constructor.
-    cbn. constructor.
-Abort.

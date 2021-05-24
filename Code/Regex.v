@@ -64,6 +64,21 @@ match r with
         end
 end.
 
+Lemma normalize_idempotent :
+  forall {A : Type} (r : Regex A),
+    normalize (normalize r) = normalize r.
+Proof.
+  intros.
+  functional induction normalize r;
+  try reflexivity; try assumption.
+    rewrite e0 in *. cbn in *.
+      destruct (normalize r11), (normalize r12); rewrite ?IHr1; try congruence.
+        destruct (normalize r2); try congruence; try contradiction.
+        destruct (normalize r2); try congruence; try contradiction.
+        destruct (normalize r2); try congruence; try contradiction.
+Abort.
+
+(*
 Record MEpsilon {A : Type} (l : list A) : Type :=
 {
     mepsilon : l = [];
@@ -88,10 +103,11 @@ Record MSeq
 
 Fixpoint Matches {A : Type} (l : list A) (r : Regex A) {struct r} : Type :=
 match r with
-| Empty     => False
-| Epsilon   => MEpsilon l
-| Char c    => MChar l c
-| Or r1 r2  => Matches l r1 + Matches l r2
-| Seq r1 r2 => MSeq l r1 r2 Matches
-| Star r'   => False (*MStar (ms : MatchesStar l r)*)
+    | Empty     => False
+    | Epsilon   => MEpsilon l
+    | Char c    => MChar l c
+    | Or r1 r2  => Matches l r1 + Matches l r2
+    | Seq r1 r2 => MSeq l r1 r2 Matches
+    | Star r'   => False (*MStar (ms : MatchesStar l r)*)
 end.
+*)

@@ -155,19 +155,29 @@ Qed.
 
 Lemma add_s_r :
   forall k l : Z,
-    add k (s l) = s (add k l).
+    normalize (add k (s l)) = normalize (s (add k l)).
 Proof.
   induction k; cbn; intros.
     reflexivity.
     rewrite IHk. reflexivity.
-    rewrite IHk.
-Abort.
+    rewrite IHk. cbn.
+Admitted.
+
+Lemma add_p_r :
+  forall k l : Z,
+    normalize (add k (p l)) = normalize (p (add k l)).
+Proof.
+  induction k; cbn; intros.
+    reflexivity.
+    rewrite IHk. cbn. destruct (normalize (add k l)).
+Admitted.
 
 Lemma add_comm :
   forall k l : Z,
-    add k l = add l k.
+    normalize (add k l) = normalize (add l k).
 Proof.
   induction k; cbn; intros.
     rewrite add_z_r. reflexivity.
-    rewrite IHk. cbn.
-Abort.
+    rewrite add_s_r. cbn. rewrite IHk. reflexivity.
+    rewrite add_p_r. cbn. rewrite IHk. reflexivity.
+Qed.
