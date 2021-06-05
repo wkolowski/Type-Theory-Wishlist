@@ -1,11 +1,11 @@
 // The type of free monoids on type A. 
 data FM (A : Type) : Type :=
-  | e : FM A
-  | in : A -> FM A
-  | op : FM A -> FM A -> FM A :=
-    | e y        => y
-    | (op x y) z => op x (op y z)
-    | x e        => x
+| e : FM A
+| in : A -> FM A
+| op : FM A -> FM A -> FM A :=
+  | e y        => y
+  | (op x y) z => op x (op y z)
+  | x e        => x
 
 // Convert a free monoid expression to a list.
 f : {A : Type} -> FM A -> list A :=
@@ -102,7 +102,7 @@ map-rev {A B : Type} (f : A -> B) : (x : FM A) -> map f (rev x) = rev (map f x) 
 
 rev-filter {A : Type} (p : A -> Bool) : (x : FM A) -> rev (filter p x) = filter p (rev x) :=
 | e      => refl
-| in a   => if p a then refl else refl
+| in a   => if p a then refl else refl // TODO: reconsider
 | op x y => fun i : I => op (rev-filter y i) (rev-filter x i)
 
 join {A : Type} : FM (FM A) -> FM A :=

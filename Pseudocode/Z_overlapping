@@ -26,7 +26,6 @@ add-comm : (k l : Z) -> add k l = add l k :=
 | (s k') l => ap s (add-comm k' l)
 | (p l') l => ap p (add-comm k' l)
 
-
 sub : Z -> Z -> Z :=
 | k      z       => k
 | k      (s l') => p (sub k l')

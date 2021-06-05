@@ -1,0 +1,27 @@
+// New idea: if we have constructors that compute and also induction-recursion,
+// then we can define a universe with type constructors that compute!
+
+data U : Type :=
+| 0  : U
+| 1  : U
+| +  : U -> U -> U :=
+  | 0 + u => u
+  | u + 0 => u
+| *  : U -> U -> U :=
+  | 0 * _ => 0
+  | _ * 0 => 0
+  | 1 * u => u
+  | u * 1 => u
+| -> : U -> U -> U :=
+  | _ -> 1 => 1
+  | 0 -> _ => 1
+  | 1 -> u => u
+
+with
+El : (u : U) -> Type :=
+| 0      => Empty
+| 1      => Unit
+| u +  v => El u + El v
+| u *  v => El u * El v
+| u -> v => El u -> El v
+

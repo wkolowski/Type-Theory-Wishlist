@@ -4,13 +4,20 @@ data Set (A : Type) : Type :=
   | op (s1 s2 : Set A) :=
     | e y => y
     | x e => x
-    | op (op x y) z => op x (op y z)
+    | (op x y) z => op x (op y z)
   | comm (x y : Set A) (i : I) :=
     | x y i0 => op x y
     | x y i1 => op y x
   | idem (x : Set A) (i : I) :=
     | x i0 => op x x
     | x i1 => x
+
+// Sets again, but modular
+data NETree (A : Type) : Type :=
+  | in : A -> FM A
+  | op : FM A -> FM A -> FM A :=
+
+// Or not... boils down to the problem of extensible data types.
 
 data Path {A : I -> Type} : A i0 -> A i1 -> Type :=
   | path : (i : I) (x : A i0) (y : A i1) :=
@@ -41,6 +48,8 @@ data FG (A : Type) : Type :=
     | x i1 => e
 
 // TODO: check
+// New, more Haskelly syntax!
+//map (f : a -> b) : FG a -> FG b
 map {A B : Type} (f : A -> B) : FG A -> FG B :=
 | i a      => i (f a)
 | e        => e

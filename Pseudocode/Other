@@ -43,14 +43,14 @@ abs-neg : (k : Z) -> abs (neg k) = abs k :=
 // LHS: `abs (neg (n, 0)) => abs (0, n) => (n, 0)`, RHS: `abs (n, 0) => (n, 0)`
 // LHS: `abs (neg (0, m)) => abs (m, 0) => (m, 0)`, RHS: `abs (0, m) => (m, 0)`
 
-
 add-assoc : (k l m : Z) -> add (add k l) m = add k (add l m) :=
 | (n1, m1) (n2, m2) (n3, m3) i =>
     (Nat.add-assoc n1 n2 n3 i, Nat.add-assoc m1 m2 m3 i)
 
 
 add-z : (k : Z) -> add k z = k :=
-
+| (n, 0) => refl
+| (0, m) => refl
 
 // A type of integers modulo 2...
 data Z2 : Type :=

@@ -1,0 +1,71 @@
+data Nat : Type :=
+| 0 : Nat
+| s : Nat -> Nat
+
+add : (n m : Nat) -> Nat :=
+| 0      m      => m
+| (s n') m      => s (add n' m)
+| n      0      => n
+| n      (s m') => s (add n m')
+
+// Note: we could have defined `add` in a more convoluted way:
+// add : (n m : Nat) -> Nat :=
+// | z      m => m
+// | (s n') m => add n' (s m)
+
+// But in such a case, we lose the possibility to apply our beloved overlapping
+// pattern matching to get all the nice computational equalities.
+
+sub : (n m : Nat) -> Nat :=
+| 0     m     => 0
+| n     0     => n
+| (s n) (s m) => sub n m
+
+mul : (n m : Nat) -> Nat :=
+| 0      m      => 0
+| (s n') m      => add (mul n' m) m
+| n      0      => 0
+| n      (s m') => add n (mul n m')
+
+// `mul 1 m => add (mul 0 m) m => add 0 m = m`
+// So a separate case for `mul 1 m` is not needed.
+
+// ``mul n 1 => add n (mul n 0) => add n 0 => n``
+// Similarly, a separate case for `mul n 1` is not needed.
+
+// mul (s n') (s m')    => add (mul n' (s m')) m => add (add n (mul n' m')) m
+                        => add n (mul (s n') m') => add n (add (mul n' m') m)
+
+// The definition of `mul` is invalid, because `add` is only associative up to
+// path, not up to computational equality.
+
+pow : (n m : Nat) -> Nat :=
+| 0 (s m') => 0
+| n 0      => 1
+| n (s m') => mul n (pow n m')
+
+eq : (n m : Nat) -> Bool :=
+| 0      0      => true
+| (s n') (s m') => eq n' m'
+| _      _      => false
+
+le : (n m : Nat) -> Bool :=
+| 0      _      => true
+| (s n') 0      => false
+| (S n') (s m') => le n' m'
+
+lt : (n m : Nat) -> Bool :=
+| 0      0      => false
+| 0      (s m') => true
+| (s n') 0      => false
+| (S n') (s m') => lt n' m'
+
+min : (n m : Nat) -> Nat :=
+| 0      _      => 0
+| _      0      => 0
+| (s n') (s m') => s (min n' m')
+
+max : (n m : Nat) -> Nat :=
+| 0     m       => m
+| n     0       => n
+| (s n') (s m') => s (max n' m')
