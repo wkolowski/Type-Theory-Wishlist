@@ -1,0 +1,21 @@
+// Ordinary, Coq-style inductive family.
+data Elem {A : Type} (x : A) : List A -> Type
+| z : (l : List A) -> Elem x (x :: l)
+| s : (h : A) {t : List A} (e : Elem x t) -> Elem x (h :: t)
+
+// A less common variant which uses equality constraints.
+// Read "wut ~ x = y, ..., z = w" as "wut forces x to be y, and ..., and z to be w"
+data Elem {A : Type} (x : A) (l : List A) : Type
+| z : (t : List A) ~ l = x :: t
+| s : (h : A) (t : List A) (e : Elem x t) ~ l = h :: t
+
+// A more computational variant of the above, performs pattern matching on the
+// list arguemnt and then exposes constructors which can be used to continue.
+data Elem (x : A) : List A -> Type
+| []     => Empty
+| h :: t => z (p : x = h) | s (e : Elem x t)
+
+// If the list is empty, then ``Elem x [] => Empty``. When it's `h :: t`, then
+// ``Elem x (h :: t) => z (p : x = h) | s (e : Elem x t)``, whose result is an
+// anonymous inductive types with two constructors `z` and `s`... but that's a
+// story for another time.

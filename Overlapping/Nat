@@ -9,9 +9,9 @@ add : (n m : Nat) -> Nat :=
 | n      (s m') => s (add n m')
 
 // Note: we could have defined `add` in a more convoluted way:
-// add : (n m : Nat) -> Nat :=
-// | z      m => m
-// | (s n') m => add n' (s m)
+// add' : (n m : Nat) -> Nat :=
+// | 0      m => m
+// | (s n') m => add' n' (s m)
 
 // But in such a case, we lose the possibility to apply our beloved overlapping
 // pattern matching to get all the nice computational equalities.
@@ -40,9 +40,13 @@ mul : (n m : Nat) -> Nat :=
 // path, not up to computational equality.
 
 pow : (n m : Nat) -> Nat :=
-| 0 (s m') => 0
+//| 0 (s m') => 0
 | n 0      => 1
 | n (s m') => mul n (pow n m')
+
+// ``pow 0 (s m') => 0``
+// ``pow 0 (s m') => mul 0 (pow 0 m') => 0``
+// the first clause is not needed
 
 eq : (n m : Nat) -> Bool :=
 | 0      0      => true
@@ -52,12 +56,11 @@ eq : (n m : Nat) -> Bool :=
 le : (n m : Nat) -> Bool :=
 | 0      _      => true
 | (s n') 0      => false
-| (S n') (s m') => le n' m'
+| (s n') (s m') => le n' m'
 
 lt : (n m : Nat) -> Bool :=
-| 0      0      => false
+| _      0      => false
 | 0      (s m') => true
-| (s n') 0      => false
 | (S n') (s m') => lt n' m'
 
 min : (n m : Nat) -> Nat :=
@@ -66,6 +69,33 @@ min : (n m : Nat) -> Nat :=
 | (s n') (s m') => s (min n' m')
 
 max : (n m : Nat) -> Nat :=
-| 0     m       => m
-| n     0       => n
+| 0      m      => m
+| n      0      => n
 | (s n') (s m') => s (max n' m')
+
+binom : (n k : Nat) -> Nat
+| _      0      => 1
+| 0      (s n') => 0
+| (s n') (s k') => plus (binom n' k') (binom n' k)
+
+// Profits:
+// add - 2 equations: add n 0 => n, add n (s m') => s (add n m')
+// sub - 1 equation:  sub n 0 => n
+// mul - 1 equation:  mul n 0 => 0
+// pow - 1 equation:  pow 0 (s m') => 0
+// eq  - 0 equations
+// le  - 0 equations
+// lt  - 0 equations
+// min - 1 equation: min n 0 => 0
+// max - 1 equation: max n 0 => n
+// binom 0 equations
+
+min-max : (n m : Nat) -> min n (max n m) = n :=
+| 0      _      => refl
+| (s n') 0      => ap s (min-max n' 0)
+| (s n') (s m') => ap s (min-max n' m')
+
+le-lt : (n m : Nat) -> le (s n) m = lt n m :=
+| _      0      => refl
+| 0      (s m') => refl
+| (s n') (s m') => le-lt n' m'

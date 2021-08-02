@@ -45,7 +45,7 @@ Cons:
 - need to manually implement decision procedure
 
 Q: Can we do anything nice with this?
-A: in such a banal case as parity of naturals probably not, but in more complicates ones I think so! Example: matching a regular expression against a string. This can't be easily implemented by recursion, so induction is needed. But even though we use induction, it would be nice if some cases of the definition could compute/simplify to help us a bit.
+A: in such a banal case as parity of naturals probably not, but in more complicated ones I think so! Example: matching a regular expression against a string. This can't be easily implemented by recursion, so induction is needed. But even though we use induction, it would be nice if some cases of the definition could compute/simplify to help us a bit.
 
 // Type of regexes with smart constructor built-in.
 data Regex (A : Type) : Type :=
