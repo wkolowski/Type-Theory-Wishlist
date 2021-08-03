@@ -1,0 +1,6 @@
+Idea: non-linear patterns for types that have decidable equality, for example
+match l with
+  | [] => []
+  | [x] => [x]
+  | x :: x :: l' => x :: l'
+end
