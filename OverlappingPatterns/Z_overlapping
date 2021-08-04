@@ -3,13 +3,14 @@
 // so on. But we need to manually prove that `add k z => k` etc. because even
 // when the second argument is known, there's no computation.
 
+%OverlappingPatterns
 add : Z -> Z -> Z :=
-| z     l      => l
-| (s k) l      => s (add k l)
-| (p k) l      => p (add k l)
-| k     z      => k
-| k     (s l') => s (add k l')
-| k     (p l') => p (add k l')
+| z     l     => l
+| (s k) l     => s (add k l)
+| (p k) l     => p (add k l)
+| k     z     => k
+| k     (s l) => s (add k l)
+| k     (p l) => p (add k l)
 
 // Let's make our lives easier with overlapping patterns. See
 // https://jesper.sikanda.be/files/overlapping-and-order-independent-patterns.pdf
@@ -26,12 +27,13 @@ add-comm : (k l : Z) -> add k l = add l k :=
 | (s k') l => ap s (add-comm k' l)
 | (p k') l => ap p (add-comm k' l)
 
+%OverlappingPatterns
 sub : Z -> Z -> Z :=
-| k      z       => k
-| k      (s l') => p (sub k l')
-| k      (p l') => s (sub k l')
-| (s k') l      => s (sub k' l)
-| (p k') l      => p (sub l' l)
+| k     z     => k
+| k     (s l) => p (sub k l)
+| k     (p l) => s (sub k l)
+| (s k) l     => s (sub k l)
+| (p k) l     => p (sub k l)
 
 // We can also have more computation rules for subtraction. Note, however, that
 // we don't want to compute `sub z l`, because it would need to compute to

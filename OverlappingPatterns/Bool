@@ -1,3 +1,5 @@
+// We use overlapping patterns by default.
+
 data Bool : Type :=
 | ff : Bool
 | tt : Bool
@@ -12,15 +14,41 @@ orb : (x y : Bool) -> Bool :=
 | tt _  => tt
 | _  tt => tt
 
+// Confluence check for orb:
+// ``orb ff ff => ff`` (clause 1) and ``orb ff ff => ff`` (clause 2), so ok.
+// ``orb tt tt => tt`` (clause 3) and ``orb tt tt => tt`` (clause 4), so ok.
+// ``orb ff tt => tt`` (clause 1) and ``orb ff tt => tt`` (clause 4), so ok.
+// ``orb tt ff => tt`` (clause 2) and ``orb tt ff => tt`` (clause 3), so ok.
+
 andb : (x y : Bool) -> Bool :=
 | ff _  => ff
 | _  ff => ff
 | tt y  => y
 | x  tt => x
 
-// Stats: compared to ordinary pattern matching, we get for free: 2 theorems
-// about neutral elements, 2 theorems about annihilatig elements, etc.
+// The confluence check for andb is dual to that for orb.
 
+module Comparison
+
+  %FirstMatch
+  orb' (x : Bool) : Bool -> Bool :=
+  | tt => tt
+  | ff => x
+
+  // It's easy to see that with overlapping patterns (orb), compared to ordinary
+  // pattern matching (orb'), we get two free theorems, one regarding neutral
+  // element on the right and one regarding annihilation on the right.
+  // Simple heuristic: with overlapping patterns we get one free theorems for
+  // each new clause in the definition.
+
+end Comparison
+
+// But beware! Overlapping patterns have a big weakness, namely they can't be
+// used to define functions with catch-all clauses, the most prominent examples
+// of which are decision procedures for equality. In such cases, we have to
+// resort to the old way of doing pattern matching by annotating the function
+// with %FirstMatch.
+%FirstMatch
 eqb : (x y : Bool) : Bool :=
 | tt tt => tt
 | ff ff => tt

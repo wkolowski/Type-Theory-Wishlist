@@ -1,3 +1,7 @@
+// We use OverlappingPatterns by default. Let's have a directive for that!
+
+%default OverlappingPatterns
+
 data Nat : Type :=
 | 0 : Nat
 | s : Nat -> Nat
@@ -48,6 +52,7 @@ pow : (n m : Nat) -> Nat :=
 // ``pow 0 (s m') => mul 0 (pow 0 m') => 0``
 // the first clause is not needed
 
+%FirstMatch
 eq : (n m : Nat) -> Bool :=
 | 0      0      => true
 | (s n') (s m') => eq n' m'
@@ -73,6 +78,11 @@ max : (n m : Nat) -> Nat :=
 | n      0      => n
 | (s n') (s m') => s (max n' m')
 
+half : Nat -> Nat :=
+| 0       => 0
+| s 0     => 0
+| s (s k) => s (half k)
+
 binom : (n k : Nat) -> Nat
 | _      0      => 1
 | 0      (s n') => 0
@@ -88,6 +98,7 @@ binom : (n k : Nat) -> Nat
 // lt  - 0 equations
 // min - 1 equation: min n 0 => 0
 // max - 1 equation: max n 0 => n
+// half  0 equations
 // binom 0 equations
 
 min-max : (n m : Nat) -> min n (max n m) = n :=

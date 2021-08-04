@@ -15,22 +15,27 @@ g {A : Type} : Bool -> ∇ α : A. Bool :=
 
 // The above functions are inverses of each other.
 fg {A : Type} : (x : ∇ α : A. Bool) -> g (f x) = x :=
-| ν α. tt  => refl
-| ν α. ff  => refl
+| ν α. tt  => refl // We have ``g (f (ν α. tt)) => g tt => ν α. tt``
+| ν α. ff  => refl // We have ``g (f (ν α. ff)) => g ff => ν α. ff``
 
 gf {A : Type} : (y : Bool) -> f (g y) = y :=
-| tt => refl
-| ff => refl
+| tt => refl // We have ``f (g tt) => f (ν α. tt) => tt``
+| ff => refl // We have ``f (g ff) => f (ν α. ff) => ff``
 
 // Bool is a nameless type.
 Nameless-Bool : Nameless Bool :=
-  fun X : Type => ua (@f X) (@g X) (@fg X) (@gf X)
+  fun X : Type => ua f g fg gf
 
-// The type of names is not nameless.
+// The type of names should not be nameless.
+// We can't define a function of type ∇ α. Name A -> Name A, so we are not able
+// to prove that Name A is nameless. But I don't see any easy proofs that Name A
+// is not nameless.
 //Name-not-Nameless (A : Type) : Nameless (Name A) -> Empty :=
 //  fun H : (X : Type) -> ∇ α : X. Name A = Name A =>
 //    let
-//      f : ∇ α : Name A. Name A -> Name A
+//      f : ∇ α : Name A. Name A -> Name A := H (Name A)
+//      x : Name A := f (ν α. α)
+//      WHAT NOW?
 
 // Name A has decidable equality for any A.
 name-dec {A : Type} : (x y : Name A) -> Bool :=
@@ -39,10 +44,10 @@ name-dec {A : Type} : (x y : Name A) -> Bool :=
 
 name-dec-spec-l {A : Type} : (x y : Name A) -> name-dec x y = tt -> x = y
 | α α => fun _ => refl
-| α β => fun c : ff = tt => abort c
+| α β => fun c : ff = tt => abort c // We should have an inversion tactic, but I'm too lazy.
 
 name-dec-spec-r {A : Type} (x y : Name A) : x = y -> name-dec x y = tt
-| α α refl => refl
+| α .α refl => refl
 
 name-dec-refl {A : Type} : (x : Name A) -> name-dec x x = tt
 | α => refl
@@ -58,33 +63,36 @@ isSet-Name (A : Type) : isSet (Name A) :=
 // still use the encode-decode method to prove that Name A is a set.
 module Stupid
 
-code {A : Type} : Name A -> Name A -> Type :=
-| α α => Unit
-| α β => Empty
+	code {A : Type} : Name A -> Name A -> Type :=
+	| α α => Unit
+	| α β => Empty
 
-isProp-code {A : Type} : (x y : Name A) (c1 c2 : code x y) -> c1 = c2
-| α α => isProp-Unit
-| α β => fun p q : Empty => abort p
+	isProp-code {A : Type} : (x y : Name A) (c1 c2 : code x y) -> c1 = c2
+	| α α => isProp-Unit
+	| α β => fun e _ : Empty => abort e
 
-encode {A : Type} : (x y : Name A) (p : x = y) -> code x y
-| α .α refl => ()
+	encode {A : Type} : (x y : Name A) (p : x = y) -> code x y
+	| α .α refl => () // We use () : Unit for the sole value of the Unit type.
 
-decode {A : Type} : (x y : Name A) (c : code x y) -> x = y
-| α α => fun _ => refl
-| α β => fun c : Empty => abort c
+	decode {A : Type} : (x y : Name A) (c : code x y) -> x = y
+	| α α => fun _ => refl
+	| α β => fun c : Empty => abort c
 
-encode-decode {A : Type} : (x y : Name A) (p : x = y) -> decode x y (encode x y p) = p
-| α .α refl => refl
+  // We have ``decode α α (encode α α refl) => decode α α () => refl``
+	encode-decode {A : Type} : (x y : Name A) (p : x = y) -> decode x y (encode x y p) = p
+	| α .α refl => refl
 
-decode-encode {A : Type} : (x y : Name A) (c : code x y) -> encode x y (decode x y c) = c
-| α α () => refl
-| α β    => fun c : Empty => abort c
+	// We have ``encode α α (decode α α ()) => encode α α refl => ()``
+	// We have ``encode α β (decode α β c) => abort c`` so ``c = abort c` because c : Empty
+	decode-encode {A : Type} : (x y : Name A) (c : code x y) -> encode x y (decode x y c) = c
+	| α α () => refl
+	| α β    => fun c : Empty => abort c
 
-code-is-eq {A : Type} {x y : A} : code x y = (x = y) :=
-  ua encode decode encode-decode decode-encode
+	code-is-eq {A : Type} {x y : A} : code x y = (x = y) :=
+		ua encode decode encode-decode decode-encode
 
-isSet-Name {A : Type} : isSet (Name A) :=
-  fun x y : Name A => transport (@code-is-eq A x y) (isProp-code x y)
+	isSet-Name {A : Type} : isSet (Name A) :=
+		fun x y : Name A => transport (@code-is-eq A x y) (isProp-code x y)
 
 end Stupid
 
@@ -94,6 +102,7 @@ data Term : Type =
   | App : (l r : Term) -> Term
   | Lam : (t : ∇ α : Term. Term) -> Term
 
+// We can decide equality quite easily.
 dec : Term -> Term -> Bool :=
 | (Var x)     (Var y)     => name-dec x y
 | (App l1 r1) (App l2 r2) => dec l1 l2 && dec r1 r2
@@ -121,12 +130,12 @@ dec-refl : (t : Term) -> dec t t = tt
           // form under the ∇
           ) refl
     end
-    
+
 dec-spec-r {t1 t2 : Term} : t1 = t2 -> dec t1 t2 = tt
 | refl => dec-refl t1
 
 dec-spec-l : (t1 t2 : Term) -> dec t1 t2 = tt -> t1 = t2
-| (Var x)     (Var y)     H => ap Var (name-dec-spec x y H)
+| (Var x)     (Var y)     H => ap Var (name-dec-spec-l x y H)
 | (App l1 r1) (App l2 r2) H =>
   // dec t1 t2 = tt is convertible with
   // dec l1 l2 && dec r1 r2 = tt, which gives
@@ -136,26 +145,29 @@ dec-spec-l : (t1 t2 : Term) -> dec t1 t2 = tt -> t1 = t2
   ap2 App (dec-spec-l l1 l2 Hl) (dec-spec-l r1 r2 Hr)
 | (Lam t1)    (Lam t2)    H  =>
     match ν α. dec (t1 @ α) (t2 @ α) with
-      | ν α. tt => (fun wut : ν α. dec (t1 @ α) (t2 @ α) = ν α. tt =>
-          fun i : I => Lam (ν α. dec-spec-l (t1 @ α) (t2 @ α) (ap (@ α) wut) i)
+      | ν α. tt =>
+          (fun wut : ν α. dec (t1 @ α) (t2 @ α) = ν α. tt =>
+            fun i : I => Lam (ν α. dec-spec-l (t1 @ α) (t2 @ α) (ap (@ α) wut) i)
           ) refl
       | ν α. ff => abort H
     end
-| _ _ => ff
+| _ _ H => abort H
 
 // Again, if we are stupid, we can do the same using the encode-decode method.
-data Code : Term -> Term -> Type :=
-| cvar : (x y : Name Term) -> x = y -> Code (Var x) (Var y)
-| capp : (l1 l2 r1 r2 : Term) -> Code l1 r1 -> Code l2 r2 -> Code (App l1 l2) (App r1 r2)
-| clam : (l r : ∇ α : Term. Term) -> ∇ α : Term. Code (l @ α) (r @ α) -> Code (Lam l) (Lam r)
+module Stupid2
 
-isProp_Code {t1 t2 : Term} : (c1 c2 : Code t1 t2) -> c1 = c2 :=
-| (cvar x y p) (cvar .x .y q) =>
-    isSet-Name Term p q
-| (capp l1 l2 r1 r2 c11 c12) (capp .l1 .l2 .r1 .r2 c21 c22) =>
-    ap2 (capp l1 l2 r1 r2) (isProp_Code c11 c21) (isProp_Code c21 c22)
-| (clam l r c1') (clam .l .r c2') =>
-    // ap (clam l r) (fun i => ν α. isProp_Code (c1' @ α) (c2' @ α) i) // if path abstraction is permitted
-    match ν α. isProp_Code (c1' @ α) (c2' @ α) with
-      | ν α. refl => refl
-| _ _ => Empty
+	data Code : Term -> Term -> Type :=
+	| cvar : (x y : Name Term) -> x = y -> Code (Var x) (Var y)
+	| capp : (l1 l2 r1 r2 : Term) -> Code l1 r1 -> Code l2 r2 -> Code (App l1 l2) (App r1 r2)
+	| clam : (l r : ∇ α : Term. Term) -> ∇ α : Term. Code (l @ α) (r @ α) -> Code (Lam l) (Lam r)
+
+	isProp_Code {t1 t2 : Term} : (c1 c2 : Code t1 t2) -> c1 = c2 :=
+	| (cvar x y p) (cvar .x .y q) =>
+		  isSet-Name Term p q
+	| (capp l1 l2 r1 r2 c11 c12) (capp .l1 .l2 .r1 .r2 c21 c22) =>
+		  ap2 (capp l1 l2 r1 r2) (isProp_Code c11 c21) (isProp_Code c21 c22)
+	| (clam l r c1') (clam .l .r c2') =>
+		  // ap (clam l r) (fun i => ν α. isProp_Code (c1' @ α) (c2' @ α) i) // if path abstraction is permitted
+		  match ν α. isProp_Code (c1' @ α) (c2' @ α) with
+		    | ν α. refl => refl
+	// Other cases are impossible.
