@@ -1,42 +1,5 @@
 // ∇ α β ν for easy copying.
 
-// A type is nameless when its values can't contain names.
-Nameless (A : Type) : Type :=
-  (X : Type) -> ∇ α : X. A = A
- 
-// A boolean that can contain a name... doesn't really contain any names.
-f {A : Type} : ∇ α : A. Bool -> Bool :=
-| ν α. tt => tt
-| ν α. ff => ff
-
-// We can pretend we use a name when we don't.
-g {A : Type} : Bool -> ∇ α : A. Bool :=
-  fun b : Bool => ν α : A. b
-
-// The above functions are inverses of each other.
-fg {A : Type} : (x : ∇ α : A. Bool) -> g (f x) = x :=
-| ν α. tt  => refl // We have ``g (f (ν α. tt)) => g tt => ν α. tt``
-| ν α. ff  => refl // We have ``g (f (ν α. ff)) => g ff => ν α. ff``
-
-gf {A : Type} : (y : Bool) -> f (g y) = y :=
-| tt => refl // We have ``f (g tt) => f (ν α. tt) => tt``
-| ff => refl // We have ``f (g ff) => f (ν α. ff) => ff``
-
-// Bool is a nameless type.
-Nameless-Bool : Nameless Bool :=
-  fun X : Type => ua f g fg gf
-
-// The type of names should not be nameless.
-// We can't define a function of type ∇ α. Name A -> Name A, so we are not able
-// to prove that Name A is nameless. But I don't see any easy proofs that Name A
-// is not nameless.
-//Name-not-Nameless (A : Type) : Nameless (Name A) -> Empty :=
-//  fun H : (X : Type) -> ∇ α : X. Name A = Name A =>
-//    let
-//      f : ∇ α : Name A. Name A -> Name A := H (Name A)
-//      x : Name A := f (ν α. α)
-//      WHAT NOW?
-
 // Name A has decidable equality for any A.
 name-dec {A : Type} : (x y : Name A) -> Bool :=
 | α α => tt

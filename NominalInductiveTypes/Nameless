@@ -1,0 +1,95 @@
+// In this file we will do some research on nameless types in order to increase
+// our knowledge of all this nominal magic.
+
+// A type is nameless when its values can't contain names.
+Nameless (A : Type) : Type :=
+  (X : Type) -> ∇ α : X. A = A
+
+// Booleans are nameless because they're either true or false - names nowhere
+// to be found.
+module Nameless-Bool
+
+// A boolean that can contain a name... doesn't really contain any names.
+f {A : Type} : ∇ α : A. Bool -> Bool :=
+| ν α. tt => tt
+| ν α. ff => ff
+
+// We can pretend we use a name when we don't.
+g {A : Type} : Bool -> ∇ α : A. Bool :=
+  fun b : Bool => ν α : A. b
+
+// The above functions are inverses of each other.
+fg {A : Type} : (x : ∇ α : A. Bool) -> g (f x) = x :=
+| ν α. tt  => refl // We have ``g (f (ν α. tt)) => g tt => ν α. tt``
+| ν α. ff  => refl // We have ``g (f (ν α. ff)) => g ff => ν α. ff``
+
+gf {A : Type} : (y : Bool) -> f (g y) = y :=
+| tt => refl // We have ``f (g tt) => f (ν α. tt) => tt``
+| ff => refl // We have ``f (g ff) => f (ν α. ff) => ff``
+
+// Bool is a nameless type.
+Nameless-Bool : Nameless Bool :=
+  fun X : Type => ua f g fg gf
+
+end Nameless-Bool
+
+// It's easy to see that all finite enumerations are also nameless. We're lazy,
+// so we'll just declare the appropriate axioms.
+axiom Nameless-Empty : Nameless Empty
+
+axiom Nameless-Unit  : Nameless Unit
+
+// It should also be the case that products and sums of nameless types are
+// nameless.
+axiom Nameless-Prod {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (A * B)
+
+axiom Nameless-Sum {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (A + B)
+
+// Is the universe nameless? I don't know! Because we can't match on types,
+// there's no way to do anything. Also. it's very interesting to ponder what
+// is the semantics of the type Name Type.
+%Fail
+f : ∇ α : Type. Type -> Type := ?
+
+// The type of names is not nameless. Long live Georg Cantor!
+Name-not-Nameless (A : Type) : Nameless (Name A) -> Empty :=
+  fun H : (X : Type) -> (∇ α : X. Name A) = Name A =>
+    let
+      // Because (∇ α : X. Name A) = Name A, there must also be a surjection
+      // going from right to left.
+      f : Name A -> ∇ α : Name A. Name A := ...
+      
+      Cantor : ∇ α β : Name A. Empty := ν α. ν β.
+        let
+          y : ∇ γ : Name A. Name A := ν γ.
+            match f γ @ γ with
+            | α => β
+            | β => α
+            | δ => α // Default case
+
+          // f is surjective, so there's an x that gets sent to y.
+          x : Name := ...
+          H : f x = y
+          
+          // But then we can concretize both sides of H with x.
+          // (Or can we? Wasn't there something in the rules that forbids this step?)
+          H' : f x @ x = y @ x := ap (@ x) H 
+          
+          // After some computation, the type of H' looks like this:
+          H' :
+            f x @ x =
+            match f x @ x with
+            | α => β
+            | β => α
+            | δ => α
+        in
+          // But now we can derive a contradiction
+          match f x @ x with
+          | α => abort H' // H' : α = β but they can't be equal because both are fresh.
+          | β => abort H' // Η' : β = α but they can't be equal because both are fresh.
+          | δ => abort H' // Default case. Η' : δ = α but they can't be equal because f x @ x didn't match α on the left.
+    in
+      match Cantor with
+        // No cases are possible, because Cantor is some names followed with a
+        // proof of Empty.
+      end
