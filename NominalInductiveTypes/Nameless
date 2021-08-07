@@ -51,14 +51,17 @@ axiom Nameless-Sum {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (
 %Fail
 f : ∇ α : Type. Type -> Type := ?
 
-// The type of names is not nameless. Long live Georg Cantor!
+// BEWARE: the proof below is incorrect.
+// f γ @ γ is illegal, because γ is not free in f γ.
+// f x @ x is illegal because x is a name and not a name variable.
+// @ is ok only when LHS is a term in whcih the RHS is free
 Name-not-Nameless (A : Type) : Nameless (Name A) -> Empty :=
   fun H : (X : Type) -> (∇ α : X. Name A) = Name A =>
     let
       // Because (∇ α : X. Name A) = Name A, there must also be a surjection
       // going from right to left.
       f : Name A -> ∇ α : Name A. Name A := ...
-      
+
       Cantor : ∇ α β : Name A. Empty := ν α. ν β.
         let
           y : ∇ γ : Name A. Name A := ν γ.

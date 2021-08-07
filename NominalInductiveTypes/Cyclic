@@ -1,0 +1,21 @@
+Let's see how well Nominal Inductive Types do when used for representing cyclic lists. Inspired by:
+  - Cyclic Lists, Purely: https://gallais.github.io/blog/cyclic-list-purely.html
+  - Representing Cyclic Structures as Nested Data Types: https://www.cs.gunma-u.ac.jp/~hamana/Papers/tfp06.pdf
+
+data Cyclic (A V : Type) : Type :=
+| Nil
+| RCons {hd : A; tl : ∇ α : V. Cyclic A V;}
+| Var   {v : Name V}
+
+map (f : a -> b) : Cyclic a v -> Cyclic b v
+| Nil       => Nil
+| RCons h t => RCons (f h) (ν α : V. map (t @ α))
+| Var v     => Var v
+
+map-map {A B C V : Type} (f : A -> B) (g : B -> C) : (l : Cyclic A V) -> map g (map f l) = map (comp f g) l
+| Nil => Nil
+| RCons h t => ap (RCons (g (f h))) (map-map f g (t @ α)
+// LHS: RCons (g (f h)) (ν α : V. map g (map f (t @ α)))
+// RHS: RCons (g (f h)) (ν α : V. map (comp f g) (t @ α))
+// ν α. map-map f g (t @ α) : map g (map f (t @ α)) = map (comp f g) (t @ α)
+

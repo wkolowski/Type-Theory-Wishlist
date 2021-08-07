@@ -13,6 +13,12 @@ dedupConsecutive {A : EqType} : List A -> List A
 | [] => []
 | x :: y :: t => if x =? y then dedupConsecutive (y :: t) else x :: dedupConsecutive t
 
+// Or maybe even a more Haskell-like version.
+dedupConsecutive {A : EqType} : List A -> List A
+| [] => []
+| x :: y :: t | x =? y    => dedupConsecutive (y :: t)
+              | otherwise => x :: dedupConsecutive t
+
 // Note that the semantics of the non-linear matches are the classical first-match
 // semantics and it looks like it'd be hard to transplant this into the setting
 // of overlapping and order-independent patterns.

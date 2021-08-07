@@ -47,7 +47,7 @@ Cons:
 Q: Can we do anything nice with this?
 A: in such a banal case as parity of naturals probably not, but in more complicated ones I think so! Example: matching a regular expression against a string. This can't be easily implemented by recursion, so induction is needed. But even though we use induction, it would be nice if some cases of the definition could compute/simplify to help us a bit.
 
-// Type of regexes with smart constructor built-in.
+// Type of regexes with smart constructors built-in.
 data Regex (A : Type) : Type :=
   | Empty : Regex A
   | Epsilon : Regex A
@@ -61,22 +61,22 @@ data Regex (A : Type) : Type :=
     | (Or r1 r2)  r3         => Or (Seq r1 r3) (Seq r2 r3)
     | r1          (Or r2 r3) => Or (Seq r1 r2) (Seq r1 r3)
   | Or : Regex A -> Regex A -> Regex A :=
-    | Empty r       => r
-    | r     Empty   => r
-    | (Or r1 r2) r3 => Or r1 (Or r2 r3)
+    | Empty       r          => r
+    | r           Empty      => r
+    | (Or r1 r2)  r3         => Or r1 (Or r2 r3)
     // TODO: Epsilon
   | Star : Regex A -> Regex A :=
     | Empty   => Epsilon
     | Epsilon => Epsilon
     | Star r  => Star r
 
-data Matches {A : Type} (l : list A) : Regex A -> SProp :=
-| Empty     => False
+data Matches {A : Type} (l : List A) : Regex A -> SProp :=
+| Empty     => Empty
 | Epsilon   => MEpsilon (p : l = [])
 | Char c    => MChar (p : l = [c])
 | Or r1 r2  => MOrL (m : Matches l r1) | MOrR (m : Matches l r2)
 | Seq r1 r2 => MSeq (l1 l2 : list A) (p : l = l1 ++ l2)
-                     (m1 : Matches l1 r1) (m2 : Matches l2 r2)
+                    (m1 : Matches l1 r1) (m2 : Matches l2 r2)
 | Star r    => MStar (ms : MatchesStar l r)
 
 /*
