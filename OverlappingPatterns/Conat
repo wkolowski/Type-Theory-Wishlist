@@ -1,0 +1,38 @@
+// Note: this is not a "positive" coinductive type, but rather just a notation
+// for a proper, negative coinductive type.
+codata Conat : Type :=
+| z : Conat
+| s : Conat -> Conat
+
+%OverlappingPatterns
+add : (n m : Conat) -> Conat :=
+| z, _ => m
+| _, z => n
+| s n', _ => s (add n' m)
+| _, s m' => s (add n m')
+
+// In reality, the above is an encoding of the following.
+module Expanded
+
+  data ConatX (X : Type) : Type :=
+  | zR : ConatX
+  | sR : X -> ConatX X
+
+  codata Conat : Type :=
+  {
+    out : ConatX Conat
+  }
+
+  z : Conat :=
+    { out := zR; }
+
+  s (n : Conat) : Conat :=
+    { out := sR n; }
+
+  add : (n m : Conat) -> Conat :=
+  | z   , _    => { out := m; }
+  | _   , z    => { out := n; }
+  | s n', _    => { out := s (add n' m); }
+  | _   , s m' => { out := s (add n m'); }
+
+end Expanded
