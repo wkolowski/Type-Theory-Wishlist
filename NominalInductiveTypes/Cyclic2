@@ -1,0 +1,75 @@
+// A more explicit representation.
+data Cyclic (A V : Type) : Type
+| Nil
+| Cons (h : A) (t : Cyclic A V)
+| Var  (v : Name V)
+| Fix  (l : ∇ α : V. Cyclic A V)
+  | ν α. Nil => Nil
+  | ν α. Var α => Nil
+  | ν α. Var v => Var v
+  | ν α. Fix l => Fix (ν α. l @ α) // illegal?
+
+map (f : A -> B) : Cyclic A V -> Cyclic B V
+| Nil      => Nil
+| Cons h t => Cons (f h) (map f t)
+| Var v    => Var v
+| Fix l    => Fix (ν α. map f (l @ α))
+
+app : (l1 l2 : Cyclic A V) -> Cyclic A V
+| _       , Nil => l1
+| Nil     , _   => l2
+| Cons h t, _   => Cons h (app t l2)
+| Var v   , _   => Var v
+| Fix l1' , _   => Fix (ν α. app (l1 @ α) l2)
+
+// We can easily implement bind, which is hard with the other representation.
+bind (f : A -> Cyclic B V) : Cyclic A V -> Cyclic B V
+| Nil      => Nil
+| Cons h t => app (f h) (bind f t)
+| Var v    => Var v
+| Fix l    => Fix (ν α. bind f (l @ α))
+
+take-aux (k : Name V -> Cyclic A V) : Nat -> Cyclic A V -> List A
+| _  , Nil      => []
+| z  , _        => []
+| s n, Cons h t => h :: take n t
+| s n, Var v    => take n (k v) // bad ::(
+| s n, Fix l    => anonymize (ν α. (l @ α).hd :: @take (fun β => if α =? β then Fix l else k β) n (l @ α).tl)
+
+take : Nat -> Cyclic A V -> List A :=
+  take-aux (fun _ => Nil)
+
+/* TODO
+drop : Nat -> Cyclic A V -> Cyclic A V
+| z  , l        => l
+| _  , Nil      => Nil
+| s n, Cons h t => drop n t
+| s n, Var v    => //
+| s n, Fix l    => anonymize (ν α. (l @ α).hd :: @take (fun β => if α =? β then Fix l else k β) n (l @ α).tl)
+*/
+
+
+
+
+Import Cylic.Cyclic as C
+
+f : Cyclic A V -> C A V
+| Nil      => Nil
+| Cons h t => RCons (f h) (ν _. map f t)
+| Var v    => Var v
+| Fix (ν α. Cons h t) => RCons h (ν α. f (t @ α))
+
+g : C A V -> Cyclic A V
+| Nil       => Nil
+| RCons h t => Fix (ν α. Cons h (g (t @ α)))
+| Var v     => Var v
+
+// wooed
+data Cyclic (A V : Type) : Type
+| Nil
+| Cons (h : A) (t : Cyclic A V)
+| Fix (∇ α : V. Cyclic' A V)
+
+with Cyclic' (A V : Type) : Type
+| Var (v : Name V)
+| Cons (h : A) (t : Cyclic' A V)
