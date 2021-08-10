@@ -1,0 +1,75 @@
+data CBin (A V : Type) : Type
+| E
+| N (x : A) (l r : CBin A V)
+| Var (v : Name V)
+| Fix (∇ α : V. CBin A V)
+  | ν α. E => E
+  | ν α. Var _ => E
+  | ν α. Fix t => Fix (ν α. t @ α)
+
+// Function template
+| E       =>
+| N x l r =>
+| Var v   =>
+| Fix t   =>
+
+map (f : A -> B) : CBin A V -> CBin B V
+| E       => E
+| N x l r => N (f x) (map l) (map r)
+| Var v   => Var v
+| Fix t   => Fix (ν α. map (t @ α))
+
+mirror : CBin A V -> CBin A V
+| E       => E
+| N x l r => N x (mirror r) (mirror l)
+| Var v   => Var v
+| Fix t   => Fix (ν α. mirror (t @ α))
+
+any (p : A -> Bool) : CBin A V -> Bool
+| E       => ff
+| N x l r => p x || any l || any r
+| Var v   => ff
+| Fix t   => anonymize-Bool (ν α. any (t @ α))
+
+takeWhile (p : A -> Bool) : CBin A V -> CBin A V
+| E       => E
+| N x l r => if p x then N x (takeWhile l) (takeWhile r) else E
+| Var v   => Var v
+| Fix t   => Fix (ν α. takeWhile (t @ α))
+
+any-mirror (p : A -> Bool) : (t : CBin A V) -> any p (mirror t) = any p t
+| E       => refl
+| N x l r => fun i : I => p x || (||-comm (any-mirror p r i) (any-mirror p l i) i)
+| Var v   => refl
+| Fix t'  => fun i : I => anonymize-Bool (ν α. any-mirror p (t' @ α) i)
+
+// LHS: any p (N x (mirror r) (mirror l)) => p x || any p (mirror r) || any p (mirror l)
+// RHS: any p (N x l r) => p x || any p l || any p r
+
+// LHS: any p (mirror (Fix t')) => any p (Fix (ν α. mirror (t' @ α))) => anonymize-Bool (ν α. αny p (mirror (t' @ α)))
+// RHS: any (Fix t') => anonymize-Bool (ν α. any (t' @ α))
+
+// Alternative proof of any-mirror's case N:
+proof
+  by rewrite ||-comm, (any-mirror r), (any-mirror l)
+qed
+
+spam (x : A) : CBin A V :=
+  Fix (ν α. N x (Var α) (Var α))
+
+recycle (a : A) : (Δ α : V. CBin A V) -> CBin A V
+| ν α. E       => E
+| ν α. N x l r => N x (ν α. recycle (l @ α)) (ν α. recycle (r @ α))
+| ν α. Var α   => N a (Var α) (Var α)
+| ν α. Var v   => Var v
+| ν α. Fix t   => Fix (ν α. recycle (t @ α))
+
+unN : CBin A V -> Option (A * CBin A V * CBin A V)
+| E       => None
+| N x l r => Some (x, l, r)
+| Var v   => None
+| Fix (ν α. N x (l @ α) (r @ α)) => anonymize-Option (ν α. Some (x, recycle x unN (t @ α))
+
+
+
+// recycle x (ν _. Fix (ν α. Ν a (Var α) (Var α)) => Fix (ν α. recycle x (ν α. N a (Var α) (Var α)) @ α) => Fix (ν α. N a (recycle (Var α)) (recycle (Var α)))

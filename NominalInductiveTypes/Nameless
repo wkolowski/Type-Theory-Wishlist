@@ -35,7 +35,15 @@ end Nameless-Bool
 
 // It's easy to see that all finite enumerations are also nameless. We're lazy,
 // so we'll just declare the appropriate axioms.
-axiom Nameless-Empty : Nameless Empty
+module Nameless-Empty
+
+  f : (∇ α : A. Empty) -> Empty :=
+    fun e => match e with end
+  
+  g : Empty -> (∇ α : A. Empty) :=
+    fun e => match e with end
+
+end Nameless-Empty
 
 axiom Nameless-Unit  : Nameless Unit
 
@@ -45,6 +53,20 @@ axiom Nameless-Prod {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless 
 
 axiom Nameless-Sum {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (A + B)
 
+module Nameless-List
+
+  f {NA : Nameless A} : (∇ α : N. List A) -> List A
+  | ν α. [] => []
+  | ν α. (h @ α) :: (t @ α) => anonymize h :: f t
+
+  g : List A -> ∇ α : N. List A :=
+    fun l => ν α. l
+
+  fg {NA : Nameless A} : (l : ∇ α : N. List A) -> g (f l) = l
+  | ν α. [] => refl
+  | ν α. (h @ α) :: (t @ α) => // ν α. anonymize h :: f t = ν α. (h @ α) :: (t @ α) // ap (@ α) (fg t) : f t = t @ α
+
+end Nameless-List
 // Is the universe nameless? I don't know! Because we can't match on types,
 // there's no way to do anything. Also. it's very interesting to ponder what
 // is the semantics of the type Name Type.
