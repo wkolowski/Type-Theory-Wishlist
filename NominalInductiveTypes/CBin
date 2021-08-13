@@ -3,15 +3,21 @@ data CBin (A V : Type) : Type
 | N (x : A) (l r : CBin A V)
 | Var (v : Name V)
 | Fix (∇ α : V. CBin A V)
-  | ν α. E => E
+  | ν α. E     => E
   | ν α. Var _ => E
-  | ν α. Fix t => Fix (ν α. t @ α)
+  | ν α. Fix (t @ a) => Fix t
 
 // Function template
 | E       =>
 | N x l r =>
 | Var v   =>
 | Fix t   =>
+
+// Function template v2.
+| E       =>
+| N x l r =>
+| Var v   =>
+| Fix (ν α. N (x @ α) (l @ α) (r @ α)) =>
 
 map (f : A -> B) : CBin A V -> CBin B V
 | E       => E
@@ -68,8 +74,4 @@ unN : CBin A V -> Option (A * CBin A V * CBin A V)
 | E       => None
 | N x l r => Some (x, l, r)
 | Var v   => None
-| Fix (ν α. N x (l @ α) (r @ α)) => anonymize-Option (ν α. Some (x, recycle x unN (t @ α))
-
-
-
-// recycle x (ν _. Fix (ν α. Ν a (Var α) (Var α)) => Fix (ν α. recycle x (ν α. N a (Var α) (Var α)) @ α) => Fix (ν α. N a (recycle (Var α)) (recycle (Var α)))
+| Fix (ν α. N (x @ α) (l @ α) (r @ α)) => Some (x, recycle x l, recycle x r)

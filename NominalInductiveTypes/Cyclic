@@ -32,17 +32,17 @@ app : (l1 l2 : Cyclic A V) -> Cyclic A V :=
 | Var v      , _   => Var v
 
 %OverlappingPatterns
-app-assoc (l1 l2 l3 : Cyclic A V) -> app (l1 l2) l3 = app l1 (app l2 l3)
+app-assoc (l1 l2 l3 : Cyclic A V) -> app (app l1 l2) l3 = app l1 (app l2 l3)
 | Nil        , _   => refl
 | _          , Nil => refl
-| RCons h1 t1, _   => // looks like easy by IH
+| RCons h1 t1, _   => fun i : I => RCons h1 (ν α. app-assoc (t1 @ α) l2 l3 i)
 | Var v      , _   => refl
 
 %OverlappingPatterns
 map-app (f : A -> B) : (l1 l2 : Cyclic A V) -> map f (app l1 l2) = app (map f l1) (map f l2)
 | Nil        , _   => refl
 | _          , Nil => refl
-| RCons h1 t1, _   => // easily from inductive hypothesis
+| RCons h1 t1, _   => fun i : I => RCons (f h1) (ν α. map-app (t1 @ α) l2 i)
 | Var v      , _   => refl
 
 snoc (x : A) : Cyclic A V -> Cyclic A V
@@ -50,10 +50,15 @@ snoc (x : A) : Cyclic A V -> Cyclic A V
 | RCons h t => RCons h (ν α. snoc x (t @ α))
 | Var v     => Var v
 
+snoc-is-app-RCons (x : A) : (l : Cycliv A V) -> snoc x l = app l (RCons x (ν α. Nil))
+| Nil       => refl
+| RCons h t => fun i : I => Rcons h (ν β. snoc-is-app-RCons (t @ β) i)
+| Var v     => refl
+
 snoc-app (x : A) : (l1 l2 : Cyclic A V) -> snoc x (app l1 l2) = app l1 (snoc x l2)
 | Nil        , _   => refl
-| _          , Nil => // lemma app-RCons-r
-| RCons h1 t1, _   => // easily from inductive hypothesis
+| _          , Nil => snoc-is-app-RCons x l1
+| RCons h1 t1, _   => fun i : I => RCons h1 (ν α. snoc-app (t1 @ α) l2 i)
 | Var v      , _   => refl
 
 // See file Nameless.
@@ -61,13 +66,15 @@ anonymize-Bool : (∇ α : A. Bool) -> Bool
 
 isCyclic : (l : Cyclic A V) -> Bool
 | Nil       => tt
-| Var v => ff
 | RCons _ t => anonymize (ν α. isCyclic (t @ α))
+| Var v     => ff
 
 isCyclic-app : (l1 l2 : Cyclic A V) -> isCyclic (app l1 l2) = isCyclic l1 || isCyclic l2
 | Nil        , _   => refl
 | _          , Nil => refl
-| RCons h1 t1, _   => // from IH
+| RCons h1 t1, _   => // LHS: isCyclic (app l1 l2) => isCyclic (RCons h1 (ν α. app (t1 @ α) l2)) => anonymize (ν α. isCyclic (app (t1 @ α) l2))
+                      // RHS: isCyclic l1 || isCyclic l2 => anonymize (ν α. isCyclic (t1 @ a)) || isCyclic l2
+                      fun i : I => anonymize // TODO
 | Var v      , _   => refl
 
 %OverlappingPatterns
@@ -75,7 +82,7 @@ take-aux (k : Name V -> Cyclic A V) : (l : Cyclic A V) (n : Nat) -> List A
 | _        , z => []
 | Nil      , _ => []
 | RCons h t, s n' => h :: anonymize-List (ν α. take-aux (fun β => if α =? β then l else k α) (t @ α) n')
-| Var v    , s n' => take-aux k (k v) (s n') // bad
+| Var v    , s n' => take-aux k (k v) (s n')
 
 any (p : A -> Bool) : Cyclic A V -> Bool
 | Nil       => ff
@@ -90,4 +97,4 @@ takeWhile (p : A -> Bool) : Cyclic A V -> Cyclic A V
 bind (f : A -> Cyclic B V) : Cyclic A V -> Cyclic B V
 | Nil       => Nil
 | Var v     => Var v
-| RCons h t => app (f h) //wuut?
+| RCons h t => // This is a pretty case, look at the file Cyclic2 for a better cyclic list implementation.

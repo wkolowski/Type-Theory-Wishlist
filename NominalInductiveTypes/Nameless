@@ -1,37 +1,64 @@
 // In this file we will do some research on nameless types in order to increase
 // our knowledge of all this nominal magic.
 
+unanonymize (x : A) : ∇ α : N. A := ν α. x
+
 // A type is nameless when its values can't contain names.
-Nameless (A : Type) : Type :=
-  (X : Type) -> ∇ α : X. A = A
+module Nameless (A : Type) : Type :=
+
+  anonymize : (∇ α : N. A) -> A
+  
+  anonymize-postinv : (x : A) -> anonymize (unanonymize x) = x
+  anonymize-preinv  : (x : ∇ α : N. A) -> unanonymize (anonymize x) = x
+
+  path : (∇ α : N. A) = A :=
+    ua anonymize unanonymize anonymize-preinv anonymize-postinv
+
+end Nameless
 
 // Booleans are nameless because they're either true or false - names nowhere
 // to be found.
-module Nameless-Bool
+module Nameless-Bool : Nameless Bool :=
 
-// A boolean that can contain a name... doesn't really contain any names.
-f {A : Type} : ∇ α : A. Bool -> Bool :=
-| ν α. tt => tt
-| ν α. ff => ff
+  // A boolean that can contain a name... doesn't really contain any names.
+  f {A : Type} : ∇ α : A. Bool -> Bool :=
+  | ν α. tt => tt
+  | ν α. ff => ff
 
-// We can pretend we use a name when we don't.
-g {A : Type} : Bool -> ∇ α : A. Bool :=
-  fun b : Bool => ν α : A. b
+  // We can pretend we use a name when we don't.
+  g {A : Type} : Bool -> ∇ α : A. Bool :=
+    fun b : Bool => ν α : A. b
 
-// The above functions are inverses of each other.
-fg {A : Type} : (x : ∇ α : A. Bool) -> g (f x) = x :=
-| ν α. tt  => refl // We have ``g (f (ν α. tt)) => g tt => ν α. tt``
-| ν α. ff  => refl // We have ``g (f (ν α. ff)) => g ff => ν α. ff``
+  // The above functions are inverses of each other.
+  fg {A : Type} : (x : ∇ α : A. Bool) -> g (f x) = x :=
+  | ν α. tt  => refl // We have ``g (f (ν α. tt)) => g tt => ν α. tt``
+  | ν α. ff  => refl // We have ``g (f (ν α. ff)) => g ff => ν α. ff``
 
-gf {A : Type} : (y : Bool) -> f (g y) = y :=
-| tt => refl // We have ``f (g tt) => f (ν α. tt) => tt``
-| ff => refl // We have ``f (g ff) => f (ν α. ff) => ff``
+  gf {A : Type} : (y : Bool) -> f (g y) = y :=
+  | tt => refl // We have ``f (g tt) => f (ν α. tt) => tt``
+  | ff => refl // We have ``f (g ff) => f (ν α. ff) => ff``
 
-// Bool is a nameless type.
-Nameless-Bool : Nameless Bool :=
-  fun X : Type => ua f g fg gf
+  // Bool is a nameless type.
+  Nameless-Bool : Nameless Bool :=
+    fun X : Type => ua f g fg gf
 
 end Nameless-Bool
+
+module Nameless-Nat : Nameless Nat :=
+
+  anonymize : (∇ α : A. Nat) -> Nat
+  | ν α. z         => z
+  | ν α. s (n @ α) => s (anonymize n)
+
+  anonymize-postinv : (n : Nat) -> anonymize (unanoymize n) = n
+  | z    => refl
+  | s n' => ap s (anonymize-postinv n')
+
+  anonymize-preinv : (n : ∇ α : N. Nat) -> unanonymize (anonymize n) = n
+  | ν α. z          => refl
+  | ν α. s (n' @ α) => fun i : I => ν α. s (anonymize-preinv n' i @ α)
+
+end Nameless-Nat
 
 // It's easy to see that all finite enumerations are also nameless. We're lazy,
 // so we'll just declare the appropriate axioms.
@@ -49,7 +76,12 @@ axiom Nameless-Unit  : Nameless Unit
 
 // It should also be the case that products and sums of nameless types are
 // nameless.
-axiom Nameless-Prod {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (A * B)
+module Nameless-Prod {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (A * B)
+
+  f : (∇ α : N. A * B) -> A * B
+  | ν α. (x @ a, y @ α) => (anonymize x, anonymize y)
+
+end
 
 axiom Nameless-Sum {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (A + B)
 
@@ -64,9 +96,15 @@ module Nameless-List
 
   fg {NA : Nameless A} : (l : ∇ α : N. List A) -> g (f l) = l
   | ν α. [] => refl
-  | ν α. (h @ α) :: (t @ α) => // ν α. anonymize h :: f t = ν α. (h @ α) :: (t @ α) // ap (@ α) (fg t) : f t = t @ α
+  | ν α. (h @ α) :: (t @ α) =>
+    let
+      ν α.
+      Ht : f t = t @ a := ap (@ α) (fg t)
+
+      // ν α. anonymize h :: f t = ν α. (h @ α) :: (t @ α)
 
 end Nameless-List
+
 // Is the universe nameless? I don't know! Because we can't match on types,
 // there's no way to do anything. Also. it's very interesting to ponder what
 // is the semantics of the type Name Type.

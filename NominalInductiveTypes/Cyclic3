@@ -1,0 +1,11 @@
+// A representation similar to Cyclic2, but constructors that compute are not
+// needed - they are replaced with a use of a separate inductive type. Nominal
+// inductives probably aren't needed either.
+data Cyclic (A V : Type) : Type
+| Nil
+| Cons (h : A) (t : Cyclic A V)
+| Fix (∇ α : V. Cyclic' A V)
+
+with Cyclic' (A V : Type) : Type
+| Var (v : Name V)
+| Cons (h : A) (t : Cyclic' A V)
