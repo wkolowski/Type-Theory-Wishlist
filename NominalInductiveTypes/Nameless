@@ -1,49 +1,124 @@
 // In this file we will do some research on nameless types in order to increase
 // our knowledge of all this nominal magic.
 
+// We can pretend we use a name when we don't.
 unanonymize (x : A) : ∇ α : N. A := ν α. x
 
 // A type is nameless when its values can't contain names.
-module Nameless (A : Type) : Type :=
+module type Nameless (A : Type) : Type :=
 
+  // Strip a name from a value of type A.
   anonymize : (∇ α : N. A) -> A
   
+  // Anonymize and unanoymize are inverses.
   anonymize-postinv : (x : A) -> anonymize (unanonymize x) = x
   anonymize-preinv  : (x : ∇ α : N. A) -> unanonymize (anonymize x) = x
 
+  // From univalence, we know these types are equal.
   path : (∇ α : N. A) = A :=
     ua anonymize unanonymize anonymize-preinv anonymize-postinv
 
 end Nameless
 
-// Booleans are nameless because they're either true or false - names nowhere
-// to be found.
-module Nameless-Bool : Nameless Bool :=
+// It's easy to see that all finite enumerations are nameless.
+// This includes the Empty type, the Unit type and the booleans.
 
-  // A boolean that can contain a name... doesn't really contain any names.
-  f {A : Type} : ∇ α : A. Bool -> Bool :=
+module Nameless-Empty : Nameless Empty
+
+  anonymize : (∇ α : N. Empty) -> Empty :=
+    fun e => match e with end
+  
+  anonymize-postinv : (e : Empty) -> anonymize (unanonymize e) = e :=
+    fun e => matche with end
+  
+  anonymize-preinv : (e : ∇ α : N. Empty) -> unanonymize (anonymize e) = e :=
+    fun e => match e with end
+
+end Nameless-Empty
+
+module Nameless-Unit : Nameless Unit
+
+  anonymize : (u : ∇ α : N. Unit) -> Unit
+  | ν α. unit -> unit
+
+  anonymize-postinv : (u : Unit) -> anonymize (unanonymize u) = u
+  | unit => refl
+
+  anonymize-preinv : (u : ∇ α : N. Unit) -> unanonymize (anonymize u) = u
+  | ν α. unit => refl
+
+end Nameless-Unit
+
+module Nameless-Bool : Nameless Bool
+
+  anonymize : (∇ α : N. Bool) -> Bool
   | ν α. tt => tt
   | ν α. ff => ff
 
-  // We can pretend we use a name when we don't.
-  g {A : Type} : Bool -> ∇ α : A. Bool :=
-    fun b : Bool => ν α : A. b
+  anonymize-postinv : (b : Bool) -> anonymize (unanonymize b) = b
+  | tt => refl
+  | ff => refl
 
-  // The above functions are inverses of each other.
-  fg {A : Type} : (x : ∇ α : A. Bool) -> g (f x) = x :=
-  | ν α. tt  => refl // We have ``g (f (ν α. tt)) => g tt => ν α. tt``
-  | ν α. ff  => refl // We have ``g (f (ν α. ff)) => g ff => ν α. ff``
-
-  gf {A : Type} : (y : Bool) -> f (g y) = y :=
-  | tt => refl // We have ``f (g tt) => f (ν α. tt) => tt``
-  | ff => refl // We have ``f (g ff) => f (ν α. ff) => ff``
-
-  // Bool is a nameless type.
-  Nameless-Bool : Nameless Bool :=
-    fun X : Type => ua f g fg gf
+  anonymize-preinv : (x : ∇ α : A. Bool) -> unanonymize (anonymize x) = x
+  | ν α. tt  => refl
+  | ν α. ff  => refl
 
 end Nameless-Bool
 
+// But what about functions? They should preserve their codomain's
+// namelessness, I think.
+
+module Nameless-Fun {NB : Nameless B} : Nameless (A -> B)
+
+  anonymize (f : ∇ α : N. A -> B) : A -> B :=
+    fun a : A => anonymize (ν α. f @ α a)
+
+  anonymize-postinv (f : A -> B) : anonymize (unanonymize f) = f :=
+    fun i : I => fun a : A => anonymize-postinv (f a) i
+
+  anonymize-preinv (f : ∇ α : N. A -> B) : unanonymize (anonymize f) = f :=
+    fun i : I => ν α. fun a : A => anonymize-preinv (f a) i @ α
+
+end Nameless-Fun
+
+// It should also be the case that products and sums of nameless types are
+// nameless.
+
+module Nameless-Prod {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (A * B)
+
+  anonymize : (p : ∇ α : N. A * B) -> A * B
+  | ν α. (a @ α, b @ α) => (anonymize a, anonymize b)
+
+  anonymize-postinv : (p : A * B) -> anonymize (unanonymize p) = p
+  | (a, b) => fun i : I => (anonymize-postinv a i, anonymize-postinv b i)
+
+  anonymize-preinv : (p : ∇ α : N. A * B) -> unanonymize (anonymize p) = p
+  | ν α. (a @ α, b @ α) => fun i : I => ν α. (anonymize-preinv a @ α i, anonymize-preinv b @ α i)
+
+end Nameless-Prod
+
+module Nameless-Sum {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (A + B) :=
+
+  anonymize : (x : ∇ α : N. A + B) -> A + B
+  | ν α. inl (a @ α) => inl (anonymize a)
+  | ν α. inl (b @ α) => inr (anonymize b)
+
+  anonymize-postinv : (x : A + B) -> anonymize (unanonymize x) = x
+  | inl a => ap inl (anonymize-postinv a)
+  | inr b => ap inr (anonymize-postinv b)
+
+  anonymize-preinv : (x : ∇ α : N. A + B) -> unanonymize (anonymize x) = x
+  | ν α. inl (a @ α) => ap (fun x => ν α. inl (x @ α)) (anonymize-preinv a)
+  | ν α. inr (b @ α) => ap (fun x => ν α. inr (x @ α)) (anonymize-preinv b)
+
+  anonymize-preinv' : (x : ∇ α : N. A + B) -> unanonymize (anonymize x) = x
+  | ν α. inl (a @ α) => fun i : I => ν α. inl (anonymize-preinv a i @ α)
+  | ν α. inr (b @ α) => fun i : I => ν α. inr (anonymize-preinv b i @ α)
+  
+end Nameless-Sum
+
+// Naturals are also nameless, but proving this is slightly harder than was the
+// case for Empty, Unit and Bool.
 module Nameless-Nat : Nameless Nat :=
 
   anonymize : (∇ α : A. Nat) -> Nat
@@ -60,99 +135,93 @@ module Nameless-Nat : Nameless Nat :=
 
 end Nameless-Nat
 
-// It's easy to see that all finite enumerations are also nameless. We're lazy,
-// so we'll just declare the appropriate axioms.
-module Nameless-Empty
+// Not bad so far. List should also preserve the property of being a
+// nameless type.
+module Nameless-List {NA : Nameless A} : Nameless (List A)
 
-  f : (∇ α : A. Empty) -> Empty :=
-    fun e => match e with end
-  
-  g : Empty -> (∇ α : A. Empty) :=
-    fun e => match e with end
+  anonymize : (∇ α : N. List A) -> List A
+  | ν α. []                 => []
+  | ν α. (h @ α) :: (t @ α) => anonymize h :: anonymize t
 
-end Nameless-Empty
+  anonymize-postinv : (l : List A) -> anonymize (unanonymize l) = l
+  | []     => refl
+  | h :: t => fun i : I => anonymize-postinv h i :: anonymize-postinv t i
 
-axiom Nameless-Unit  : Nameless Unit
-
-// It should also be the case that products and sums of nameless types are
-// nameless.
-module Nameless-Prod {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (A * B)
-
-  f : (∇ α : N. A * B) -> A * B
-  | ν α. (x @ a, y @ α) => (anonymize x, anonymize y)
-
-end
-
-axiom Nameless-Sum {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless (A + B)
-
-module Nameless-List
-
-  f {NA : Nameless A} : (∇ α : N. List A) -> List A
-  | ν α. [] => []
-  | ν α. (h @ α) :: (t @ α) => anonymize h :: f t
-
-  g : List A -> ∇ α : N. List A :=
-    fun l => ν α. l
-
-  fg {NA : Nameless A} : (l : ∇ α : N. List A) -> g (f l) = l
-  | ν α. [] => refl
-  | ν α. (h @ α) :: (t @ α) =>
-    let
-      ν α.
-      Ht : f t = t @ a := ap (@ α) (fg t)
-
-      // ν α. anonymize h :: f t = ν α. (h @ α) :: (t @ α)
+  anonymize-preinv : (l : ∇ α : N. List A) -> unanonymize (anonymize l) = l
+  | ν α. []                 => refl
+  | ν α. (h @ α) :: (t @ α) => fun i : I => ν α. anonymize-preinv h i @ α :: anonymize-preinv t i @ α
 
 end Nameless-List
+
+// Oh, and let's not forget this one: ∇ preserves being nameless.
+module Nameless-∇ {NA : Nameless A} : Nameless (∇ α : N. A)
+
+  anonymize (x : ∇ α : Nα. ∇ β : Nβ. A) : (∇ β : Nβ. A) :=
+    ν β. anonymize (ν α. x @ α @ β)
+
+  anonymize-postinv (x : ∇ β : Nβ. A) : anonymize (unanonymize x) = x :=
+    fun i : I => ν β. anonymize-postinv (x @ β) i
+
+  anonymize-preinv (x : ∇ α : Nα. ∇ β : Nβ. A) : unanonymize (anonymize x) = x :=
+    fun i : I => ν α. ν β. anonymize-preinv (ν γ. x @ γ @ β) i @ α
+
+end Nameless-∇
+
+// Looks like it's pretty safe to conjecture that forming an inductive type
+// preserves the property of being nameless, provided that it's parameters,
+// indices and arguments also are nameless.
+
+// Coinductives probably also preserve being nameless, because similarly to
+// inductives, they have nothing to do with names.
 
 // Is the universe nameless? I don't know! Because we can't match on types,
 // there's no way to do anything. Also. it's very interesting to ponder what
 // is the semantics of the type Name Type.
 %Fail
-f : ∇ α : Type. Type -> Type := ?
+anonymize : (∇ α : N. Type) -> Type := ?
 
-// BEWARE: the proof below is incorrect.
-// f γ @ γ is illegal, because γ is not free in f γ.
-// f x @ x is illegal because x is a name and not a name variable.
-// @ is ok only when LHS is a term in whcih the RHS is free
+// Due to technical difficulties with the system, we also can't prove that
+// the type of paths is nameless. More precisely, when given a term t that
+// belongs to an inductive family, the family's indices have to be fully
+// concretized.
+
+// The type of names is not a proposition. This should be intuitively obvious,
+// because it's supposed to be a countably infinite supply of new names.
+Name-not-Prop (A : Type) : isProp (Name A) -> Empty :=
+  fun H : forall x y : Name A. x = y =>
+    match ν α. ν β. H α β with
+      // Because α and β are fresh, they can't be equal, so refl α is not a valid pattern.
+      // This match is a bit dodgy, but the theorem is certainly true.
+    end
+
+// The type of names is not nameless.
 Name-not-Nameless (A : Type) : Nameless (Name A) -> Empty :=
-  fun H : (X : Type) -> (∇ α : X. Name A) = Name A =>
-    let
-      // Because (∇ α : X. Name A) = Name A, there must also be a surjection
-      // going from right to left.
-      f : Name A -> ∇ α : Name A. Name A := ...
+  fun NNA : Nameless (Name A) =>
+  let
+    // Recall the type of ``anonymize-preinv`` which is one of the fields of ``Nameless``.
+    // anonymize-preinv : (x : ∇ α : Name A. Name a) -> unanonymize (anonymize x) = x
+    
+    // Also recall that ``unanonymize x`` was defined to be ``ν β. x``.
+    // What happens when we put ``ν α. α`` into ``anonymize-preinv``?
+    p : ν β. anonymize (ν α. α) = ν α. α := anonymize-preinv (ν α. α) 
 
-      Cantor : ∇ α β : Name A. Empty := ν α. ν β.
-        let
-          y : ∇ γ : Name A. Name A := ν γ.
-            match f γ @ γ with
-            | α => β
-            | β => α
-            | δ => α // Default case
+    // Now we can concretize both sides of ``p`` with any name, inferring that
+    // ``anonymize (ν α. α)`` is equal to any name whatsoever.
+    H : forall x : Name A. anonymize (ν α. α) = x :=
+      fun x : Name A =>
+        match x with
+          | β => ap (@ β) p
+        end
 
-          // f is surjective, so there's an x that gets sent to y.
-          x : Name := ...
-          H : f x = y
-          
-          // But then we can concretize both sides of H with x.
-          // (Or can we? Wasn't there something in the rules that forbids this step?)
-          H' : f x @ x = y @ x := ap (@ x) H 
-          
-          // After some computation, the type of H' looks like this:
-          H' :
-            f x @ x =
-            match f x @ x with
-            | α => β
-            | β => α
-            | δ => α
-        in
-          // But now we can derive a contradiction
-          match f x @ x with
-          | α => abort H' // H' : α = β but they can't be equal because both are fresh.
-          | β => abort H' // Η' : β = α but they can't be equal because both are fresh.
-          | δ => abort H' // Default case. Η' : δ = α but they can't be equal because f x @ x didn't match α on the left.
-    in
-      match Cantor with
-        // No cases are possible, because Cantor is some names followed with a
-        // proof of Empty.
-      end
+    // From the above we can deduce that all names are equal and thus
+    // ``Name A`` is a proposition.
+    H' : isProp (Name A) :=
+    proof
+      intros x y
+      rewrite <- (H x), <- (H y)
+      reflexivity
+    qed
+  in
+    // However, we know that Name A is not a proposition, but a fully-fledged set for any A.
+    // Therefore we arrive at a contradiction.
+    Name-not-Prop H'
