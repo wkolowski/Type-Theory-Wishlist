@@ -35,7 +35,7 @@ any (p : A -> Bool) : CBin A V -> Bool
 | E       => ff
 | N x l r => p x || any l || any r
 | Var v   => ff
-| Fix t   => anonymize-Bool (ν α. any (t @ α))
+| Fix t   => anonymize (ν α. any (t @ α))
 
 takeWhile (p : A -> Bool) : CBin A V -> CBin A V
 | E       => E
@@ -47,13 +47,13 @@ any-mirror (p : A -> Bool) : (t : CBin A V) -> any p (mirror t) = any p t
 | E       => refl
 | N x l r => fun i : I => p x || (||-comm (any-mirror p r i) (any-mirror p l i) i)
 | Var v   => refl
-| Fix t'  => fun i : I => anonymize-Bool (ν α. any-mirror p (t' @ α) i)
+| Fix t'  => fun i : I => anonymize (ν α. any-mirror p (t' @ α) i)
 
 // LHS: any p (N x (mirror r) (mirror l)) => p x || any p (mirror r) || any p (mirror l)
 // RHS: any p (N x l r) => p x || any p l || any p r
 
-// LHS: any p (mirror (Fix t')) => any p (Fix (ν α. mirror (t' @ α))) => anonymize-Bool (ν α. αny p (mirror (t' @ α)))
-// RHS: any (Fix t') => anonymize-Bool (ν α. any (t' @ α))
+// LHS: any p (mirror (Fix t')) => any p (Fix (ν α. mirror (t' @ α))) => anonymize (ν α. αny p (mirror (t' @ α)))
+// RHS: any (Fix t') => anonymize (ν α. any (t' @ α))
 
 // Alternative proof of any-mirror's case N:
 proof
@@ -63,7 +63,8 @@ qed
 spam (x : A) : CBin A V :=
   Fix (ν α. N x (Var α) (Var α))
 
-recycle (a : A) : (Δ α : V. CBin A V) -> CBin A V
+// TODO: in the second case, `x : ∇ α : V. A` and not just `x : A`, so it's a type error.
+recycle (a : A) : (∇ α : V. CBin A V) -> CBin A V
 | ν α. E       => E
 | ν α. N x l r => N x (ν α. recycle (l @ α)) (ν α. recycle (r @ α))
 | ν α. Var α   => N a (Var α) (Var α)

@@ -20,10 +20,6 @@ map-map (f : A -> B) (g : B -> C) : (l : Cyclic A V) -> map g (map f l) = map (c
 | Nil => Nil
 | RCons h t => fun i : I => RCons (g (f h)) (ν α. map-map f g (t @ α) i)
 
-// LHS: RCons (g (f h)) (ν α : V. map g (map f (t @ α)))
-// RHS: RCons (g (f h)) (ν α : V. map (comp f g) (t @ α))
-// ν α. map-map f g (t @ α) : ∇ α : V. map g (map f (t @ α)) = map (comp f g) (t @ α)
-
 %OverlappingPatterns
 app : (l1 l2 : Cyclic A V) -> Cyclic A V :=
 | Nil        , _   => l2
@@ -61,9 +57,6 @@ snoc-app (x : A) : (l1 l2 : Cyclic A V) -> snoc x (app l1 l2) = app l1 (snoc x l
 | RCons h1 t1, _   => fun i : I => RCons h1 (ν α. snoc-app (t1 @ α) l2 i)
 | Var v      , _   => refl
 
-// See file Nameless.
-anonymize-Bool : (∇ α : A. Bool) -> Bool
-
 isCyclic : (l : Cyclic A V) -> Bool
 | Nil       => tt
 | RCons _ t => anonymize (ν α. isCyclic (t @ α))
@@ -77,16 +70,9 @@ isCyclic-app : (l1 l2 : Cyclic A V) -> isCyclic (app l1 l2) = isCyclic l1 || isC
                       fun i : I => anonymize // TODO
 | Var v      , _   => refl
 
-%OverlappingPatterns
-take-aux (k : Name V -> Cyclic A V) : (l : Cyclic A V) (n : Nat) -> List A
-| _        , z => []
-| Nil      , _ => []
-| RCons h t, s n' => h :: anonymize-List (ν α. take-aux (fun β => if α =? β then l else k α) (t @ α) n')
-| Var v    , s n' => take-aux k (k v) (s n')
-
 any (p : A -> Bool) : Cyclic A V -> Bool
 | Nil       => ff
-| RCons h t => p h || anonymize-Bool (ν α. any p (t @ α))
+| RCons h t => p h || anonymize (ν α. any p (t @ α))
 | Var _     => ff
 
 takeWhile (p : A -> Bool) : Cyclic A V -> Cyclic A V
@@ -97,4 +83,60 @@ takeWhile (p : A -> Bool) : Cyclic A V -> Cyclic A V
 bind (f : A -> Cyclic B V) : Cyclic A V -> Cyclic B V
 | Nil       => Nil
 | Var v     => Var v
-| RCons h t => // This is a pretty case, look at the file Cyclic2 for a better cyclic list implementation.
+| RCons h t => // This is a pretty hard case, look at the file Cyclic2 for a better cyclic list implementation.
+
+recycle {NA : Nameless A} (x : A) : (∇ α : V. Cyclic A V) -> Cyclic A V
+| ν α. Nil                   => Nil
+| ν α. Var α                 => RCons x (ν α. Var α)
+| ν α. Var β                 => Var β
+| ν α. RCons (h @ α) (t @ α) => RCons (anonymize h) (recycle x t)
+
+uncons : Cyclic A V -> Option (A * Cyclic A V)
+| Nil       => None
+| Var _     => None
+| RCons h t => Some (h, recycle h t)
+
+%OverlappingPatterns
+take : (n : Nat) (l : Cyclic A V) -> List A
+| z   , _         => []
+| _   , Nil       => []
+| _   , Var _     => []
+| s n', RCons h t => h :: take n' (recycle h t)
+
+%OverlappingPatterns
+drop : (n : Nat) (l : Cyclic A V) -> Cyclic A V
+| z   , _         => l
+| _   , Nil       => Nil
+| _   , Var v     => Var v
+| s n', RCons h t => drop n' (recycle h t)
+
+replicate (x : A) : (n : Nat) -> Cyclic A V
+| z    => Nil
+| s n' => x :: replicate n'
+
+repeat (x : A) : Cyclic A V :=
+  RCons x (ν α. Var α)
+
+nth : (n : Nat) (l : Cyclic A V) -> Option A
+| _   , Nil       => []
+| _   , Var _     => []
+| z   , RCons h t => Some h
+| s n', RCons h t => nth n' (recycle h t)
+
+rev : Cyclic A V -> Cyclic A V
+| Nil       => Nil
+| Var v     => Var v
+| RCons h t => recycle h (rev t)
+
+// Very bad: name bindings extremely confusing.
+filter-aux (p : A -> Bool) : (∇ α : V. Cyclic A V) -> ∇ α : V. Cyclic A V
+| ν α. Nil                   => ν α. Nil
+| ν α. Var v                 => ν α. Var v
+| ν α. RCons (h @ α) (t @ α) => ν α. if p (h @ α) then RCons (h @ α) (ν β. filter-aux (t @ β)) else filter-aux (t @ α)
+
+// Type error in `else` branch.
+filter (p : A -> Bool) : Cyclic A V -> Cyclic A V
+| Nil       => Nil
+| Var v     => Var v
+| RCons h t => if p h then RCons h (ν α. filter (t @ α)) else filter t // type error
+

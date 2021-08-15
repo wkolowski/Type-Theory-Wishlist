@@ -67,7 +67,6 @@ end Nameless-Bool
 
 // But what about functions? They should preserve their codomain's
 // namelessness, I think.
-
 module Nameless-Fun {NB : Nameless B} : Nameless (A -> B)
 
   anonymize (f : ∇ α : N. A -> B) : A -> B :=
@@ -185,43 +184,70 @@ anonymize : (∇ α : N. Type) -> Type := ?
 // belongs to an inductive family, the family's indices have to be fully
 // concretized.
 
-// The type of names is not a proposition. This should be intuitively obvious,
-// because it's supposed to be a countably infinite supply of new names.
-Name-not-Prop (A : Type) : isProp (Name A) -> Empty :=
-  fun H : forall x y : Name A. x = y =>
-    match ν α. ν β. H α β with
-      // Because α and β are fresh, they can't be equal, so refl α is not a valid pattern.
-      // This match is a bit dodgy, but the theorem is certainly true.
-    end
+// We should also be able to prove that types in which we put names (like cyclic
+// lists and lambda terms) should not be nameless.
 
-// The type of names is not nameless.
-Name-not-Nameless (A : Type) : Nameless (Name A) -> Empty :=
-  fun NNA : Nameless (Name A) =>
-  let
-    // Recall the type of ``anonymize-preinv`` which is one of the fields of ``Nameless``.
-    // anonymize-preinv : (x : ∇ α : Name A. Name a) -> unanonymize (anonymize x) = x
-    
-    // Also recall that ``unanonymize x`` was defined to be ``ν β. x``.
-    // What happens when we put ``ν α. α`` into ``anonymize-preinv``?
-    p : ν β. anonymize (ν α. α) = ν α. α := anonymize-preinv (ν α. α) 
+import open Cyclic
 
-    // Now we can concretize both sides of ``p`` with any name, inferring that
-    // ``anonymize (ν α. α)`` is equal to any name whatsoever.
-    H : forall x : Name A. anonymize (ν α. α) = x :=
-      fun x : Name A =>
-        match x with
-          | β => ap (@ β) p
-        end
+Cyclic-not-Nameless (NC : Nameless (Cyclic A V)) : Empty :=
+let
+  // Recall the type of `anonymize-preinv` which is one of the fields of `Nameless`.
+  // `anonymize-preinv : (x : ∇ α : V. Cyclic A V) -> unanonymize (anonymize x) = x`
 
-    // From the above we can deduce that all names are equal and thus
-    // ``Name A`` is a proposition.
-    H' : isProp (Name A) :=
-    proof
-      intros x y
-      rewrite <- (H x), <- (H y)
-      reflexivity
-    qed
-  in
-    // However, we know that Name A is not a proposition, but a fully-fledged set for any A.
-    // Therefore we arrive at a contradiction.
-    Name-not-Prop H'
+  p : ν β. anonymize (ν α. Var α) = ν α. Var α
+    := anonymize-preinv (ν α. Var α)
+
+  H : (x : Name V) -> anonymize (ν α. Var α) = Var x :=
+  | β => ap (@ β) p
+
+  // It follows that all cyclic lists which are `Var` are equal.
+  H' : (x y : Name V) -> Var x = Var y
+  proof
+    intros x y
+    rewrite <- (H x), <- (H y)
+    reflexivity
+  qed
+
+  // From the above we can deduce that all names (for elements of type `V`)
+  // are equal and thus that `Name V` is a proposition.
+  isProp-Name-V : isProp (Name V) :=
+    // We would need some kind of inversion principle or encode-decode
+    // characterization of paths between cyclic lists to deduce `x = y`
+    // from `Var x = Var y`.
+in
+  // However, we know that `Name V` is not a proposition, but a fully-fledged
+  // set for any type `V`. Therefore we have arrived at a contradiction.
+  Name-not-Prop isProp-Name-V
+
+
+import open Term
+
+Term-not-Nameless (NT : Nameless Term) : Empty :=
+let
+  // Recall the type of `anonymize-preinv` which is one of the fields of `Nameless`.
+  // `anonymize-preinv : (x : ∇ α : Term. Term) -> unanonymize (anonymize x) = x`
+
+  p : ν β. anonymize (ν α. Var α) = ν α. Var α
+    := anonymize-preinv (ν α. Var α)
+
+  H : (x : Name Term) -> anonymize (ν α. Var α) = Var x :=
+  | β => ap (@ β) p
+
+  // It follows that all Terms which are `Var` are equal.
+  H' : (x y : Name Term) -> Var x = Var y
+  proof
+    intros x y
+    rewrite <- (H x), <- (H y)
+    reflexivity
+  qed
+
+  // From the above we can deduce that all names of `Term`s are equal and thus
+  // that `Name Term` is a proposition.
+  isProp-Name-Term : isProp (Name Term) :=
+    // We would need some kind of inversion principle or encode-decode
+    // characterization of paths between `Term`s to deduce `x = y`
+    // from `Var x = Var y`.
+in
+  // However, we know that `Name Term` is not a proposition, but a
+  // fully-fledged set. Therefore we have arrived at a contradiction.
+  Name-not-Prop isProp-Name-Term

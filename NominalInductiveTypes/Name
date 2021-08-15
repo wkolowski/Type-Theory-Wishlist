@@ -1,0 +1,113 @@
+// Basic facts about the type of names.
+
+// Name A has decidable equality for any type `A`.
+name-dec : (x y : Name A) -> Bool :=
+| α α => tt
+| α β => ff
+
+// We use `abort : Empty -> A` to mark contradictions.
+// Below `ff = tt` is not computationally equal to `Empty`, so we can't use
+// `abort` directly, but we won't care about this detail.
+name-dec-spec-l : (x y : Name A) -> name-dec x y = tt -> x = y
+| α α => fun _ => refl
+| α β => fun c : ff = tt => abort c
+
+name-dec-spec-r : (x y : Name A) (p : x = y) -> name-dec x y = tt
+| α .α refl => refl
+
+name-dec-refl : (x : Name A) -> name-dec x x = tt
+| α => refl
+
+// The property of being a set in the sense of HoTT.
+isSet (A : Type) : Type :=
+  {x y : A} (p q : x = y) -> p = q
+
+// `Name A` is a set for any type `A`. We use Hedberg's Theorem which is
+// not proven here. See the HoTTBook for more details on this theorem.
+isSet-Name (A : Type) : isSet (Name A) :=
+  Hedberg's-Theorem A (@name-dec A) (@name-dec-spec-l A) (@name-dec-spec-r A)
+
+// If we are stupid and don't notice this decidable equality on time, we can
+// still use the encode-decode method to prove that Name A is a set.
+module Stupid
+
+  code : Name A -> Name A -> Type :=
+  | α α => Unit
+  | α β => Empty
+
+  isProp-code : (x y : Name A) (c1 c2 : code x y) -> c1 = c2
+  | α α => isProp-Unit
+  | α β => fun e _ : Empty => abort e
+
+  encode : (x y : Name A) (p : x = y) -> code x y
+  | α .α refl => unit
+
+  decode : (x y : Name A) (c : code x y) -> x = y
+  | α α => fun _ => refl
+  | α β => fun c : Empty => abort c
+
+  // We have `decode α α (encode α α refl) => decode α α unit => refl`
+  encode-decode : (x y : Name A) (p : x = y) -> decode x y (encode x y p) = p
+  | α .α refl => refl
+
+  // We have `encode α α (decode α α unit) => encode α α refl => unit`
+  // We have `encode α β (decode α β c) => abort c` so `c = abort c` because `c : Empty`.
+  decode-encode : (x y : Name A) (c : code x y) -> encode x y (decode x y c) = c
+  | α α unit => refl
+  | α β      => fun c : Empty => abort c
+
+  code-is-eq {A : Type} {x y : A} : code x y = (x = y) :=
+    ua encode decode encode-decode decode-encode
+
+  isSet-Name {A : Type} : isSet (Name A) :=
+    fun x y : Name A => transport (@code-is-eq A x y) (isProp-code x y)
+
+end Stupid
+
+// A proposition in the sense of HoTT.
+isProp (A : Type) : Type :=
+  (x y : A) -> x = y
+
+// The type of names is not a proposition. This should be intuitively obvious:
+// because it's supposed to be a countably infinite supply of new names, there
+// can't be just a single name in it.
+Name-not-Prop (A : Type) : isProp (Name A) -> Empty :=
+  fun H : (x y : Name A) -> x = y =>
+    match ν α. ν β. H α β with
+      // Because `α` and `β` are fresh, they can't be equal, so `refl α` is not
+      // a valid pattern. This match is a bit dodgy, but the theorem is true.
+    end
+
+// We import and open the module that contains the definition of namelessness.
+import open Nameless
+
+// The type of names is not nameless. This property also should be intuitively
+// true: the type of names, after all, contains names, whereas nameless types
+// don't contain names. The proof, however, is a bit tricky and not intuitive.
+Name-not-Nameless (NNA : Nameless (Name A)) : Empty :=
+let
+  // Recall the type of `anonymize-preinv` which is one of the fields of `Nameless`.
+  // `anonymize-preinv : (x : ∇ α : Name A. Name A) -> unanonymize (anonymize x) = x`
+
+  // Also recall that `unanonymize x` was defined to be `ν β. x`.
+  // What happens when we put `ν α. α` into `anonymize-preinv`?
+  p : ν β. anonymize (ν α. α) = ν α. α
+    := anonymize-preinv (ν α. α)
+
+  // Now we can concretize both sides of `p` with any name, inferring that
+  // `anonymize (ν α. α)` is equal to any name whatsoever.
+  H : (x : Name (Name A)) -> anonymize (ν α. α) = x :=
+  | β => ap (@ β) p
+
+  // From the above we can deduce that all names for names are equal and thus
+  // that `Name (Name A)` is a proposition.
+  isProp-Name-Name : isProp (Name (Name A)) :=
+  proof
+    intros x y
+    rewrite <- (H x), <- (H y)
+    reflexivity
+  qed
+in
+  // However, we know that `Name A` is not a proposition, but a fully-fledged
+  // set for any type `A`. Therefore we have arrived at a contradiction.
+  Name-not-Prop isProp-Name-Name

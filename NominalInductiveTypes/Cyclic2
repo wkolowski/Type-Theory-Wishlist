@@ -10,6 +10,12 @@ data Cyclic (A V : Type) : Type
   | ν α. Var v => Var v
   | ν α. Fix (l @ α) => Fix l
 
+// Function template.
+| Nil      =>
+| Cons h t =>
+| Var  v   =>
+| Fix  l   =>
+
 map (f : A -> B) : Cyclic A V -> Cyclic B V
 | Nil      => Nil
 | Cons h t => Cons (f h) (map f t)
@@ -30,16 +36,12 @@ bind (f : A -> Cyclic B V) : Cyclic A V -> Cyclic B V
 | Var v    => Var v
 | Fix l    => Fix (ν α. bind f (l @ α))
 
-// Sadly, this is incorrect!
-take-aux (k : Name V -> Cyclic A V) : Nat -> Cyclic A V -> List A
-| _  , Nil      => []
-| z  , _        => []
-| s n, Cons h t => h :: take n t
-| s n, Var v    => take n (k v) // bad ::(
-| s n, Fix l    => anonymize (ν α. (l @ α).hd :: @take (fun β => if α =? β then Fix l else k β) n (l @ α).tl)
-
-take : Nat -> Cyclic A V -> List A :=
-  take-aux (fun _ => Nil)
+// The same is true for filter, which is easy in this representation, but very hard with the first one.
+filter (p : A -> Bool) : Cyclic A V -> Cyclic A V
+| Nil      => Nil
+| Cons h t => if p h then Cons h (filter t) else filter t
+| Var  v   => Var v
+| Fix  l   => Fix (ν α. filter (l @ α))
 
 Import Cylic.Cyclic as C
 
