@@ -1,11 +1,29 @@
+// In this file we explore yet another variation of cyclic lists.
+
+data V : Type :=
+
 // A representation similar to Cyclic2, but constructors that compute are not
 // needed - they are replaced with a use of a separate inductive type. Nominal
 // inductives probably aren't needed either.
-data Cyclic (A V : Type) : Type
+data Cyclic3 (A : Type) : Type
 | Nil
-| Cons (h : A) (t : Cyclic A V)
-| Fix (∇ α : V. Cyclic' A V)
+| Cons (h : A) (t : Cyclic3 A)
+| Fix (∇ α : V. Cyclic3' A)
 
-with Cyclic' (A V : Type) : Type
+with Cyclic3' (A : Type) : Type
 | Var (v : Name V)
-| Cons (h : A) (t : Cyclic' A V)
+| Cons (h : A) (t : Cyclic3' A)
+
+data Cyclic4 (A : Type) : Type
+| Nil
+| Cons (h : A) (t : Cyclic4 A)
+| Cycle (c : List A)
+
+data Cyclic5 (A : Type) : Type
+| Nil
+| Cons (h : A) (t : Cyclic5 A)
+| Cycle (c : Cyclic5' A)
+
+with Cyclic5' (A : Type) : Type
+| Nil
+| Cons (h : A) (t : Cyclic' A)

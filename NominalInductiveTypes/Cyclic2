@@ -1,10 +1,13 @@
-// A more explicit representation.
+// In this file we explore a more explicit representation.
+
+data V : Type :=
+
 %ConstructorsThatCompute
-data Cyclic (A V : Type) : Type
+data Cyclic (A : Type) : Type
 | Nil
-| Cons (h : A) (t : Cyclic A V)
+| Cons (h : A) (t : Cyclic A)
 | Var  (v : Name V)
-| Fix  (l : ∇ α : V. Cyclic A V)
+| Fix  (l : ∇ α : V. Cyclic A)
   | ν α. Nil => Nil
   | ν α. Var α => Nil
   | ν α. Var v => Var v
@@ -16,42 +19,120 @@ data Cyclic (A V : Type) : Type
 | Var  v   =>
 | Fix  l   =>
 
-map (f : A -> B) : Cyclic A V -> Cyclic B V
+// This representation of cyclic lists is equivalent to the one in file Cyclic.
+module Equivalent
+
+  import Cyclic as C
+
+  f : Cyclic A -> C A
+  | Nil      => C.Nil
+  | Cons h t => C.RCons (f h) (ν _. map f t)
+  | Var v    => C.Var v
+  | Fix (ν α. Cons h t) => C.RCons h (ν α. f (t @ α))
+
+  g : C A -> Cyclic A
+  | C.Nil       => Nil
+  | C.RCons h t => Fix (ν α. Cons h (g (t @ α)))
+  | C.Var v     => Var v
+
+end Equivalent
+
+// Basic functions are very easy to implement.
+
+map (f : A -> B) : Cyclic A -> Cyclic B
 | Nil      => Nil
 | Cons h t => Cons (f h) (map f t)
 | Var v    => Var v
 | Fix l    => Fix (ν α. map f (l @ α))
 
-app : (l1 l2 : Cyclic A V) -> Cyclic A V
+%OverlappingPatterns
+app : (l1 l2 : Cyclic A) -> Cyclic A
 | _       , Nil => l1
 | Nil     , _   => l2
 | Cons h t, _   => Cons h (app t l2)
 | Var v   , _   => Var v
-| Fix l1' , _   => Fix (ν α. app (l1 @ α) l2)
+| Fix l1' , _   => Fix (ν α. app (l1' @ α) l2)
 
-// We can easily implement bind, which is hard with the other representation.
-bind (f : A -> Cyclic B V) : Cyclic A V -> Cyclic B V
+snoc (x : A) : Cyclic A -> Cyclic A
+| Nil      => Cons x Nil
+| Cons h t => Cons h (snoc x t)
+| Var  v   => Var v
+| Fix  l   => Fix (ν α. snoc x (l @ α))
+
+any (p : A -> Bool) : Cyclic A -> Bool
+| Nil      => ff
+| Cons h t => p h || any t
+| Var  v   => ff
+| Fix  l   => anonymize (ν α. any (l @ α))
+
+takeWhile (p : A -> Bool) : Cyclic A -> Cyclic A
+| Nil      => Nil
+| Cons h t => if p h then Cons h (takeWhile t)
+| Var  v   => Var v
+| Fix  l   => Fix (ν α. takeWhile (l @ α))
+
+// Bad.
+//take : Nat -> Cyclic A -> List A
+//| z  , _        => []
+//| _  , Nil      => []
+//| s n, Cons h t => h :: take n t
+//| _  , Var v    => []
+//| s n, Fix (ν α. Cons (h @ α) (t @ α)) l    => anonymize (ν α. )
+
+replicate (x : A) : Nat -> Cyclic A
+| z   => Nil
+| s n => Cons x (replicate n)
+
+repeat (x : A) : Cyclic A :=
+  Fix (ν α. Cons x (Var α))
+
+nth : Nat -> Cyclic A -> Option A
+| _  , Nil       => None
+| z  , Cons h _  => Some h
+| s n, Cons _ t  => nth n t
+| _  , Var _     => None
+| n  , Fix l     => nth n
+
+rev : Cyclic A -> Cyclic A
+| Nil       => Nil
+| Var v     => Var v
+| RCons h t => recycle h (rev t)
+
+// Some functions, which are very difficult to implement using the first
+// representation, are very easy with the current one. Ths is because
+// in this representation, we have `Fix` which is independent of `Cons`,
+// which allows to use it in places where it otherwise couldn't be used
+// if it were tied to `Cons`.
+
+bind (f : A -> Cyclic B) : Cyclic A -> Cyclic B
 | Nil      => Nil
 | Cons h t => app (f h) (bind f t)
 | Var v    => Var v
 | Fix l    => Fix (ν α. bind f (l @ α))
 
-// The same is true for filter, which is easy in this representation, but very hard with the first one.
-filter (p : A -> Bool) : Cyclic A V -> Cyclic A V
+filter (p : A -> Bool) : Cyclic A -> Cyclic A
 | Nil      => Nil
 | Cons h t => if p h then Cons h (filter t) else filter t
 | Var  v   => Var v
 | Fix  l   => Fix (ν α. filter (l @ α))
 
-Import Cylic.Cyclic as C
+// The first recursive call checks if there is an β-cycle, whereas the second checks if there is an α-cycle
+isCyclic-aux : (∇ α : V. Cyclic A) -> Bool
+| ν α. Nil                  => ff
+| ν α. Cons (h @ α) (t @ α) => isCyclic-aux t
+| ν α. Var α                => tt
+| ν α. Var β                => ff
+| ν α. Fix (l @ α)          => anonymize (ν α. isCyclic-aux (l @ α)) || anonymize (ν β. isCyclic (ν α. l @ α @ β)) 
 
-f : Cyclic A V -> C A V
+isCyclic : Cyclic A -> Bool
+| Nil      => ff
+| Cons h t => isCyclic t
+| Var  v   => ff
+| Fix  l   => isCyclic-aux l
+
+dropWhile (p : A -> Bool) : (l : Cyclic A) -> Cyclic A
 | Nil      => Nil
-| Cons h t => RCons (f h) (ν _. map f t)
-| Var v    => Var v
-| Fix (ν α. Cons h t) => RCons h (ν α. f (t @ α))
+| Cons h t => if p h then dropWhile t else l 
+| Var  v   => Nil
+| Fix  l'  => Fix (ν α. dropWhile (l' @ α))
 
-g : C A V -> Cyclic A V
-| Nil       => Nil
-| RCons h t => Fix (ν α. Cons h (g (t @ α)))
-| Var v     => Var v

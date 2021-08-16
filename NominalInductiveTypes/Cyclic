@@ -2,141 +2,157 @@ Let's see how well Nominal Inductive Types do when used for representing cyclic 
   - Cyclic Lists, Purely: https://gallais.github.io/blog/cyclic-list-purely.html
   - Representing Cyclic Structures as Nested Data Types: https://www.cs.gunma-u.ac.jp/~hamana/Papers/tfp06.pdf
 
-data Cyclic (A V : Type) : Type :=
+data V : Type :=
+
+data Cyclic (A : Type) : Type :=
 | Nil
-| RCons {hd : A; tl : ∇ α : V. Cyclic A V;}
 | Var   {v : Name V}
+| RCons {hd : A; tl : ∇ α : V. Cyclic A;}
 
-map (f : A -> B) : Cyclic A V -> Cyclic B V
+map (f : A -> B) : Cyclic A -> Cyclic B
 | Nil       => Nil
-| RCons h t => RCons (f h) (ν α : V. map (t @ α))
 | Var v     => Var v
+| RCons h t => RCons (f h) (ν α. map (t @ α))
 
-map-id : (l : Cyclic A V) -> map id l = l
+map-id : (l : Cyclic A) -> map id l = l
 | Nil       => refl
+| Var v     => refl
 | RCons h t => fun i : I => RCons h (ν α. map-id (t @ α) i)
 
-map-map (f : A -> B) (g : B -> C) : (l : Cyclic A V) -> map g (map f l) = map (comp f g) l
-| Nil => Nil
+map-map (f : A -> B) (g : B -> C) : (l : Cyclic A) -> map g (map f l) = map (comp f g) l
+| Nil       => refl
+| Var v     => refl
 | RCons h t => fun i : I => RCons (g (f h)) (ν α. map-map f g (t @ α) i)
 
 %OverlappingPatterns
-app : (l1 l2 : Cyclic A V) -> Cyclic A V :=
-| Nil        , _   => l2
+app : (l1 l2 : Cyclic A) -> Cyclic A :=
 | _          , Nil => l1
-| RCons h1 t1, _   => RCons h1 (ν α. app (t1 @ α) l2)
+| Nil        , _   => l2
 | Var v      , _   => Var v
+| RCons h1 t1, _   => RCons h1 (ν α. app (t1 @ α) l2)
 
 %OverlappingPatterns
-app-assoc (l1 l2 l3 : Cyclic A V) -> app (app l1 l2) l3 = app l1 (app l2 l3)
-| Nil        , _   => refl
+app-assoc : (l1 l2 l3 : Cyclic A) -> app (app l1 l2) l3 = app l1 (app l2 l3)
 | _          , Nil => refl
+| Nil        , _   => refl
+| Var v      , _   => refl
 | RCons h1 t1, _   => fun i : I => RCons h1 (ν α. app-assoc (t1 @ α) l2 l3 i)
-| Var v      , _   => refl
 
 %OverlappingPatterns
-map-app (f : A -> B) : (l1 l2 : Cyclic A V) -> map f (app l1 l2) = app (map f l1) (map f l2)
-| Nil        , _   => refl
+map-app (f : A -> B) : (l1 l2 : Cyclic A) -> map f (app l1 l2) = app (map f l1) (map f l2)
 | _          , Nil => refl
+| Nil        , _   => refl
+| Var v      , _   => refl
 | RCons h1 t1, _   => fun i : I => RCons (f h1) (ν α. map-app (t1 @ α) l2 i)
-| Var v      , _   => refl
 
-snoc (x : A) : Cyclic A V -> Cyclic A V
+snoc (x : A) : Cyclic A -> Cyclic A
 | Nil       => RCons x (ν α. Nil)
+| Var v     => Var v
 | RCons h t => RCons h (ν α. snoc x (t @ α))
-| Var v     => Var v
 
-snoc-is-app-RCons (x : A) : (l : Cycliv A V) -> snoc x l = app l (RCons x (ν α. Nil))
+snoc-is-app-RCons (x : A) : (l : Cyclic A) -> snoc x l = app l (RCons x (ν α. Nil))
 | Nil       => refl
-| RCons h t => fun i : I => Rcons h (ν β. snoc-is-app-RCons (t @ β) i)
 | Var v     => refl
+| RCons h t => fun i : I => Rcons h (ν β. snoc-is-app-RCons (t @ β) i)
 
-snoc-app (x : A) : (l1 l2 : Cyclic A V) -> snoc x (app l1 l2) = app l1 (snoc x l2)
-| Nil        , _   => refl
+snoc-app (x : A) : (l1 l2 : Cyclic A) -> snoc x (app l1 l2) = app l1 (snoc x l2)
 | _          , Nil => snoc-is-app-RCons x l1
-| RCons h1 t1, _   => fun i : I => RCons h1 (ν α. snoc-app (t1 @ α) l2 i)
-| Var v      , _   => refl
-
-isCyclic : (l : Cyclic A V) -> Bool
-| Nil       => tt
-| RCons _ t => anonymize (ν α. isCyclic (t @ α))
-| Var v     => ff
-
-isCyclic-app : (l1 l2 : Cyclic A V) -> isCyclic (app l1 l2) = isCyclic l1 || isCyclic l2
 | Nil        , _   => refl
-| _          , Nil => refl
-| RCons h1 t1, _   => // LHS: isCyclic (app l1 l2) => isCyclic (RCons h1 (ν α. app (t1 @ α) l2)) => anonymize (ν α. isCyclic (app (t1 @ α) l2))
-                      // RHS: isCyclic l1 || isCyclic l2 => anonymize (ν α. isCyclic (t1 @ a)) || isCyclic l2
-                      fun i : I => anonymize // TODO
 | Var v      , _   => refl
+| RCons h1 t1, _   => fun i : I => RCons h1 (ν α. snoc-app (t1 @ α) l2 i)
 
-any (p : A -> Bool) : Cyclic A V -> Bool
+any (p : A -> Bool) : Cyclic A -> Bool
 | Nil       => ff
-| RCons h t => p h || anonymize (ν α. any p (t @ α))
 | Var _     => ff
+| RCons h t => p h || anonymize (ν α. any p (t @ α))
 
-takeWhile (p : A -> Bool) : Cyclic A V -> Cyclic A V
+takeWhile (p : A -> Bool) : Cyclic A -> Cyclic A
 | Nil       => Nil
+| Var v     => Var v
 | RCons h t => if p h then RCons h (ν α. takeWhile p (t @ α)) else Nil
-| Var v     => Var v
 
-bind (f : A -> Cyclic B V) : Cyclic A V -> Cyclic B V
+dropWhile (p : A -> Bool) : Cyclic A -> Cyclic A
 | Nil       => Nil
-| Var v     => Var v
-| RCons h t => // This is a pretty hard case, look at the file Cyclic2 for a better cyclic list implementation.
+| Var v     => Nil
+| RCons h t => if p h then dropWhile p t else t // error
 
-recycle {NA : Nameless A} (x : A) : (∇ α : V. Cyclic A V) -> Cyclic A V
+// TODO: this is suspicious and probably wrong. We need to check all
+// cycles, not just the one we're currently looking at.
+// Also, the `Nameless` instance looks bad.
+recycle {NA : Nameless A} (x : A) : (∇ α : V. Cyclic A) -> Cyclic A
 | ν α. Nil                   => Nil
 | ν α. Var α                 => RCons x (ν α. Var α)
 | ν α. Var β                 => Var β
 | ν α. RCons (h @ α) (t @ α) => RCons (anonymize h) (recycle x t)
 
-uncons : Cyclic A V -> Option (A * Cyclic A V)
+uncons : Cyclic A -> Option (A * Cyclic A)
 | Nil       => None
 | Var _     => None
 | RCons h t => Some (h, recycle h t)
 
 %OverlappingPatterns
-take : (n : Nat) (l : Cyclic A V) -> List A
+take : (n : Nat) (l : Cyclic A) -> List A
 | z   , _         => []
 | _   , Nil       => []
 | _   , Var _     => []
 | s n', RCons h t => h :: take n' (recycle h t)
 
 %OverlappingPatterns
-drop : (n : Nat) (l : Cyclic A V) -> Cyclic A V
+drop : (n : Nat) (l : Cyclic A) -> Cyclic A
 | z   , _         => l
 | _   , Nil       => Nil
 | _   , Var v     => Var v
 | s n', RCons h t => drop n' (recycle h t)
 
-replicate (x : A) : (n : Nat) -> Cyclic A V
+replicate (x : A) : (n : Nat) -> Cyclic A
 | z    => Nil
-| s n' => x :: replicate n'
+| s n' => Cons x (replicate n')
 
-repeat (x : A) : Cyclic A V :=
+repeat (x : A) : Cyclic A :=
   RCons x (ν α. Var α)
 
-nth : (n : Nat) (l : Cyclic A V) -> Option A
-| _   , Nil       => []
-| _   , Var _     => []
+nth : (n : Nat) (l : Cyclic A) -> Option A
+| _   , Nil       => None
+| _   , Var _     => None
 | z   , RCons h t => Some h
 | s n', RCons h t => nth n' (recycle h t)
 
-rev : Cyclic A V -> Cyclic A V
+rev : Cyclic A -> Cyclic A
 | Nil       => Nil
 | Var v     => Var v
 | RCons h t => recycle h (rev t)
 
-// Very bad: name bindings extremely confusing.
-filter-aux (p : A -> Bool) : (∇ α : V. Cyclic A V) -> ∇ α : V. Cyclic A V
-| ν α. Nil                   => ν α. Nil
-| ν α. Var v                 => ν α. Var v
-| ν α. RCons (h @ α) (t @ α) => ν α. if p (h @ α) then RCons (h @ α) (ν β. filter-aux (t @ β)) else filter-aux (t @ α)
-
-// Type error in `else` branch.
-filter (p : A -> Bool) : Cyclic A V -> Cyclic A V
+// Bad.
+bind (f : A -> Cyclic B) : Cyclic A -> Cyclic B
 | Nil       => Nil
 | Var v     => Var v
-| RCons h t => if p h then RCons h (ν α. filter (t @ α)) else filter t // type error
+| RCons h t => // This is a pretty hard case, look at the file Cyclic2 for a better cyclic list implementation.
 
+// Very bad: name bindings extremely confusing.
+//filter-aux (p : A -> Bool) : (∇ α : V. Cyclic A) -> ∇ α : V. Cyclic A
+//| ν α. Nil                   => ν α. Nil
+//| ν α. Var v                 => ν α. Var v
+//| ν α. RCons (h @ α) (t @ α) => ν α. if p (h @ α) then RCons (h @ α) (ν β. filter-aux (t @ β)) else filter-aux (t @ α)
+
+// Type error in `else` branch.
+//filter (p : A -> Bool) : Cyclic A -> Cyclic A
+//| Nil       => Nil
+//| Var v     => Var v
+//| RCons h t => if p h then RCons h (ν α. filter (t @ α)) else filter t // type error
+
+isCyclic-aux : (∇ α : V. Cyclic A) -> Bool
+| ν α. Nil             => ff
+| ν α. RCons _ (t @ α) => anonymize (ν α. isCyclic (t @ α)) || anonymize (ν β. isCyclic (ν α. t @ α @ β))
+| ν α. Var α           => tt
+| ν α. Var β           => ff
+
+isCyclic : (l : Cyclic A) -> Bool
+| Nil       => ff
+| Var v     => tt
+| RCons _ t => isCyclic-aux t
+
+isCyclic-app : (l1 l2 : Cyclic A) -> isCyclic (app l1 l2) = isCyclic l1 || isCyclic l2
+| _          , Nil => refl
+| Nil        , _   => refl
+| Var v      , _   => refl
+| RCons h1 t1, _   => // TODO
