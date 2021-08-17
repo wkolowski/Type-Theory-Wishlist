@@ -1,0 +1,17 @@
+data NatInf : Type
+| z
+| oo
+| s Nat
+  | oo => oo
+
+add : (n m : NatInf) -> NatInf
+| z   , _    => m
+| oo  , _    => oo
+| s n', m    => s (add n' m)
+| _   , z    => n
+| _   , oo   => oo
+| _   , s m' => s (add n m')
+
+mul : (n m : NatInf) -> NatInf
+
+sub : (n m : NatInf) -> NatInf
