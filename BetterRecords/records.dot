@@ -1,0 +1,12 @@
+digraph
+{
+  node  [shape=rectangle, color=green]
+  A     [label = "A : Type"];
+  R     [label = "R : A -> A -> Type"];
+  refl  [label = "refl : forall x : A, R x x"];
+  sym   [label = "sym : forall x y : A, R x y -> R y x"];
+  trans [label = "trans : forall x y z : A, R x y -> R y z -> R x z"];
+
+  A -> R
+  R -> {refl, sym, trans}
+}

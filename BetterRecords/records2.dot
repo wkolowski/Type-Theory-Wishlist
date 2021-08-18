@@ -1,0 +1,18 @@
+digraph
+{
+  node  [shape=rectangle, color=green]
+  A     [label = "A : Type"];
+  m     [label = "m : A -> A -> A"];
+  m_ass [label = "m_assoc : forall x y z : A, m (m x y) z = m x (m y z)"];
+  e     [label = "e : A"];
+  m_e_l [label = "m_e_l : forall x : A, m e x = x"];
+  m_e_r [label = "m_e_r : forall x : A, m x e = x"];
+  i     [label = "i : A -> A"];
+  m_i_l [label = "m_i_l : forall x : A, m (i x) x = e"];
+  m_i_r [label = "m_i_r : forall x : A, m x (i x) = e"];
+
+  A -> {m, e, i}
+  m -> {m_ass, m_e_l, m_e_r, m_i_l, m_i_r}
+  e -> {m_e_l, m_e_r, m_i_l, m_i_r}
+  i -> {m_i_l, m_i_r}
+}
