@@ -19,20 +19,53 @@ module Expanded
   | sR : X -> ConatX X
 
   codata Conat : Type :=
-  {
-    out : ConatX Conat
-  }
+  & out : ConatX Conat
 
   z : Conat :=
-    { out := zR; }
+  & out => zR
 
   s (n : Conat) : Conat :=
-    { out := sR n; }
+  & out => sR n
 
   add : (n m : Conat) -> Conat :=
-  | z   , _    => { out := m; }
-  | _   , z    => { out := n; }
+  | z   , _    => { out := out m; }
+  | _   , z    => { out := out n; }
   | s n', _    => { out := s (add n' m); }
   | _   , s m' => { out := s (add n m'); }
 
 end Expanded
+
+// Thanks to %OverlappingPatterns, we can easily prove that addition of
+// conaturals is both associative and commutative, something that is very
+// hard to do in Coq.
+
+add-assoc : (a b c : Conat) -> add (add a b) c = add a (add b c) :=
+  fun a b c : Conat => fun i : I =>
+  match a with
+  | z    => add b c
+  | s a' => s (add-assoc a' b c i)
+
+add-comm : (n m : Conat) -> add n m = add m n
+| z   , _    => refl
+| _   , z    => refl
+| s n', s m' => fun i : I => s (s (add-comm n' m' i))
+
+// omega also comes easily.
+
+omega : Conat :=
+  s omega
+
+// Translation:
+// omega : Conat :=
+// & out := sR omega
+
+add-z-inv-l : (n m : Conat) -> add n m = z -> n = z
+| z   , _ => fun _ => refl
+| s n', _ => fun p : s (add n' m) = z => abort p
+
+add-z-inv-r : (n m : Conat) -> add n m = z -> m = z :=
+  fun n m p => add-z-inv-l m n (add-comm m n ^ p)
+
+add-omega-l : (n : Conat) -> add omega n = omega
+| z    => refl
+| s n' => fun i : I => s (add-omega-l n' i)
