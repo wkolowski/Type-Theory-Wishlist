@@ -1,8 +1,8 @@
 // What is going on here?
 data Path {A : I -> Type} : A i0 -> A i1 -> Type :=
- | path (x : A i0) (y : A i1) (i : I) :=
-    | i0 => x
-    | i1 => y
+ | path (x : A i0) (y : A i1) (i : I)
+    | i0 => path x x i
+    | i1 => path y y i
 
 data SetTrunc (A : Type) : Type :=
   | in (a : A)

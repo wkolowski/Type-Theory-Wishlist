@@ -7,7 +7,8 @@ data CBin (A V : Type) : Type
 | Var (v : Name V)
 | Fix (∇ α : V. CBin A)
   | ν α. E     => E
-  | ν α. Var _ => E
+  | ν α. Var α => E
+  | ν α. Var v => Var v
   | ν α. Fix (t @ a) => Fix t
 
 // Function template
@@ -40,6 +41,19 @@ any (p : A -> Bool) : CBin A -> Bool
 | Var v   => ff
 | Fix t   => anonymize (ν α. any (t @ α))
 
+all (p : A -> Bool) : CBin A -> Bool
+| E       => tt
+| N x l r => p x && all l && all r
+| Var v   => tt
+| Fix t   => anonymize (ν α. all (t @ α))
+
+// `filter` is the same thing as `takeWhile` for trees!
+filter (p : A -> Bool) : CBin A -> CBin A
+| E       => E
+| N x l r => if p x then N x (filter l) (filter r) else E
+| Var v   => Var v
+| Fix t   => Fix (ν α. filter (t @ α))
+
 takeWhile (p : A -> Bool) : CBin A -> CBin A
 | E       => E
 | N x l r => if p x then N x (takeWhile l) (takeWhile r) else E
@@ -65,6 +79,57 @@ qed
 
 spam (x : A) : CBin A :=
   Fix (ν α. N x (Var α) (Var α))
+
+data Size : Type :=
+  | Finite (n : Nat)
+  | Infinite
+
+size-aux : CBin A -> Nat
+| E       => 0
+| N x l r => 1 + size-aux l + size-aux r
+| Var v   => 0
+| Fix t   => anonymize (ν α. size-aux (t @ α))
+
+isCyclic' : (∇ α : V. CBin A) -> Bool
+| ν α. E       => ff
+| ν α. N (x @ α) (l @ α) (r @ α) => isCyclic' l || isCyclic' r
+| ν α. Var α => tt
+| ν α. Var β => ff
+| ν α. Fix (t @ α) => anonymize (ν α. isCyclic' (t @ α) || isCyclic' (ν β. t @ α @ β))
+
+isCyclic : CBin A -> Bool
+| E       => ff
+| N x l r => isCyclic l || isCyclic r
+| Var v   => ff
+| Fix t   => isCyclic' t || anonymize (ν α. isCyclic (t @ α))
+
+size (t : CBin A) : Size :=
+  if isCyclic t then Infinity else Finite (size-aux t)
+
+oro : (x y : Option A) -> Option A
+| _      , None => x
+| None   , _    => y
+| Some x', _    => Some x'
+
+find (p : A -> Bool) : CBin A -> Option A
+| E       => None
+| N x l r => if p x then Some x else oro (find l) (find r)
+| Var v   => None
+| Fix t   => find // wut?
+
+zipWith (f : A -> B -> C) : (t1 t2 : CBin A) -> CBin A
+| E        , E         => E
+| N a l1 r1, N b l2 r2 => N (f a b) (zipWith l1 l2) (zipWith r1 r2)
+| Var α    , Var α     => Var α
+| Fix t1   , Fix t2    => Fix (ν α. zipWith (t1 @ α) (t2 @ α))
+| _        , _         => E
+
+takeWhile (p : A -> Bool) : CBin A -> CBin A
+| E       => E
+| N x l r => if p x then N x (takeWhile l) (takeWhile r)
+| Var v   => Var v
+| Fix t   => Fix (ν α. takeWhile (t @ α))
+
 
 // TODO: in the second case, `x : ∇ α : V. A` and not just `x : A`, so it's a type error.
 // This is probably incorrect.
