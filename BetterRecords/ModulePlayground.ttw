@@ -1,0 +1,11 @@
+// Same stuff as in RecordPlayground.ttw, but using module syntax.
+
+
+module Pointed
+
+  carrier : Type
+
+  point : carrier
+
+end Pointed
+

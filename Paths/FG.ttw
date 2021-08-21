@@ -1,54 +1,54 @@
 // Free group where the type of generators is A.
-data FG (A : Type) : Type :=
-  | i (x : A)
-  | e
-  | op : (g1 g2 : FG A) :=
-    | e y => y
-    | x e => x
-    | op (op x y) z => op x (op y z)
-  | inv (x : FG A) :=
-    | e => e
-    | inv x => x
-    | op x y => op (inv y) (inv x)
-  | invl (x : FG A) (i : I) :=
-    | x i0 => op (inv x) x
-    | x i1 => e
-  | invr (x : FG A) (i : I) :=
-    | x i0 => op x (inv x)
-    | x i1 => e
+data FG (A : Type) : Type
+| in (x : A)
+| id
+| op : (g1 g2 : FG A)
+  | id, y  => y
+  | x , id => x
+  | op x y, z => op x (op y z)
+| inv (x : FG A)
+  | id     => id
+  | inv x  => x
+  | op x y => op (inv y) (inv x)
+| invl (x : FG A) (i : I)
+  | i0 => op (inv x) x
+  | i1 => id
+| invr (x : FG A) (i : I)
+  | i0 => op x (inv x)
+  | i1 => id
+| isSet (x y : FG A) (p q : x = y) (i j : I)
+  | i0 j => p j
+  | i1 j => q j
 
-// Idea for new syntax: implicit arguments can be omitted, no := at the end of definition.
-// This means the syntax gets more Haskelly!
-
-map (f : a -> b) : FG a -> FG b
-| i a      => i (f a)
-| e        => e
+map (f : A -> B) : FG A -> FG B
+| in a     => in (f a)
+| id       => id
 | op x y   => op   (map x) (map y)
 | inv x    => inv  (map x)
 | invl x i => invl (map x) i
 | invr x i => invr (map x) i
 
 // Check: we have
-// ``invl x i0 => op (inv x) x``
-// ``invl x i1 => e``
-// ``map f x (invl x i0) => map f x (op (inv x) x) => op (inv (map f x)) (map f x)``
-// ``map f x (invl x i1) => map f x e => e``
-// ``invl (map f x) i0 => op (inv (map f x)) (map f x)``
-// ``invl (map f x) i1 => e``
+// `invl x i0 => op (inv x) x`
+// `invl x i1 => id`
+// `map f x (invl x i0) => map f x (op (inv x) x) => op (inv (map f x)) (map f x)`
+// `map f x (invl x i1) => map f x e => e`
+// `invl (map f x) i0 => op (inv (map f x)) (map f x)`
+// `invl (map f x) i1 => id`
 // and analogously for invr.
 
-rev : FG a -> FG a
-| i a      => i a
-| e        => e
+rev : FG A -> FG A
+| in a     => in a
+| id       => e
 | op x y   => op   (rev y) (rev x)
 | inv x    => inv  (rev x)
 | invl x i => invl (rev x) i
 | invr x i => invr (rev x) i
 
-filter (p : a -> Bool) : FG a -> FG a
-| i a      => if p a then i a else e
-| e        => e
-| op x y   => op   (filter x) (filter y)
-| inv x    => inv  (filter x)
-| invl x i => invl (filter x) i
-| invr x i => invr (filter x) i
+filter (p : A -> Bool) : FG A -> FG A
+| in a       => if p a then in a else id
+| id         => id
+| op   x y   => op   (filter x) (filter y)
+| inv  x     => inv  (filter x)
+| invl x   i => invl (filter x) i
+| invr x   i => invr (filter x) i

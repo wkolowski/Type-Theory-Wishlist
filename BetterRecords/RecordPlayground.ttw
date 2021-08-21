@@ -1,0 +1,60 @@
+// In this file we will discover how records and record types should behave!
+
+// We need anonymous record types, so lets have them.
+
+// Tuple syntax.
+point : (x : Nat, y : Nat, z : Nat) :=
+  (0, 42, 111)
+
+// Named tuple syntax.
+point : (x : Nat, y : Nat, z : Nat) :=
+  (x => 0, y => 42, z => 111)
+
+// We can use `p` as the prototype to build a new record. Man, is this JavaScript?
+translateX (n : Nat) (p : (x : Nat, y : Nat, z : Nat)) : (x : Nat; y : Nat; z : Nat) :=
+  (p | x => p.x + n)
+
+// Copattern syntax. Lengthy, but nice for mid-sized definitions.
+point : (x : Nat, y : Nat, z : Nat)
+& x => 0
+& y => 42
+& z => 111
+
+// Lengthy but works.
+translateX (n : Nat) (p : (x : Nat, y : Nat, z : Nat)) : (x : Nat, y : Nat, z : Nat)
+& x => p.x + n
+& y => p.y
+& z => p.z
+
+// Loooooooooong!
+dist (p : (x : Nat, y : Nat, z : Nat)) : Nat :=
+  sqrt (p.x * p.x + p.y * p.y + p.z * p.z)
+
+// Stil looooooooong!
+dist (p : (x : Nat, y : Nat, z : Nat)) : Nat :=
+  open p in sqrt (x * x + y * y + z * z)
+
+// Long, but the signature got suspiciously short.
+dist (p : (x y z : Nat)) : Nat :=
+  open p in sqrt (x * x + y * y + z * z)
+
+// No records... or are they there?
+dist (x y z : Nat) : Nat :=
+  sqrt (x * x + y * y + z * z)
+
+p0 : (x y z : Nat) := (0, 1, 2)
+p1 : (x y z : Nat) := (x => 0, y => 1, z => 2)
+
+test0 : dist p0.x p0.y p0.z = 2 := refl
+
+// For now: we can "unpack" a record in place and pass it to a function.
+test1 : distp &p1 = 2 := refl
+
+// We can combine multiple record types.
+record-eq : (outl : A) (outr : B) = (outl : A, outr : B) := refl
+
+// We can also combine record dependently.
+record-eq' : {outl : A} (outr : B outl) = (outl : A, outr : B outl) := refl
+
+// Probably a better syntax for implicit arguments: (#x : A) instead of {x : A}
+// It's more writing, but easier to modify and makes more sense inside records.
