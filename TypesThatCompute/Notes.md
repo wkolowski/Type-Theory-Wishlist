@@ -1,6 +1,8 @@
+```
 data Even : nat -> SProp :=
-  | Even_z  : Even z
-  | Even_ss : {n : nat} -> Even n -> Even (s (s n))
+| Even_z  : Even z
+| Even_ss : {n : nat} -> Even n -> Even (s (s n))
+```
 
 Pros:
 - induction principle
@@ -12,10 +14,12 @@ Cons:
 - hard to prove 1 is not even (inversion needed)
 - to sum up: doesn't compute
 
+```
 even : nat -> bool :=
 | z        => true
 | s z      => false
 | s (s n') => even n'
+```
 
 Pros:
 - constant proof size
@@ -30,11 +34,12 @@ Cons:
 
 So what? Let's merge both of these!
 
+```
 data EVEN : nat -> Type :=
-  | z        => EVEN_z : EVEN z
-  | s z      => False
-  | s (s n') => EVEN_ss : EVEN n' -> EVEN (s (s n'))
-
+| z        => EVEN_z : EVEN z
+| s z      => False
+| s (s n') => EVEN_ss : EVEN n' -> EVEN (s (s n'))
+```
 Pros:
 - constant proof size
 - easy to prove 1 not even
@@ -45,8 +50,10 @@ Cons:
 - need to manually implement decision procedure
 
 Q: Can we do anything nice with this?
+
 A: in such a banal case as parity of naturals probably not, but in more complicated ones I think so! Example: matching a regular expression against a string. This can't be easily implemented by recursion, so induction is needed. But even though we use induction, it would be nice if some cases of the definition could compute/simplify to help us a bit.
 
+```
 // Type of regexes with smart constructors built-in.
 data Regex (A : Type) : Type :=
   | Empty : Regex A
@@ -87,3 +94,4 @@ with MatchesStar {A : Type} : list A -> Regex A -> Prop :=
         forall (h : A) (t l : list A) (r : Regex A),
           Matches (h :: t) r -> MatchesStar l r -> MatchesStar ((h :: t) ++ l) r.
 */
+```

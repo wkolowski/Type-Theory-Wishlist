@@ -1,32 +1,32 @@
-// The type of free monoids on type A. 
+// The type of free monoids on type A.
 data FM (A : Type) : Type :=
-| e : FM A
-| in : A -> FM A
-| op : FM A -> FM A -> FM A :=
-  | e y        => y
-  | (op x y) z => op x (op y z)
-  | x e        => x
+| id
+| in (x : A)
+| op (l r : FM A)
+  | id    , _  => r
+  | op x y, z  => op x (op y z)
+  | _     , id => l
 
 // Convert a free monoid expression to a list.
 f : {A : Type} -> FM A -> list A :=
-| e      => []
+| id     => []
 | in a   => [a]
 | op x y => f x ++ f y
 
 // Convert a list to a free monoid expression.
 g : {A : Type} -> list A -> FM A :=
-| []     => e
+| []     => id
 | h :: t => op (in h) (g t)
 
 fg : {A : Type} (x : FM A) -> g (f x) = x :=
-| e           => refl
+| id          => refl
 | in a        => refl
 | op (in a) y => ap (op (in a)) (fg y)
 
-// The `e` and `in a` cases are trivial.
+// The `id` and `in a` cases are trivial.
 // In the `op (in a) y` case:
 
-// Note that we don't need to match the cases `op e _` or `op (op _ _) _` because
+// Note that we don't need to match the cases `op id _` or `op (op _ _) _` because
 // they are not canonical forms of FM A. This is because they get computed away
 // by the constructor `op`. So it suffices to consider `op (in a) y`.
 
@@ -51,81 +51,81 @@ gf : {A : Type} (l : list A) -> f (g l) = l :=
 // The recursive call gives us `gf t : f (g t) = t`.
 // It suffices to prepend `h ::` on both sides of the equation.
 
-list-is-free-mon : (A : Type) -> FM A = list A :=
+list-is-free-mon (A : Type) : FM A = list A :=
   ... // by univalence, as (f, g, fg, gf) is an equivalence
 
 // It is not possible to define the free group with this approach, because we
-// encounter non-linear patterns when trying to enforce x(x^-1) = e.
+// encounter non-linear patterns when trying to enforce x(x^-1) = id.
 
-// | op : FG A -> FG A -> FG A with
-//   | op x (inv x) => e
+// | op : FG A -> FG A -> FG A
+// | op x (inv x) => id
 
-map {A B : Type} (f : A -> B) : FM A -> FM B :=
-| e      => e
+map (f : A -> B) : FM A -> FM B :=
+| id     => id
 | in a   => in (f a)
 | op x y => op (map x) (map y)
 
-map-id {A : Type} : (x : FM A) -> map id x = x :=
-| e      => refl
+map-id : (x : FM A) -> map id x = x :=
+| id     => refl
 | in a   => refl
 | op x y => fun i : I => op (map-id x i) (map-id y i)
 
-map-map {A B C : Type} (f : A -> B) (g : B -> C) : (x : FM A) -> map g (map f x) = map (f.g) x :=
-| e      => refl
+map-map (f : A -> B) (g : B -> C) : (x : FM A) -> map g (map f x) = map (f.g) x :=
+| id     => refl
 | in a   => refl
 | op x y => fun i : I => op (map-map x i) (map-map y i)
 
-filter {A : Type} (p : A -> Bool) : FM A -> FM A :=
-| e      => e
-| in a   => if p a then in a else e
+filter (p : A -> Bool) : FM A -> FM A :=
+| id     => id
+| in a   => if p a then in a else id
 | op x y => op (filter x) (filter y)
 
-filter-filter {A : Type} (p : A -> Bool) : (x : FM A) -> filter p (filter p x) = filter p x :=
-| e      => refl
+filter-filter (p : A -> Bool) : (x : FM A) -> filter p (filter p x) = filter p x :=
+| id     => refl
 | in a   => if p a then refl else refl
 | op x y => fun i : I => op (filter-filter x i) (filter-filter y i)
 
-rev {A : Type} : FM A -> FM A :=
-| e      => e
+rev : FM A -> FM A :=
+| id     => id
 | in a   => in a
 | op x y => op (rev y) (rev x)
 
-rev-rev {A : Type} : (x : FM A) -> rev (rev x) = x
-| e      => refl
+rev-rev : (x : FM A) -> rev (rev x) = x
+| id     => refl
 | in a   => refl
 | op x y => fun i : I => op (rev-rev x i) (rev-rev y i)
 
-map-rev {A B : Type} (f : A -> B) : (x : FM A) -> map f (rev x) = rev (map f x) :=
-| e      => refl
+map-rev (f : A -> B) : (x : FM A) -> map f (rev x) = rev (map f x) :=
+| id     => refl
 | in a   => refl
 | op x y => fun i : I => op (map-rev y i) (map-rev x i)
 
-rev-filter {A : Type} (p : A -> Bool) : (x : FM A) -> rev (filter p x) = filter p (rev x) :=
-| e      => refl
+rev-filter (p : A -> Bool) : (x : FM A) -> rev (filter p x) = filter p (rev x) :=
+| id     => refl
 | in a   => if p a then refl else refl // TODO: reconsider
 | op x y => fun i : I => op (rev-filter y i) (rev-filter x i)
 
-join {A : Type} : FM (FM A) -> FM A :=
-| e      => e
+join : FM (FM A) -> FM A :=
+| id     => id
 | in fma => fma
 | op x y => op (join x) (join y)
 
-bind {A B : Type} (f : A -> FM B) : FM A -> FM B :=
-| e      => e
+bind (f : A -> FM B) : FM A -> FM B :=
+| id     => id
 | in a   => f a
 | op x y => op (bind x) (bind y)
 
-pure {A : Type} : A -> FM A := in
+pure : A -> FM A := in
 
-bind-pure-l {A : Type} : (x : FM A) -> bind pure x = x :=
-| e      => refl
+bind-pure-l : (x : FM A) -> bind pure x = x :=
+| id     => refl
 | in a   => refl
 | op x y => fun i : I => op (bind-pure-l x i) (bind-pure-l y i)
 
-bind-pure-r {A B : Type} (f : A -> FM B) : (a : A) -> bind f (pure a) = f a := refl
+bind-pure-r (f : A -> FM B) : (a : A) -> bind f (pure a) = f a := refl
 
-bind-bind {A B C : Type} (f : A -> FM B) (g : B -> FM C)
+bind-bind (f : A -> FM B) (g : B -> FM C)
 		: (x : FM A) -> bind g (bind f x) = bind (fun a : A => bind g (f a)) x :=
-| e      => refl
+| id     => refl
 | in a   => refl
 | op x y => fun i : I => op (bind-bind f g x i) (bind-bind f g y i)

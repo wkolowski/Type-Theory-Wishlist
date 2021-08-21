@@ -1,12 +1,14 @@
 # Things to investigate
 
-## First-class typing contexts.
+## Turning contexts into record types
 
 How to turn typing contexts into record types so that we can have records in the language for free.
 
+Beware! This is not the same idea as "first-class typing contexts" and certainly not the same as "first-class evaluation contexts".
+
 ## Global definitions/declarations
 
-Global definitions are one that can appear in the typing context, as opposed to local definitions which can be represented by let-bindings and ultimately as just functions. Global definitions could be useful in investigating record types with already-set fields.
+Global definitions are those that can appear in the typing context, as opposed to local definitions which can be represented by let-bindings and ultimately as just functions. Global definitions could be useful in investigating record types with already-set fields.
 
 ## Bidirectional typechecking
 
@@ -21,7 +23,7 @@ Holes are a way of leaving a part of a term unfilled as a kind of local "axiom".
 Documentation is well known for its tendency to go out of sync with the code. So maybe it's time to make it strongly-typed?
 
 See:
-- Unison language
+- [The Unison Language](https://www.unisonweb.org/)
 
 ## Explicit substitutions
 

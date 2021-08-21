@@ -4,6 +4,8 @@ The syntax of many ((dependently-typed) (functional)) languages is not optimal a
 
 ## Basics
 
+The file extension is `.ttw`.
+
 We always use ```=>``` to mean that the thing on the left computes to the thing on the right.
 
 |       |              |                |             |
