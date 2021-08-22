@@ -2,43 +2,73 @@
 
 // We need anonymous record types, so lets have them.
 
-// Tuple syntax.
+// Record creation syntax - tuple variant.
 point : (x : Nat, y : Nat, z : Nat) :=
   (0, 42, 111)
 
-// Named tuple syntax.
+// Record creation syntax - named tuple variant.
 point : (x : Nat, y : Nat, z : Nat) :=
   (x => 0, y => 42, z => 111)
 
+// When we have multiple fields of the same type, we can make it shorter.
+point : (x y z : Nat) :=
+  (x => 0, y => 42, z => 111)
+
+// We can access record fields with dot syntax.
+point-x : Nat := p.x
+
 // We can use `p` as the prototype to build a new record. Man, is this JavaScript?
-translateX (n : Nat) (p : (x : Nat, y : Nat, z : Nat)) : (x : Nat; y : Nat; z : Nat) :=
-  (p | x => p.x + n)
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  (x => p.x + n & p)
+
+// When using prototype syntax, we can also use `$=>` to modify a field instead
+// of just setting it. Maybe this will save us some writing for records with
+// long names and field names.
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  (x $=> (+ n) & p)
 
 // Copattern syntax. Lengthy, but nice for mid-sized definitions.
-point : (x : Nat, y : Nat, z : Nat)
+point : (x y z : Nat)
 & x => 0
 & y => 42
 & z => 111
 
 // Lengthy but works.
-translateX (n : Nat) (p : (x : Nat, y : Nat, z : Nat)) : (x : Nat, y : Nat, z : Nat)
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
 & x => p.x + n
 & y => p.y
 & z => p.z
 
+// Copatterns can use prototypes too!
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
+& x => p.x + n
+& p
+
+// Copatterns also allow the modify syntax.
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
+& x $=> (+ n)
+& p
+
 // Loooooooooong!
-dist (p : (x : Nat, y : Nat, z : Nat)) : Nat :=
+dist (p : (x y z : Nat)) : Nat :=
   sqrt (p.x * p.x + p.y * p.y + p.z * p.z)
 
-// Stil looooooooong!
-dist (p : (x : Nat, y : Nat, z : Nat)) : Nat :=
-  open p in sqrt (x * x + y * y + z * z)
-
-// Long, but the signature got suspiciously short.
+// We can use the syntax `open p` to make all field of `p` accessible.
 dist (p : (x y z : Nat)) : Nat :=
   open p in sqrt (x * x + y * y + z * z)
 
-// No records... or are they there?
+// But we can `open` the record implicitly if there are no naming conflicts.
+dist (p : (x y z : Nat)) : Nat :=
+  sqrt (x * x + y * y + z * z)
+
+// And even if there are conflicts, we may still open all records and resolve
+// the name clashes explicitly.
+bogus (p : (x y z : Nat)) (q : (z w : Nat)) : Nat :=
+  x + y + p.z + q.z + w
+
+// But since we have implicit record opening and don't use the bound variable
+// `p` at all, maybe we shouldn't need to write it?
+// So no records... or are they there?
 dist (x y z : Nat) : Nat :=
   sqrt (x * x + y * y + z * z)
 
@@ -53,8 +83,119 @@ test1 : distp &p1 = 2 := refl
 // We can combine multiple record types.
 record-eq : (outl : A) (outr : B) = (outl : A, outr : B) := refl
 
-// We can also combine record dependently.
-record-eq' : {outl : A} (outr : B outl) = (outl : A, outr : B outl) := refl
+// We can also combine record types dependently.
+record-eq : {outl : A} (outr : B outl) = (outl : A, outr : B outl) := refl
 
 // Probably a better syntax for implicit arguments: (#x : A) instead of {x : A}
 // It's more writing, but easier to modify and makes more sense inside records.
+record-eq : (#outl : A) (outr : B outl) = (#outl : A, outr : B outl) := refl
+
+// Let's solve the problems we have.
+
+// Problem 1: globally unique record fields.
+
+// Record fields need not be globally unique. In case they clash, we can
+// disambiguate manually.
+Point2D : Type := (x y : R)
+Point3D : Type := (x y z : R)
+
+// In the REPL:
+> :check x
+> Point2D.x : Point2D -> R
+> Point3D.x : Point3D -> R
+
+// Problem 2: np definitional uniqueness principle for records.
+
+// Records do have a definitional uniqueness principle!
+definitional-uniqueness-for-records
+  (r : (a : A, b : B a)) : r = (a => r.a, b => r.b) := refl
+
+// There's also a uniqueness principle for prototypes.
+uniqueness-principle-for-prototypes
+  (r : (a : A, b : B a)) : r = (& r) := refl
+
+// Problem 7: hard to reuse record types.
+
+// First, we can define record types in a copattern(-like) syntax.
+Refl : RType
+  A : Type
+  R : A -> A -> Prop
+  reflexive : (x : A) -> R x x
+
+Sym : RType
+  A : Type
+  R : A -> A -> Prop
+  symmetric : (x y : A) -> R x y -> R y x
+
+Trans : RType
+  A : Type
+  R : A -> A -> Prop
+  transitive : (x y z : A) -> R x y -> R y z -> R x z
+
+// Record types can be joined together. By "join" we mean
+// a kind of non-disjoint union or pushout - fields which
+// have the same names are collapsed into one, and those
+// that have different names remain separate.
+Equiv' : RType := Refl & Sym & Trans
+
+// The above join is equal to the manually encoded
+// record type that represents equivalence relations.
+Equiv' : RType
+  A : Type
+  R : A -> A -> Prop
+  reflexive : (x : A) -> R x x
+  symmetric : (x y : A) -> R x y -> R y x
+  transitive : (x y z : A) -> R x y -> R y z -> R x z
+
+Equiv-is-Refl-Sym-Trans :
+  Equiv = Equiv' := refl
+
+// Problems 6: telescopization stemming from lack of inheritance.
+
+// We can also use prototypes record types to construct other record types.
+Magma : RType
+  A : Type
+  op : A -> A -> A
+
+// Here a semigroup is a magma extended with associativity.
+Semigroup : RType :=
+  Magma &
+  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+
+// We can also rename fields during the join.
+Pointed : RType
+  A : Type
+  point : A
+
+Monoid : RType :=
+  Semigroup &
+  (Pointed & rename point to id) &
+  idl : (x : A) -> op id x = x
+  idr : (x : A) -> op x id = x
+
+Monoid' : RType
+  A : Type
+  op : A -> A -> A
+  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+  id : A
+  idl : (x : A) -> op id x = x
+  idr : (x : A) -> op x id = x
+
+Monoids-same : Monoid = Monoid' := refl
+
+// But what about operations on record types, like setting a field or prototyping?
+
+// The type of points that have `x`, `y` and `z` coordinates, but the `z`
+// coordinate is set to zero.
+p : (x y : Nat, z : Nat := 0) := (x => 1, y => 2)
+
+// We can access `z` even though it's only present at the type level.
+p-z : Nat := p.z
+
+// The same in copattern syntax.
+p : (x y : Nat, z : Nat := 0)
+& x => 1
+& y => 2
+
+p-z : Nat := p.z
+
