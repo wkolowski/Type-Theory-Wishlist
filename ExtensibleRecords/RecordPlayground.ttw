@@ -1,0 +1,368 @@
+// In this file we will discover how records and record types should behave!
+
+// Basic operations on (non-dependent) records.
+
+// Tuple syntax.
+
+// Record creation syntax - tuple variant.
+point : (x : Nat, y : Nat, z : Nat) :=
+  (0, 42, 111)
+
+// Record creation syntax - named tuple variant.
+point : (x : Nat, y : Nat, z : Nat) :=
+  (x => 0, y => 42, z => 111)
+
+// When we have multiple fields of the same type, we can make it shorter.
+point : (x y z : Nat) :=
+  (x => 0, y => 42, z => 111)
+
+// We can access record fields with dot syntax.
+point-x : Nat := p.x
+
+// We can make a new record using an old one.
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  (x => p.x + n, y => p.y, z => p.z)
+
+// We can use `p` as the prototype to build a new record. Man, is this JavaScript?
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  (x => p.x + n & p)
+
+// When using prototype syntax, we can also use `$=>` to modify a field instead
+// of just setting it. Maybe this will save us some writing for records with
+// long names and field names.
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  (x $=> (+ n) & p)
+
+// Copatterns syntax.
+
+// Copatterns are nice for mid-sized definitions.
+point : (x y z : Nat)
+& x => 0
+& y => 42
+& z => 111
+
+// `translateX` in copattern syntax.
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
+& x => p.x + n
+& y => p.y
+& z => p.z
+
+// Copatterns can use prototypes too!
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
+& x => p.x + n
+& p
+
+// Copatterns also allow the modify syntax.
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
+& x $=> (+ n)
+& p
+
+// Module syntax.
+
+// Module syntax is lengthy, but offers lots of freedom.
+point : (x y z : Nat) :=
+module
+
+  x : Nat := 0
+
+  y-aux : Nat := 21
+
+  y : Nat := 2 * y-aux
+
+  z : Nat := 111
+
+  garbage : String := "not a field of the record, the only fields are x, y and z"
+
+end
+
+// Yes, we can use module syntax to define functions!
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+module
+  x : Nat := p.x + n
+  y : Nat := p.y
+  z : Nat := p.z
+end
+
+// Modules can use prototypes too!
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+module
+  x := p.x + n
+
+  inherit p
+end
+
+// Modules with modify syntax (TODO: rethink this).
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+module
+  inherit p
+
+  x : Nat $=> (+ n)
+end
+
+// Record types with set fields.
+
+// Our record types can have some fields set in advance, like the following
+// type of points that have `x`, `y` and `z` coordinates, but the `z`
+// coordinate is set to zero.
+p : (x y : Nat, z : Nat := 0) := (x => 1, y => 2)
+
+// We can access `z` even though we didn't explicitly set it.
+p-z : Nat := p.z
+
+// In fact, after setting a field the type of the result "changes".
+translateX (n : Nat) (p : (x y z : Nat)) : (x : Nat := p.x + n, y z : Nat) :=
+  (x => p.x + n & p)
+
+// Operations on record types.
+
+// Joins.
+
+// We can combine multiple record types with the join operator.
+example-join-1 : (outl : A) & (outr : B) = (outl : A, outr : B) := refl
+
+// We can also combine record types dependently.
+example-join-2: (outl : A) & (outr : B outl) = (outl : A, outr : B outl) := refl
+
+// Probably a better syntax for implicit arguments: (#x : A) instead of {x : A}
+// It's more writing, but easier to modify and makes more sense inside records.
+example-join-3 : (#outl : A) & (outr : B outl) = (#outl : A, outr : B outl) := refl
+
+// Renaming.
+
+// Given a record type, we can rename its fields to get another record type.
+example-rename-1 :
+  (x y z : Nat) renaming (x to a) = (a y z : Nat) := refl
+
+// Renaming also works on set fields.
+example-rename-2 :
+  (x y : Nat, z : Nat := 0) renaming (z to w) = (x y : Nat, w : Nat := 0) := refl
+
+// Setting a field.
+example-set-1 :
+  (x y z : Nat) setting (z := 0) = (x y : Nat, z : Nat := 0) := refl
+
+// Unsetting a field.
+example-unset-1 :
+  (x y : Nat, z : Nat := 0) unsetting z = (x y z : Nat)
+
+// Removing.
+
+// We can remove a field to get a new record type.
+example-removing :
+  (x y z : Nat) removing z = (x y : Nat)
+    := refl
+
+// General record type prototyping.
+
+// We can combine joins, renaming, setting, unsetting and removing into a
+// single operation. This way we can create a new record type from a given
+// prototype record type.
+example-prototyping :
+  (x y : Nat, z : Nat := 0, n : Nat) with (x to a := 5, y to b, unset z, remove n)
+    =
+  (a : Nat := 5, b z : Nat)
+    := refl
+
+// Record subtyping.
+
+// We have a subtyping relation between records. This does not mean that we have
+// subtyping in our language (yet; see the directory Subtypes/), this is just
+// for illustration purposes.
+
+// Bigger record types are subtypes of smaller record types.
+// (x y z : Nat) <= (x y : Nat)
+
+// But record types with set fields are subtypes of record types without
+// fields set.
+// (x y : Nat, z : Nat := 0) <= (x y z : Nat)
+
+// Record types made with a join are subtypes of their arguments.
+// r1 & r2 <= r1
+// r1 & r2 <= r2
+
+// Of course all record types are subtypes of the empty record type.
+// R <= ()
+
+// TODO: how this works with dependent records?
+
+
+
+
+
+
+
+// Let's solve the problems we have.
+
+// Problem 1: globally unique field names.
+
+// Record field names need not be globally unique. In case they clash, we can
+// disambiguate manually.
+Point2D : Type := (x y : Nat)
+Point3D : Type := (x y z : Nat)
+
+// In the REPL:
+> :check x
+> Point2D.x : Point2D -> R
+> Point3D.x : Point3D -> R
+
+// We also have some facilities for dealing with name clashes in other situations.
+
+// Loooooooooong!
+dist1 (p : (x y z : Nat)) : Nat :=
+  sqrt (p.x * p.x + p.y * p.y + p.z * p.z)
+
+// We can use the syntax `open p` to make all field of `p` accessible.
+dist2 (p : (x y z : Nat)) : Nat :=
+  open p in sqrt (x * x + y * y + z * z)
+
+// But we can `open` the record implicitly if there are no naming conflicts.
+dist3 (p : (x y z : Nat)) : Nat :=
+  sqrt (x * x + y * y + z * z)
+
+// And even if there are conflicts, we may still open all records and resolve
+// the name clashes explicitly.
+bogus (p : (x y z : Nat)) (q : (z w : Nat)) : Nat :=
+  x + y + p.z + q.z + w
+
+// Problem 2: no definitional uniqueness principle for records.
+
+// Records do have a definitional uniqueness principle!
+definitional-uniqueness-for-records
+  (r : (a : A, b : B a)) : r = (a => r.a, b => r.b) := refl
+
+// There's also a uniqueness principle for prototypes.
+uniqueness-principle-for-prototypes
+  (r : (a : A, b : B a)) : r = (& r) := refl
+
+// Problem 3: hard to prove record equality.
+
+// This one is probably more a matter of cubical stuff than of records themselves.
+// TODO
+
+// Problem 4: hard to reuse record types.
+
+// First, we can define record types in a copattern(-like) syntax.
+Refl : RType
+  A : Type
+  R : A -> A -> Prop
+  reflexive : (x : A) -> R x x
+
+Sym : RType
+  A : Type
+  R : A -> A -> Prop
+  symmetric : (x y : A) -> R x y -> R y x
+
+Trans : RType
+  A : Type
+  R : A -> A -> Prop
+  transitive : (x y z : A) -> R x y -> R y z -> R x z
+
+// Record types can be joined together. By "join" we mean a kind of non-disjoint
+// union or pushout - fields which have the same names are collapsed into one,
+// and those that have different names remain separate.
+Equiv' : RType := Refl & Sym & Trans
+
+// The above join is equal to the manually encoded record type that represents
+// equivalence relations.
+Equiv' : RType
+  A : Type
+  R : A -> A -> Prop
+  reflexive : (x : A) -> R x x
+  symmetric : (x y : A) -> R x y -> R y x
+  transitive : (x y z : A) -> R x y -> R y z -> R x z
+
+Equiv-is-Refl-Sym-Trans :
+  Equiv = Equiv' := refl
+
+// Problems 5: telescopization stemming from lack of inheritance.
+
+// We can also use record types as prototypes to construct other record types.
+Magma : RType
+  A : Type
+  op : A -> A -> A
+
+// Here a semigroup is a magma extended with associativity.
+Semigroup : RType :=
+  Magma &
+  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+
+Pointed : RType
+  A : Type
+  point : A
+
+// We can also rename fields during the join.
+Monoid : RType :=
+  Semigroup &
+  (Pointed renaming point to id) &
+  idl : (x : A) -> op id x = x
+  idr : (x : A) -> op x id = x
+
+Monoid' : RType
+  A : Type
+  op : A -> A -> A
+  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+  id : A
+  idl : (x : A) -> op id x = x
+  idr : (x : A) -> op x id = x
+
+Monoids-same : Monoid = Monoid' := refl
+
+// Problem 6: hard to unbundle record types into typeclasses.
+
+// We can easily obtain a typeclass by setting a field in the `Monoid` type.
+// For now, we ignore the matter of what a typeclass is.
+MonoidClass (A : Type) : RType :=
+  Monoid setting A to A
+
+// This is the result of the above definition written more explicitly.
+MonoidClass' (A : Type) : RType
+  op : A -> A -> A
+  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+  id : A
+  idl : (x : A) -> op id x = x
+  idr : (x : A) -> op x id = x
+
+MonoidClass-MonoidClass' : MonoidClass = MonoidClass' := refl
+
+// We can also reverse these operations and bundle MonoidClass' to
+// get a record type.
+
+Monoid' : RType :=
+  A : Type
+  & MonoidClass' A
+
+Monoid-Monoid' : Monoid = Monoid' := refl
+
+// Problem 7: currying/uncurrying of functions and the relationship between
+// records and function arguments.
+
+// Since we have implicit record opening and don't use the bound variable
+// `p` at all, maybe we shouldn't need to write it?
+dist4 (x y z : Nat) : Nat :=
+  sqrt (x * x + y * y + z * z)
+
+// The only difference between `dist1`-`dist3` and `dist4` is that the former's
+// arguments collected into a record, while the latter's are not.
+// Let's see in the repl:
+
+> :check dist1
+> dist1 : (p : (x y z : Nat)) -> Nat
+
+> :check dist2
+> dist2 : (p : (x y z : Nat)) -> Nat
+
+> :check dist3
+> dist3 : (p : (x y z : Nat)) -> Nat
+
+> :check dist4
+> dist4 : (x y z : Nat) -> Nat
+
+// We can convert between these two representations (arguments collected into a record
+// and freestanding arguments) using the currying/uncurrying operator &.
+
+> :check &dist1 : (x y z : Nat) -> Nat
+> :check &dist4 : (dist4-args : (x y z : Nat)) -> Nat
+
+// We thus have the obvious equalities.
+dist1-dist4 : dist1 = &dist4 := refl
+dist4-dist1 : &dist1 = dist4 := refl
