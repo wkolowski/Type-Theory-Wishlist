@@ -1,0 +1,57 @@
+// Turborecords.
+
+// If we allow some more freedom that shown in RecordPlayground.ttw, we get
+// really interesting results.
+
+// First, we should allow more dependency in record types, namely we should
+// allow the value of a set field to depend on the value of an unset field.
+// This effectively turns record types into functions.
+f : RType :=
+  (n : Nat, m : Nat := n + n)
+
+// Note, however, that such record types differ from functions in that
+// α-conversion doesn't hold and that only non-recursive record-functions
+// are allowed.
+g : RType :=
+  (n' : Nat, m : Nat := n' + n')
+
+// `f` is not computationally equal to `g`, because it has a field named `n`,
+// whereas `g` has a field named `n'`.
+%Fail
+f-is-g : f = g := refl
+
+// The second thing that should be allowed are unset fields not just in record
+// types, but in records. It follows that we can use record type operations like
+// `unset` also on records.
+x : f :=
+  (n : Nat, m : Nat => n + n)
+
+y : (n m : Nat) := (unset m & x)
+
+// The third thing is to notice that after allowing the first two things, records
+// and record types do not differ from each other at all! Thus records and record
+// types become the same thing and we can use records as types of other records.
+// To make it work formally, we need to be able consider every record as a type.
+r : RType :=
+  (x => 0, y => 42, z => 111)
+
+// Moreover, since every record is the best description of itself, it follows
+// that every record is its own type (and thus record definitions are no different
+// from record declarations, whatever that means).
+r := (x => 0, y => 42, z => 111)
+
+// But even more is true: since records are their own types and then there's
+// also subtyping, for records meaning of the typing judgement is the same as
+// meaning of the subtyping judgement.
+r : (x => 0, y => 42, z => 111, w => 0) :=
+  (x => 0, y => 42, z => 111)
+
+// What is the subtyping rule for records, then? Records are usually covariant,
+// but recall that records can now also serve as functions, which are usually
+// contravariant. So what gives? The answer is: the function-like part of a
+// record behaves covariantly, whereas the non-function-like part behaves
+// covariantly. The rule is as follow (TODO: make sure it's correct!):
+
+
+
+// We know that 
