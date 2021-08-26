@@ -20,6 +20,14 @@ g : RType :=
 %Fail
 f-is-g : f = g := refl
 
+// How do projections work on records whose types are function-like? Well,
+// it's pretty obvious. Since we set `m` to `n + n`, when projected out,
+// it just all becomes prefixed with "f.".
+proj-example : f.m = f.n + f.n := refl
+
+// But functions are eliminated by application. Can function-like records
+// be applied too? Not yet.
+
 // The second thing that should be allowed are unset fields not just in record
 // types, but in records. It follows that we can use record type operations like
 // `unset` also on records.
@@ -28,30 +36,107 @@ x : f :=
 
 y : (n m : Nat) := (unset m & x)
 
+// But now, we indeed can apply function-like records. And it turns out that
+// such record application has a lot to do with prototyping. Application is
+// like a join, but only on set fields and it transfers set fields from
+// argument to function only. To better see it, let's prove that function-like
+// record types are almost isomorphic to usual function types.
+fun-to-rec (f : A -> B) : (a : A, b : B := f a) :=
+  (a : A, b => f a)
+
+rec-to-fun {f : A -> B} (p : (a : A, b : B := f a)) : A -> B :=
+  fun x : A => p{a : A := x}.b
+
+fun-to-rec-to-fun (f : A -> B) : rec-to-fun (fun-to-rec f) = f :=
+  refl
+  // rec-to-fun (fun-to-rec f)
+  // rec-to-fun (a : A, b => f a)
+  // (fun x : A => (a : A, b => f a){a : A := x}.b)
+  // (fun x : A => (a => x, b => f a).b)
+  // (fun x : A => f (a => x, b => f a).a)
+  // (fun x : A => f x)
+  // f
+
+// Note: when computing, we assume that fields of the form `b => f a` refer
+// to the values of other fields from the record and not to their names. Thus,
+// when we change the value of the independent field, the value of the dependent
+// field does not change. Examples:
+record-application-example-1 :
+  (n => 42, m => f n) = (n => 42, m => f 42) := refl
+record-application-example-2 :
+  (n => 42, m => f n){n := 0} = (n => 0, m => f 42) := refl
+
+// This can be justified with a combination of the uniqueness rule
+// and the computation rule.
+// (n => 42, m => f n)
+// (n => (n => 42, m => f n).n, m => (n => 42, m => f n).m)
+// (n => 42, m => (n => 42, m => f n).m)
+// (n => 42, m => f (n => 42, m => f n).n)
+// (n => 42, m => f 42)
+
+// When trying to prove the other half of the isomorphism, we fail, because
+// turning a record into a function means we're forgetting the first field
+// of the record, which can't be then recovered.
+% Fail
+rec-to-fun-to-rec {f : A -> B} (p : (a : A, b : B := f a)) :
+  fun-to-rec (rec-to-fun p) = p
+    := refl
+  // fun-to-rec (rec-to-fun p)
+  // fun-to-rec (fun x : A => p{a : A := x}.b)
+  // fun-to-rec (fun x : A => (a => p.a, b => f a){a : A := x}.b)
+  // fun-to-rec (fun x : A => (a => x, b => f p.a).b)
+  // fun-to-rec (fun x : A => f p.a)
+  // (a : A, b => f p.a)
+  // But the RHS is `(a => p.a, b => f a)`
+
 // The third thing is to notice that after allowing the first two things, records
 // and record types do not differ from each other at all! Thus records and record
 // types become the same thing and we can use records as types of other records.
+r : (x y : Nat) :=  // Record as type
+  (x => 0, y => 42) // Record as value
+
 // To make it work formally, we need to be able consider every record as a type.
+// This has the pleasant side effect that records are now first-class.
 r : RType :=
   (x => 0, y => 42, z => 111)
 
 // Moreover, since every record is the best description of itself, it follows
 // that every record is its own type (and thus record definitions are no different
 // from record declarations, whatever that means).
-r := (x => 0, y => 42, z => 111)
+r := (x => 0, y => 42, z => 111) // No need to declare the type, it's the same as the value.
 
 // But even more is true: since records are their own types and then there's
-// also subtyping, for records meaning of the typing judgement is the same as
-// meaning of the subtyping judgement.
-r : (x => 0, y => 42, z => 111, w => 0) :=
-  (x => 0, y => 42, z => 111)
+// also subtyping, for records the meaning of the typing judgement is the same
+// as the meaning of the subtyping judgement.
+r : (z => 0) :=
+  (x => 0, y => 0, z => 0)
+
+// But now there's some redundancy, because we need to write ` z => 0` both in
+// the type and in the value. We will drop this redundancy - if some field (set
+// or not) appears in the type, it's also in the value. This is a kind of implicit
+// prototyping.
+r : (z => 0) :=
+  (x => 0, y => 0)
+
+example-implicit-prototyping : r = (x => 0, y => 0, z => 0) := refl
 
 // What is the subtyping rule for records, then? Records are usually covariant,
 // but recall that records can now also serve as functions, which are usually
 // contravariant. So what gives? The answer is: the function-like part of a
-// record behaves covariantly, whereas the non-function-like part behaves
-// covariantly. The rule is as follow (TODO: make sure it's correct!):
+// record behaves contravariantly, whereas the non-function-like part behaves
+// covariantly. The rule is as follows (TODO: make sure it's correct!):
 
+A_0 <= A_0' ... A_i <= A_i' // covariant
+B_0 <= B_0' ... B_j <= B_j' // contravariant
+C_0 <= C_0' ... C_k <= C_k' // covariant
+c's DO depend on b's, but DO NOT depend on a's
+------------------------------------------------
+(a_0 : A_0, ..., a_i : A_i,
+ b_0 : B_0', ..., b_j : B_j',
+ c_0 : C_0 := ..., ..., c_k : C_k := ...)
 
+<=
 
-// We know that 
+(a_0 : A_0', ..., a_i : A_i',
+ b_0 : B_0', ..., b_j : B_j',
+ c_0 : C_0' := ..., ..., c_k : C_k' := ...)
