@@ -111,7 +111,7 @@ r := (x => 0, y => 42, z => 111) // No need to declare the type, it's the same a
 r : (z => 0) :=
   (x => 0, y => 0, z => 0)
 
-// But now there's some redundancy, because we need to write ` z => 0` both in
+// But now there's some redundancy, because we need to write `z => 0` both in
 // the type and in the value. We will drop this redundancy - if some field (set
 // or not) appears in the type, it's also in the value. This is a kind of implicit
 // prototyping.
