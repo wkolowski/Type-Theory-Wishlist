@@ -73,10 +73,10 @@ module Nameless-Fun {NB : Nameless B} : Nameless (A -> B)
     fun a : A => anonymize (ν α. f @ α a)
 
   anonymize-postinv (f : A -> B) : anonymize (unanonymize f) = f :=
-    fun i : I => fun a : A => anonymize-postinv (f a) i
+    path i => fun a : A => anonymize-postinv (f a) i
 
   anonymize-preinv (f : ∇ α : N. A -> B) : unanonymize (anonymize f) = f :=
-    fun i : I => ν α. fun a : A => anonymize-preinv (f a) i @ α
+    path i => ν α. fun a : A => anonymize-preinv (f a) i @ α
 
 end Nameless-Fun
 
@@ -89,10 +89,10 @@ module Nameless-Prod {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless
   | ν α. (a @ α, b @ α) => (anonymize a, anonymize b)
 
   anonymize-postinv : (p : A * B) -> anonymize (unanonymize p) = p
-  | (a, b) => fun i : I => (anonymize-postinv a i, anonymize-postinv b i)
+  | (a, b) => path i => (anonymize-postinv a i, anonymize-postinv b i)
 
   anonymize-preinv : (p : ∇ α : N. A * B) -> unanonymize (anonymize p) = p
-  | ν α. (a @ α, b @ α) => fun i : I => ν α. (anonymize-preinv a @ α i, anonymize-preinv b @ α i)
+  | ν α. (a @ α, b @ α) => path i => ν α. (anonymize-preinv a @ α i, anonymize-preinv b @ α i)
 
 end Nameless-Prod
 
@@ -111,8 +111,8 @@ module Nameless-Sum {A B : Type} (NA : Nameless A) (NB : Nameless B) : Nameless 
   | ν α. inr (b @ α) => ap (fun x => ν α. inr (x @ α)) (anonymize-preinv b)
 
   anonymize-preinv' : (x : ∇ α : N. A + B) -> unanonymize (anonymize x) = x
-  | ν α. inl (a @ α) => fun i : I => ν α. inl (anonymize-preinv a i @ α)
-  | ν α. inr (b @ α) => fun i : I => ν α. inr (anonymize-preinv b i @ α)
+  | ν α. inl (a @ α) => path i => ν α. inl (anonymize-preinv a i @ α)
+  | ν α. inr (b @ α) => path i => ν α. inr (anonymize-preinv b i @ α)
   
 end Nameless-Sum
 
@@ -130,7 +130,7 @@ module Nameless-Nat : Nameless Nat :=
 
   anonymize-preinv : (n : ∇ α : N. Nat) -> unanonymize (anonymize n) = n
   | ν α. z          => refl
-  | ν α. s (n' @ α) => fun i : I => ν α. s (anonymize-preinv n' i @ α)
+  | ν α. s (n' @ α) => path i => ν α. s (anonymize-preinv n' i @ α)
 
 end Nameless-Nat
 
@@ -144,11 +144,11 @@ module Nameless-List {NA : Nameless A} : Nameless (List A)
 
   anonymize-postinv : (l : List A) -> anonymize (unanonymize l) = l
   | []     => refl
-  | h :: t => fun i : I => anonymize-postinv h i :: anonymize-postinv t i
+  | h :: t => path i => anonymize-postinv h i :: anonymize-postinv t i
 
   anonymize-preinv : (l : ∇ α : N. List A) -> unanonymize (anonymize l) = l
   | ν α. []                 => refl
-  | ν α. (h @ α) :: (t @ α) => fun i : I => ν α. anonymize-preinv h i @ α :: anonymize-preinv t i @ α
+  | ν α. (h @ α) :: (t @ α) => path i => ν α. anonymize-preinv h i @ α :: anonymize-preinv t i @ α
 
 end Nameless-List
 
@@ -159,10 +159,10 @@ module Nameless-∇ {NA : Nameless A} : Nameless (∇ α : N. A)
     ν β. anonymize (ν α. x @ α @ β)
 
   anonymize-postinv (x : ∇ β : Nβ. A) : anonymize (unanonymize x) = x :=
-    fun i : I => ν β. anonymize-postinv (x @ β) i
+    path i => ν β. anonymize-postinv (x @ β) i
 
   anonymize-preinv (x : ∇ α : Nα. ∇ β : Nβ. A) : unanonymize (anonymize x) = x :=
-    fun i : I => ν α. ν β. anonymize-preinv (ν γ. x @ γ @ β) i @ α
+    path i => ν α. ν β. anonymize-preinv (ν γ. x @ γ @ β) i @ α
 
 end Nameless-∇
 

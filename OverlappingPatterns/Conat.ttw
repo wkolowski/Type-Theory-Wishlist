@@ -40,7 +40,7 @@ end Expanded
 // hard to do in Coq.
 
 add-assoc : (a b c : Conat) -> add (add a b) c = add a (add b c) :=
-  fun a b c : Conat => fun i : I =>
+  fun a b c : Conat => path i =>
   match a with
   | z    => add b c
   | s a' => s (add-assoc a' b c i)
@@ -48,7 +48,7 @@ add-assoc : (a b c : Conat) -> add (add a b) c = add a (add b c) :=
 add-comm : (n m : Conat) -> add n m = add m n
 | z   , _    => refl
 | _   , z    => refl
-| s n', s m' => fun i : I => s (s (add-comm n' m' i))
+| s n', s m' => path i => s (s (add-comm n' m' i))
 
 // omega also comes easily.
 
@@ -68,4 +68,4 @@ add-z-inv-r : (n m : Conat) -> add n m = z -> m = z :=
 
 add-omega-l : (n : Conat) -> add omega n = omega
 | z    => refl
-| s n' => fun i : I => s (add-omega-l n' i)
+| s n' => path i => s (add-omega-l n' i)

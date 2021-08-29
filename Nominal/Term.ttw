@@ -41,19 +41,19 @@ dec-spec-r {t1 t2 : Term} : t1 = t2 -> dec t1 t2 = tt
 | refl => dec-refl t1
 
 dec-spec-l : (t1 t2 : Term) -> dec t1 t2 = tt -> t1 = t2
-| Var x    , Var y)     H => ap Var (name-dec-spec-l x y H)
-| App l1 r1, App l2 r2) H =>
+| Var x    , Var y     H => ap Var (name-dec-spec-l x y H)
+| App l1 r1, App l2 r2 H =>
   // `dec t1 t2 = tt` is convertible with
   // `dec l1 l2 && dec r1 r2 = tt`, which gives
   // `Hl : dec l1 l2 = tt`
   // `Hr : dec r1 r2 = tt`
   // and so we have
   ap2 App (dec-spec-l l1 l2 Hl) (dec-spec-l r1 r2 Hr)
-| Lam t1   , Lam t2)    H  =>
+| Lam t1   , Lam t2    H  =>
     match ν α. dec (t1 @ α) (t2 @ α) with
       | ν α. tt =>
           (fun wut : ν α. dec (t1 @ α) (t2 @ α) = ν α. tt =>
-            fun i : I => Lam (ν α. dec-spec-l (t1 @ α) (t2 @ α) (ap (@ α) wut) i)
+            path i => Lam (ν α. dec-spec-l (t1 @ α) (t2 @ α) (ap (@ α) wut) i)
           ) refl
       | ν α. ff => abort H
     end
@@ -73,7 +73,7 @@ module Stupid2
 	| capp l1 l2 r1 r2 c11 c12, capp .l1 .l2 .r1 .r2 c21 c22 =>
 		  ap2 (capp l1 l2 r1 r2) (isProp_Code c11 c21) (isProp_Code c21 c22)
 	| clam l r c1', clam .l .r c2' =>
-		  // ap (clam l r) (fun i => ν α. isProp_Code (c1' @ α) (c2' @ α) i) // if path abstraction is permitted
+		  // ap (clam l r) (path i => ν α. isProp_Code (c1' @ α) (c2' @ α) i) // if path abstraction is permitted
 		  match ν α. isProp_Code (c1' @ α) (c2' @ α) with
 		    | ν α. refl => refl
 	// Other cases are impossible.

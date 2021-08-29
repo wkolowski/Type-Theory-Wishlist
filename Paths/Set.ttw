@@ -21,7 +21,7 @@ map (f : A -> B) : Set A -> Set B
 | union x y         => union (map x) (map y)
 | comm  x y     i   => comm  (map x) (map y) i
 | idem  x       i   => idem  (map x)         i
-| isSet x y p q i j => isSet (map x) (map y) (fun i => map (p i)) (fun i => map (q i)) i j
+| isSet x y p q i j => isSet (map x) (map y) (path i => map (p i)) (path i => map (q i)) i j
 
 rev : Set A -> Set A
 | in    x     => in x
@@ -34,7 +34,7 @@ rev : Set A -> Set A
 rev-rev : (s : Set A) -> rev s = s
 | in    x     => refl
 | id          => refl
-| union x y   => fun i => comm (rev-rev y i) (rev-rev x i) i
+| union x y   => path i => comm (rev-rev y i) (rev-rev x i) i
 | comm  x y i => // this is hell `rev (comm x y i) => comm (rev y) (rev x) i = comm x y i`
 | idem  x   i => // this too
 

@@ -68,12 +68,12 @@ map (f : A -> B) : FM A -> FM B
 map-id : (x : FM A) -> map id x = x
 | id     => refl
 | in a   => refl
-| op x y => fun i : I => op (map-id x i) (map-id y i)
+| op x y => path i => op (map-id x i) (map-id y i)
 
 map-map (f : A -> B) (g : B -> C) : (x : FM A) -> map g (map f x) = map (f.g) x
 | id     => refl
 | in a   => refl
-| op x y => fun i : I => op (map-map x i) (map-map y i)
+| op x y => path i => op (map-map x i) (map-map y i)
 
 filter (p : A -> Bool) : FM A -> FM A
 | id     => id
@@ -83,7 +83,7 @@ filter (p : A -> Bool) : FM A -> FM A
 filter-filter (p : A -> Bool) : (x : FM A) -> filter p (filter p x) = filter p x
 | id     => refl
 | in a   => if p a then refl else refl
-| op x y => fun i : I => op (filter-filter x i) (filter-filter y i)
+| op x y => path i => op (filter-filter x i) (filter-filter y i)
 
 rev : FM A -> FM A
 | id     => id
@@ -93,17 +93,17 @@ rev : FM A -> FM A
 rev-rev : (x : FM A) -> rev (rev x) = x
 | id     => refl
 | in a   => refl
-| op x y => fun i : I => op (rev-rev x i) (rev-rev y i)
+| op x y => path i => op (rev-rev x i) (rev-rev y i)
 
 map-rev (f : A -> B) : (x : FM A) -> map f (rev x) = rev (map f x)
 | id     => refl
 | in a   => refl
-| op x y => fun i : I => op (map-rev y i) (map-rev x i)
+| op x y => path i => op (map-rev y i) (map-rev x i)
 
 rev-filter (p : A -> Bool) : (x : FM A) -> rev (filter p x) = filter p (rev x)
 | id     => refl
 | in a   => if p a then refl else refl // TODO: reconsider
-| op x y => fun i : I => op (rev-filter y i) (rev-filter x i)
+| op x y => path i => op (rev-filter y i) (rev-filter x i)
 
 join : FM (FM A) -> FM A
 | id     => id
@@ -120,7 +120,7 @@ pure : A -> FM A := in
 bind-pure-l : (x : FM A) -> bind pure x = x
 | id     => refl
 | in a   => refl
-| op x y => fun i : I => op (bind-pure-l x i) (bind-pure-l y i)
+| op x y => path i => op (bind-pure-l x i) (bind-pure-l y i)
 
 bind-pure-r (f : A -> FM B) (a : A) : bind f (pure a) = f a := refl
 
@@ -128,4 +128,4 @@ bind-bind (f : A -> FM B) (g : B -> FM C)
 		: (x : FM A) -> bind g (bind f x) = bind (fun a : A => bind g (f a)) x
 | id     => refl
 | in a   => refl
-| op x y => fun i : I => op (bind-bind f g x i) (bind-bind f g y i)
+| op x y => path i => op (bind-bind f g x i) (bind-bind f g y i)

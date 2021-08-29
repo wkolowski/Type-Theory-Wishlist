@@ -17,12 +17,12 @@ map (f : A -> B) : Cyclic A -> Cyclic B
 map-id : (l : Cyclic A) -> map id l = l
 | Nil       => refl
 | Var v     => refl
-| RCons h t => fun i : I => RCons h (ν α. map-id (t @ α) i)
+| RCons h t => path i => RCons h (ν α. map-id (t @ α) i)
 
 map-map (f : A -> B) (g : B -> C) : (l : Cyclic A) -> map g (map f l) = map (comp f g) l
 | Nil       => refl
 | Var v     => refl
-| RCons h t => fun i : I => RCons (g (f h)) (ν α. map-map f g (t @ α) i)
+| RCons h t => path i => RCons (g (f h)) (ν α. map-map f g (t @ α) i)
 
 %OverlappingPatterns
 app : (l1 l2 : Cyclic A) -> Cyclic A :=
@@ -36,14 +36,14 @@ app-assoc : (l1 l2 l3 : Cyclic A) -> app (app l1 l2) l3 = app l1 (app l2 l3)
 | _          , Nil => refl
 | Nil        , _   => refl
 | Var v      , _   => refl
-| RCons h1 t1, _   => fun i : I => RCons h1 (ν α. app-assoc (t1 @ α) l2 l3 i)
+| RCons h1 t1, _   => path i => RCons h1 (ν α. app-assoc (t1 @ α) l2 l3 i)
 
 %OverlappingPatterns
 map-app (f : A -> B) : (l1 l2 : Cyclic A) -> map f (app l1 l2) = app (map f l1) (map f l2)
 | _          , Nil => refl
 | Nil        , _   => refl
 | Var v      , _   => refl
-| RCons h1 t1, _   => fun i : I => RCons (f h1) (ν α. map-app (t1 @ α) l2 i)
+| RCons h1 t1, _   => path i => RCons (f h1) (ν α. map-app (t1 @ α) l2 i)
 
 snoc (x : A) : Cyclic A -> Cyclic A
 | Nil       => RCons x (ν α. Nil)
@@ -53,13 +53,13 @@ snoc (x : A) : Cyclic A -> Cyclic A
 snoc-is-app-RCons (x : A) : (l : Cyclic A) -> snoc x l = app l (RCons x (ν α. Nil))
 | Nil       => refl
 | Var v     => refl
-| RCons h t => fun i : I => Rcons h (ν β. snoc-is-app-RCons (t @ β) i)
+| RCons h t => path i => Rcons h (ν β. snoc-is-app-RCons (t @ β) i)
 
 snoc-app (x : A) : (l1 l2 : Cyclic A) -> snoc x (app l1 l2) = app l1 (snoc x l2)
 | _          , Nil => snoc-is-app-RCons x l1
 | Nil        , _   => refl
 | Var v      , _   => refl
-| RCons h1 t1, _   => fun i : I => RCons h1 (ν α. snoc-app (t1 @ α) l2 i)
+| RCons h1 t1, _   => path i => RCons h1 (ν α. snoc-app (t1 @ α) l2 i)
 
 any (p : A -> Bool) : Cyclic A -> Bool
 | Nil       => ff
