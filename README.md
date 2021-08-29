@@ -1,39 +1,88 @@
 # Type Theory Wishlist
 
-This repo is a playground in which I'm trying to invent a better type theory/dependently-typed programming language. This README describes the core syntax and semantics of the language and points to some ideas and TODOs for later consideration. The details of every major feature/proposal are laid out in their respective directories, inside files with the `.ttw` extension that contain commented pseudocode that show the feature in action.
+This repo is a playground in which I'm trying to invent a better type theory/dependently-typed programming language. This README describes the core syntax and semantics of the language and points to some ideas and TODOs for later consideration. The details of every major feature/proposal are laid out in their respective directories, inside files with the `.ttw` extension that contain commented pseudocode which show the feature in action.
 
-## Syntax
+## The Guiding Principle of Syntax
 
-### The Guiding Principle of Syntax
+The syntax of many ((dependently-typed) functional) languages is not optimal and sometimes not even good and, to be honest, the syntax of some of them (Coq) is horrible. We are not going to repeat their mistakes, however, by making use of a very simple principle used by programmers all over the world: Don't Repeat Yourself. To paraphrase: if we have to write something twice, the syntax is bad and has to be changed.
 
-The syntax of many ((dependently-typed) functional) languages is not optimal and, to be honest, the syntax of some of them (Coq) is horrible. We are not going to repeat their mistakes, however, by making use of a very simple principle used by programmers all over the world: Don't Repeat Yourself. To paraphrase: if we have to write something twice in the syntax, the syntax is bad and has to be changed.
+## Basic syntax
 
-### Basic syntax
+Comments start with `//` like in C.
+```
+// This is a comment.
+```
 
-Definitions look like below. No keywords or anything like that - they are useless clutter.
+Multiline comments are enclosed between ``(* *)`` like in the ML languages and can be nested. TODO: revisit this later.
+```
+(* A multiline (* nested *) comment. *)
+```
+
+Definitions are maximally uncluttered - no keywords, just a name, type and value.
 ```
 name : type := value
 ```
 
-For functions, we can of course bind arguments together with the name, to the left of the final colon. Example:
+Declarations, which at the top-level play the role of axioms, look similar but without the value part.
+```
+name : type
+```
+
+Directives that modify the language start with a `%`. They can be used to turn off termination checking, strict positivity, etc.
+```
+%NoTerminationCheck
+wut : Empty := wut
+```
+
+## Types
+
+| Name          | Formation        | Introduction     | Elimination      |
+| ------------- | ---------------- | ---------------- | ---------------- |
+| Function type | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
+| Universes     | `Type h p`       | `Type h p`       | can't eliminate  |
+| Path type     | `x = y`          | `fun i : I => e` | `p i`            |
+| Empty type    | `Empty`          | impossible       | `abort`          |
+| Unit type     | `Unit`           | `unit`           | not needed       |
+| Record types  | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
+| Inductives    | see below        |
+| Coinductives  | see below        |
+| Nabla type    | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`          |
+
+### Tentative
+
+| Name          | Formation        | Introduction     | Elimination      |
+| ------------- | ---------------- | ---------------- | ---------------- |
+| Subtype type  | `Sub A`          | implicit (?)     | implicit (?)     |
+| Refinements   | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
+
+## Functions
+
+Function types work as usual.
+
+```
+add : (n m : Nat) -> Nat :=
+  fun n m : Nat => ...
+```
+
+Of course we can also bind arguments together with the name, to the left of the final colon.
 
 ```
 add (n m : Nat) : Nat := ...
 ```
 
-There is of course a mechanism of implicit arguments:
+Of course there is a mechanism of implicit arguments:
 
 ```
 id {A : Type} (x : A) : A := x
 ```
 
-Better syntax (inspired by [the F* language](https://www.fstar-lang.org/)):
+Better syntax for implicit arguments (inspired by [the F* language](https://www.fstar-lang.org/)):
 
 ```
 id (#A : Type) (x : A) : A := x
 ```
 
-But we can also omit writing implicit arguments when they are easily inferable from something else (inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments)). Example:
+But we can also omit writing implicit arguments when they are easily inferable from something else (this piece of syntax is inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments)). Example:
 
 ```
 id (x : A) : A := x
@@ -49,6 +98,8 @@ half : Nat -> Nat
 | s z     => z
 | s (s n) => s (half n)
 ```
+
+Besides these basics, we want to think that all functions take just one argument which is a big record (so not the usual "every function takes one argument, and then maybe returns another function").
 
 ### Parameters and indices
 
@@ -70,60 +121,57 @@ add (n : Nat) : Nat -> Nat :=
 | s m => s (add m)
 ```
 
-## Types
-
-| ------------- | ---------------- | ---------------- | ---------------- |
-| Name          | Formation        | Introduction     | Elimination      |
-| Universe      | `Type h p`       | `Type h p`       | can't eliminate  |
-| Record type   | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
-| Product type  | `A * B`          | `(a, b)`         | `outl`, `outr`   |
-| Sigma type    | `(x : A) * B x`  | `(a, b)`         | `outl`, `outr`   |
-| Function type | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
-| Empty type    | `Empty`          | impossible       | `abort`          |
-| Unit type     | `Unit`           | `unit`           | not needed       |
-| Sum types     | `A + B`          | `inl`, `inr`     | pattern matching |
-| Inductives    | see below        | see below        | see below        |
-| Coinductives  | see below        | see below        | see below        |
-| Path type     | `x = y`          | `fun i : I => e` | `p i`            |
-| Nabla type    | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`          |
-| Subtype type  | `Sub A`          | implicit (?)     | implicit (?)     |
-| Refinements   | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
-
 ## Universes
 
 We want to have a multidimensional hierarchy of universes stratified by both the usual predicative level and by homotopy level, similar to the [Arend language](https://arend-lang.github.io/about/arend-features#universe-levels). The predicative levels are basicaly naturals, whereas the homotopy levels are natural numbers extended with infinity (for untruncated types). The homotopy levels should bring some benefits, like you don't need to write some boring paths here and there (TODO: work out the details for the non-strict case).
 
-Another possibility would be to make the homotopy levels strict, i.e. `Type 0` would be a universe of contractible types (whose member is itself), if only just for giggles. `Type 1` would then be a universe of strict (i.e. definitionally irrelevant) propositions (like Coq's [SProp](https://coq.inria.fr/refman/addendum/sprop.html) or Agda's [Prop](https://agda.readthedocs.io/en/v2.6.0/language/prop.html)), `Type 2` would be a universe of strict sets (types for which the type of paths is a strict proposition) and so on, up to `Type ω`, the universe of untruncated types.
+Another possibility would be to make the homotopy levels strict, i.e. `Type (h = 0)` would be a universe of contractible types (whose member is itself), if only just for giggles. `Type (h = 1)` would then be a universe of strict (i.e. definitionally irrelevant) propositions (like Coq's [SProp](https://coq.inria.fr/refman/addendum/sprop.html) or Agda's [Prop](https://agda.readthedocs.io/en/v2.6.0/language/prop.html)), `Type (h = 2)` would be a universe of strict sets (types for which the type of paths is a strict proposition) and so on, up to `Type (h = ω)`, the universe of untruncated types.
 
 Some reading on universes:
+- [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
 - [Generalized Universe Hierarchies and First-Class
 Universe Levels](https://arxiv.org/pdf/2103.00223.pdf)
 - [Notes on Universes in Type Theory](http://www.cs.rhul.ac.uk/home/zhaohui/universes.pdf)
 
-## [Records](Records)
+TODO:
+- Everything
 
-Record types are the central feature of the language and they subsume modules, typeclasses, sigma types, product types, `Unit` and so on. Some reading on dependent records in type theory:
-- [Dependent Record Types Revisited](http://www.cs.rhul.ac.uk/home/zhaohui/DRT11.pdf)
-- [Typed Operational Semantics for Dependent Record Types](http://www.cs.rhul.ac.uk/home/zhaohui/TYPES09final11-01-01.pdf)
-- [Extension of Martin-Löf's Type Theory with Record Types and Subtyping](https://www.researchgate.net/publication/2683061_Extension_of_Martin-Lof's_Type_Theory_with_Record_Types_and_Subtyping)
+## [Empty](TypesThatCompute/Empty.ttw), [Unit](TypesThatCompute/Unit.ttw) and [Types that Compute](TypesThatCompute)
 
-## Functions
-
-Function types work as usual, but we want the user to think that every function takes just a single argument which is a record.
-
-## [Empty, Unit and Types that Compute](TypesThatCompute)
-
-`Empty` and `Unit` are a little special in that all their terms are computationally equal. This should be the case even if we don't manage to pull out the strict universes thing. For a universe of strict propositions, see [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document).
-
-But that's not the end. We would like type constructors (i.e. formation rules) to be able to perform computations, so that we can profit from more definitional equalities at the type level. So besides `Empty` and `Unit` being strict propositions, we would like all of the properties below to hold by computation:
+`Empty` and `Unit` are a little special in that all their terms are computationally equal, i.e. they are strict propositions (this should be the case even if we don't manage to pull out the strict universes thing). But that's not the end - `Empty` and `Unit` also enjoy special computational properties:
 - `Empty + A = A`
 - `A + Empty = A`
 - `Empty * A = Empty`
 - `A * Empty = Empty`
 - `Unit * A = A`
 - `A * Unit = A`
+- generalizations of the above to record
+- corresponding properties at the term level
+- similar properties for other type formers
 
-Of course we want not only these built-in computational equalities, but to define custom types with custom equalities of this kind.
+Of course we don't want to confine ourselves to these built-in computational equalities - we want to be able but to define custom types with custom equalities of this kind. One way to do this is with rewrite rules. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) for more on rewrite rules.
+
+TODO:
+- List all the additional laws for `Empty` and `Unit`
+- Make sure that it all makes sense
+
+### [Path types and other cubical stuff](Paths)
+
+We take Cubical Type Theory and the homotopical style of doing mathematics for granted. The revolution has already occurred!
+
+But we also want to benefit from [Types that Compute](TypesThatCompute) when it comes to paths, i.e. we want path characterizations like "paths between pairs are pairs of paths" to hold by computation, without needing to prove anything. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (section 2.6) for how to accomplish something like this for Agda's usual (i.e. inductive) equality. If I read the paper correctly, it's also possible for Path types.
+
+TODO:
+- Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
+
+## [Records](Records)
+
+Record types are the central feature of the language and they subsume modules, typeclasses, sigma types, product types, and so on.
+
+Some reading on dependent records in type theory:
+- [Dependent Record Types Revisited](http://www.cs.rhul.ac.uk/home/zhaohui/DRT11.pdf)
+- [Typed Operational Semantics for Dependent Record Types](http://www.cs.rhul.ac.uk/home/zhaohui/TYPES09final11-01-01.pdf)
+- [Extension of Martin-Löf's Type Theory with Record Types and Subtyping](https://www.researchgate.net/publication/2683061_Extension_of_Martin-Lof's_Type_Theory_with_Record_Types_and_Subtyping)
 
 ## Sum types
 
@@ -200,9 +248,11 @@ Inductive types are supposed to be really powerful. We take the usual inductive 
 - [Overlapping and Order-Independent Patterns](OverlappingPatterns)
 - [Decidable Equality Patterns](DecidableEqualityPatterns)
 
-## Coinductives
+## Coinductive types
 
-It would be nice to have a similarly compact syntax for coinductive types. Let's try some crazy `&`s!
+Coinductives should be dual to inductives, but that will be hard to achieve as they are underresearched. The minimum is to have a nice syntax sugar for "positive" coinductive types (like the coinductive duals of natural numbers and lists). Another possibility for handling coinductives is for them to be just (co)recursive records, but this depend on how cool and foreign records will be.
+
+It would be nice to have a compact syntax for coinductive types. Let's try some crazy `&`s!
 
 ```
 codata Stream (A : Type) : Type :=
@@ -244,7 +294,16 @@ CoCons (h : a) (t : CoList a) : CoList a :=
 & Out => CoConsX h t
 ```
 
-See [this file](OverlappingPatterns/Conat.ttw) for more details.
+See [this file](OverlappingPatterns/Conat.ttw) for more details on this notation.
+
+### [Nabla types and names](Nominal)
+
+
+
+| Path type     | `x = y`          | `fun i : I => e` | `p i`            |
+| Nabla type    | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`          |
+| Subtype type  | `Sub A`          | implicit (?)     | implicit (?)     |
+| Refinements   | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
 
 ### Refinements
 
