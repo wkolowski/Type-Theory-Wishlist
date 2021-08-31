@@ -71,6 +71,8 @@ Some reading on dependent records in type theory:
 - [Dependent Record Types Revisited](http://www.cs.rhul.ac.uk/home/zhaohui/DRT11.pdf)
 - [Typed Operational Semantics for Dependent Record Types](http://www.cs.rhul.ac.uk/home/zhaohui/TYPES09final11-01-01.pdf)
 - [Extension of Martin-Löf's Type Theory with Record Types and Subtyping](https://www.researchgate.net/publication/2683061_Extension_of_Martin-Lof's_Type_Theory_with_Record_Types_and_Subtyping)
+- [Ur: Statically-Typed Metaprogramming
+with Type-Level Record Computation](http://adam.chlipala.net/papers/UrPLDI10/UrPLDI10.pdf)
 
 ## Functions
 
@@ -116,7 +118,7 @@ comp (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 - `A * Empty = Empty`
 - `Unit * A = A`
 - `A * Unit = A`
-- generalizations of the above to record
+- generalizations of the above to records
 - corresponding properties at the term level
 - similar properties for other type formers
 
@@ -128,7 +130,7 @@ TODO:
 - Find how these types will be declared.
 - Make sure that it all makes sense
 
-## Universes
+## [Universes](Universes/Universes.md)
 
 We want to have a multidimensional hierarchy of universes stratified both by the usual predicative level and by homotopy level, similar to the [Arend language](https://arend-lang.github.io/about/arend-features#universe-levels). The predicative levels are basicaly naturals, whereas the homotopy levels are natural numbers extended with infinity (for untruncated types). In fact, there will be (at least) two type hierarchies: the strict one and the non-strict one.
 
@@ -146,11 +148,11 @@ TODO:
 - Work out the details of non-strict universes.
 - Write some code dealing with universes.
 
-### [Path types and the rest of Cubical Type Theory](Paths)
+## [Path types and the rest of Cubical Type Theory](Paths)
 
 We take Cubical Type Theory and the homotopical style of doing mathematics for granted. The revolution has already occurred!
 
-But we also want to benefit from [Types that Compute](TypesThatCompute) when it comes to paths, i.e. we want path characterizations like "paths between pairs are pairs of paths" to hold by computation, without needing to prove anything. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (section 2.6) for how to accomplish something like this for Agda's usual (i.e. inductive) equality. If I read the paper correctly, it's also possible for Path types.
+But we also want to benefit from [Types that Compute](TypesThatCompute) when it comes to paths, i.e. we want path characterizations like "paths between pairs are pairs of paths" to hold by computation, without needing to prove anything. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (section 2.6) for how to accomplish something like this for Agda's usual (i.e. inductive) equality. If I read the paper correctly, it's also possible for Path types. See [here](TypesThatCompute/Paths.ttw) for some details.
 
 TODO:
 - Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
@@ -158,6 +160,9 @@ TODO:
 ## Sum types
 
 As for sum types, we would like to have extensible sum types, akin to OCaml's polymorphic variants. If that's not possible, then sum types are subsumed by inductive types.
+
+Papers:
+- [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf)
 
 ## Inductive types
 
@@ -337,18 +342,15 @@ CoCons (h : a) (t : CoList a) : CoList a :=
 
 See [this file](OverlappingPatterns/Conat.ttw) for more details on this notation.
 
-### [Nabla types and names](Nominal)
+## [Nabla types and names](Nominal) - TODO
 
+For every type `A` we have a type `Name A` of names for terms of `A`.
 
+## Refinements
 
-| Path type     | `x = y`          | `path i => e` | `p i`            |
-| Nabla type    | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`          |
-| Subtype type  | `Sub A`          | implicit (?)     | implicit (?)     |
-| Refinements   | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
+The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solvers, but that's meh) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
 
-### Refinements
-
-Turns out F* has some nice features that would be nice to have here too:
+F* also has some additional nice features related to refinement types that make life a lot easier:
 - Discriminators that check which constructor was used to make the given term, e.g. `Nil? : list 'a -> bool`, `Cons? : list 'a -> bool`
 - Projections which project constructor arguments out of a term (given that the term was really made using that constructor): `Cons?.hd : l : list 'a{Cons? l} -> 'a`, `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
 - Note that the above are written in F* syntax and require refinement types to get anywhere.
@@ -380,6 +382,13 @@ For refinement types, we have `{x : A \| P x} <= A`.
 For nablas, we should have `A <= A'` and `B <= B'` implies `∇ α : A. B α <= ∇ α : A'. B' α`.
 
 For paths types, I think `I` is invariant, so given `c : A <= B` and `p : x ={A} y` we have `path i => c (p i) : c x ={B} c y`
+
+## Modern tooling
+
+[The Unison Language](https://www.unisonweb.org/) has a very futuristic tooling and some good ideas, including:
+- codebases - Unison code is literraly stored as an AST in a nice database managed with a dedicated tool
+- everything can be referred to by its hash and names are just metadata, so its easy to rename stuff and perform other similar magic like caching tests
+- Unison has typed documentation which prevents it from going out of sync with the code
 
 ## Things to investigate
 
@@ -418,10 +427,3 @@ How to infer, in general, an inductive characterization of normal forms from the
 ### The status of primitive constants
 
 Primitive constants are used to include in type theory various types known from more mainstream languages, like ints, floats, arrays, etc.
-
-### Refinement types
-
-The idea is to have, for a type T, lots of its subtypes of the form {x : T | P} where P is some decidable property that the typechecker can reason about.
-
-See:
-- F* language - refinements types work pretty well here and are very useful.
