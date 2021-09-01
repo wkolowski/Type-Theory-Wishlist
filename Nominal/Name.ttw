@@ -5,7 +5,6 @@ name-dec : (x y : Name A) -> Bool :=
 | α α => tt
 | α β => ff
 
-// We use `abort : Empty -> A` to mark contradictions.
 // Below `ff = tt` is not computationally equal to `Empty`, so we can't use
 // `abort` directly, but we won't care about this detail.
 name-dec-spec-l : (x y : Name A) -> name-dec x y = tt -> x = y

@@ -2,7 +2,7 @@
 
 This repo is a playground in which I'm trying to invent a better type theory/dependently-typed programming language. This README describes the core features to be included, basic syntax and type system of the language and points to some ideas and TODOs for later consideration. The details of every major feature/proposal are laid out in their respective directories, inside files with the `.ttw` extension that contain commented pseudocode which show the feature in action.
 
-## Features
+## Cool Features
 
 So far, the core innovations center around three ideas: nominal stuff (which makes programming with names and variable binding easy), powerful records (which make juggling data, code and abstractions easy) and having more equalities hold just by computation, without having to prove anything.
 
@@ -57,11 +57,11 @@ wut : Empty := wut
 | Unit type     | `Unit`           | `unit`           | not needed       |
 | Universes     | `Type h p`       | `Type h p`       | impossible       |
 | Path type     | `x = y`          | `path i => e`    | `p i`            |
-| Inductives    | see below        |
-| Coinductives  | see below        |
 | Nabla type    | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`          |
 | Refinements   | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
 | Subtypes      | `Sub A`          | implicit (?)     | implicit (?)     |
+| Inductives    | see below        |
+| Coinductives  | see below        |
 
 ## [Records](Records)
 
@@ -152,7 +152,7 @@ TODO:
 
 We take Cubical Type Theory and the homotopical style of doing mathematics for granted. The revolution has already occurred!
 
-But we also want to benefit from [Types that Compute](TypesThatCompute) when it comes to paths, i.e. we want path characterizations like "paths between pairs are pairs of paths" to hold by computation, without needing to prove anything. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (section 2.6) for how to accomplish something like this for Agda's usual (i.e. inductive) equality. If I read the paper correctly, it's also possible for Path types. See [here](TypesThatCompute/Paths.ttw) for some details.
+But we also want to benefit from [Types that Compute](#types-that-compute) when it comes to paths, i.e. we want path characterizations like "paths between pairs are pairs of paths" to hold by computation, without needing to prove anything. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (section 2.6) for how to accomplish something like this for Agda's usual (i.e. inductive) equality. If I read the paper correctly, it's also possible for Path types. See [here](TypesThatCompute/Paths.ttw) for some details.
 
 TODO:
 - Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
@@ -162,9 +162,9 @@ TODO:
 As for sum types, we would like to have extensible sum types, akin to OCaml's polymorphic variants. If that's not possible, then sum types are subsumed by inductive types.
 
 Papers:
-- [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf)
+- [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf) (this one is also useful for extensible records)
 
-## Inductive types
+## Basic Inductive Types
 
 The different classes of inductive types (enumerations, parameterized types, inductive families, etc.) have progressively more complete syntaxes, so that simple types can be written in a simple way and only the more complicated ones require more details.
 
@@ -270,6 +270,15 @@ app : (l1 l2 : List A) -> List A :=
 | Cons h t, _ => Cons h (app t l2)
 ```
 
+In case we need to match something else besides the arguments, we can use a `with`-clause.
+```
+filter (p : A -> Bool) : List A -> List A
+| [] => []
+| h :: t with p h
+  | tt => h :: filter t
+  | ff => filter t
+```
+
 For inductive families, we need to explicitly write the constructor's return type (because it depends on the index), but we still don't need to write the parameters.
 ```
 data Vec (A : Type) : Nat -> Type
@@ -277,26 +286,148 @@ data Vec (A : Type) : Nat -> Type
 | Cons : (hd : A) {n : Nat} (tl : Vec n) -> Vec (s n)
 ```
 
-When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a latter pattern, for example when we are matching on the index on an inductive family and then on an element of that family with that index. We call these _inaccessible_ patterns (following [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns)).
+When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of that family with that index. We call these _inaccessible_ patterns (following [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns)).
 
 ```
 head : {n : Nat} (v : Vec (s n)) -> A
 | .n', Cons h n' t => h
 ```
 
+## Advanced Inductive Types
+
 Inductive families are just the tip of an iceberg, as our inductive types are supposed to be REALLY powerful. We take the usual inductive families as baseline and add:
-- [Induction-Induction](IndInd)
-- Induction-Recursion
-- [Nominal Inductive Types](Nominal)
-- [Higher Inductive Types](Paths)
-- [Constructors that Compute](ConstructorThatCompute)
-- [Overlapping and Order-Independent Patterns](OverlappingPatterns)
-- [Decidable Equality Patterns](DecidableEqualityPatterns)
-- [Types that Compute](TypesThatCompute)
+- [Overlapping and Order-Independent Patterns](#overlapping-and-order-independent-patterns)
+- [Decidable Equality Patterns](#decidable-equality-patterns)
+- [Constructors that Compute](#constructors-that-compute)
+- [Inductive Types that Compute](#inductive-types-that-compute)
+- [Nominal Inductive Types](#nominal-inductive-types)
+- [Induction-Induction](#induction-induction)
+- [Induction-Recursion](#induction-recursion)
+- [Higher Inductive Types](#higher-inductive-types)
+
+Let's do a quick tour.
+
+### [Overlapping and Order-Independent Patterns](OverlappingPatterns)
+
+This is basically pattern matching on steroids. Consider the usual definitions of addition of natural numbers.
+
+```
+add : (n m : Nat) -> Nat
+| z   , m => m
+| s n', m => s (add n' m)
+```
+
+It's all right and good, but even though `add n z` equals `n`, it does not compute to `n`. Similarly, even though `add n (s m')` equals `s (add n m')`, it doesn't compute to `s (add n m')`. Overlapping patterns are a way to make this happen.
+
+```
+add : (n m : Nat) -> Nat
+| z   , m    => m
+| s n', m    => s (add n' m)
+| n   , z    => n
+| n   , s m' => s (add n m')
+```
+
+Here besides the two clauses from the previous definitions, we have two more clauses which amount to saying that "additionally, `add n z` computes to `z` and `add n (s m')` computes to `s (add n m')`".
+
+For the definition to be accepted, all the clauses need to be confluent, i.e. they must return the same result when they overlap. In our example, the overlapping cases are `add z z` and `add (s n') (s m')`. But `add z z` computes to `z` both using clause 1 and 3, so it's ok. Similarly, `add (s n') (s m')` computes to `s (s (add n' m'))` using first clause 2 and then clause 4, and it computes to the same result using first clause 4 and then clause 2, so it's ok.
+
+These new computational equalities greatly reduce the number of rewrites needed in proofs, but it also and makes dependently-typed programming much easier in some cases. For example, for vectors the terms `v ++ []` used to have the problematic type `Vec A (add n z)`, whereas now it has the less problematic type `Vec A n`. Yay!
+
+Of course, there are some problems with this new kind of pattern matching. The foremost of them is that the catch-all pattern `_` starts being problematic. Consider the decision function for equality of naturals:
+
+```
+%Fail
+dec : (n m : Nat) -> Bool
+| z   , z    => tt
+| s n', s m' => dec n' m'
+| _   , _    => ff
+```
+
+This definition is illegal, because `dec z z` computes to `tt` according to the first clause, but it computes to `ff` according to the third clause.
+
+To remedy this, we have to keep the old semantics of pattern matching (which we call _first-match semantics_). So from now on we have two kinds of pattern matching: the usual one with first-match semantics and the new one, in which patterns can be _overlapping_ and whose semantics don't depend on the _order_ in which the patterns appear in code. We can use the pragmas `%FirstMatch` and `%OverlappingPatterns` to specify, which kind of pattern matching we use.
+
+```
+%FirstMatch
+dec : (n m : Nat) -> Bool
+| z   , z    => tt
+| s n', s m' => dec n' m'
+| _   , _    => ff
+```
+
+Now the definition is ok, because we explicitly mark the fact that it uses the first-match semantics.
+
+Thes ideas are based on the paper [Overlapping and Order-Independent Patterns: Definitional Equality for All](https://link.springer.com/content/pdf/10.1007%2F978-3-642-54833-8_6.pdf).
+
+### Decidable Equality Patterns
+
+The idea is that for type that have decidable equality, we can have syntax sugar for non-linear patterns when pattern matching and have it translated into uses of the decision procedure for equality.
+
+For example, we could use this feature to implement the below function which removes adjacent duplicates from a list provided that the type of elements in the list has decidable equality.
+
+```
+dedupConsecutive {A : EqType} : List A -> List A
+| []          => []
+| h :: h :: t => dedupConsecutive (h :: t)
+| h :: t      => h :: dedupConsecutive t
+```
+
+The above desugars to
+```
+dedupConsecutive {A : EqType} : List A -> List A
+| [] => []
+| x :: y :: t with x =? y
+  | tt =>      dedupConsecutive (y :: t)
+  | ff => x :: dedupConsecutive (y :: t)
+```
+
+Note that the semantics of the non-linear matches are the classical first-match semantics and it looks like it'd be hard to transplant this into the setting of overlapping and order-independent patterns. 
+
+See [here](https://www.mail-archive.com/haskell@haskell.org/msg03721.html) for a discussion on why non-linear patterns are not allowed in Haskell.
+
+### [Constructors that Compute](ConstructorsThatCompute)
+
+See the beginning of [this file](ConstructorsThatCompute/Z.ttw) for a thorough explanation.
+
+Note that as of now, the patterns allowed for constructors' computation rules are using first-match semantics, but that may change in the future.
+
+### Inductive Types that Compute
+
+
+
+### [Nominal Inductive Types](Nominal)
+
+### Induction-Induction
+
+Induction-induction allows us to simultaneously define two or more types such that the later ones can be indexed by the earlier ones.
+
+```
+data Dense (R : A -> A -> Type) : Type
+| in (x : A)
+| mid (x y : Dense) (H : Dense-R R x y)
+| eq (x : Dense) (H : Dense-R x x) (i : I)
+  | x H i0 => mid x x H
+  | x H i1 => in x
+
+with Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
+| in : {x y : A} (H : R x y) -> Dense-R (in x) (in y)
+| midl : {x y : Dense R} (H : Dense-R x y) -> Dense-R (mid x y H) y
+| midr : {x y : Dense R} (H : Dense-R x y) -> Dense-R x (mid x y H)
+```
+
+In the above example, `Dense-R R` is the dense completion of its parameter relation `R`, which means that it represents the least dense relation that contains `R`. `Dense-R` is defined at the same time as `Dense R`, which represents its carrier - the type `A` with added midpoints of all pairs `x, y` such that `R x y`.
+
+Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `Dense-R` refer to constructors of `Dense`, and the indices of `Dense-R` refer to `Dense`. This is the idea of induction-induction.
+
+### Induction-Recursion
+
+### Higher Inductive Types
 
 ## Coinductive types
 
-Coinductives should be dual to inductives, but that will be hard to achieve as they are underresearched. The minimum is to have a nice syntax sugar for "positive" coinductive types (like the coinductive duals of natural numbers and lists). Another possibility for handling coinductives is for them to be just (co)recursive records, but this depend on how cool and foreign records will be.
+Coinductives should be dual to inductives, but that will be hard to achieve as they are underresearched. The minimum is to have a nice syntax sugar for "positive" coinductive types (like the coinductive duals of natural numbers and lists). Another nice thing to have would be mixed inductive-coinductived types of the form `ν X. μ Y. T`, i.e. we can define a coinductive type that has 
+
+A possibility for handling coinductives is for them to be just (co)recursive records, but this depend on how cool and foreign records will be.
 
 It would be nice to have a compact syntax for coinductive types. Let's try some crazy `&`s!
 
@@ -340,13 +471,13 @@ CoCons (h : a) (t : CoList a) : CoList a :=
 & Out => CoConsX h t
 ```
 
-See [this file](OverlappingPatterns/Conat.ttw) for more details on this notation.
+See [this file](Coinduction/Conat.ttw) for more details on this notation.
 
-## [Nabla types and names](Nominal) - TODO
+## [Nominal features](Nominal) - TODO
 
 For every type `A` we have a type `Name A` of names for terms of `A`.
 
-## Refinements
+## Refinement types
 
 The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solvers, but that's meh) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
 
@@ -355,7 +486,7 @@ F* also has some additional nice features related to refinement types that make 
 - Projections which project constructor arguments out of a term (given that the term was really made using that constructor): `Cons?.hd : l : list 'a{Cons? l} -> 'a`, `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
 - Note that the above are written in F* syntax and require refinement types to get anywhere.
 
-## Subtyping
+## Subtyping and Subtype Universes
 
 It would be nice to have subtyping, but it's hard to say how easy (or hard) it is to achieve in a dependently-typed setting.
 

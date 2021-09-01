@@ -16,14 +16,14 @@ data Z : Type :=
 // definitions by pattern matching.
 
 // Note that `| p k => k` means that `s (p k)` computes to `k`, not that `p k`
-// computes to `k` - we don't write the function name when pattern matching,
+// computes to `k` - we don't write the constructor name when pattern matching,
 // because it's clear from the line above.
 
 // There is also a similar computation rule for the `p` constructor. Together
 // these additional rules ensure that the only canonical forms of type `Z` are
 // `z`, a finite number of applications of `s` to a `z` at the end, and finite
-// number of `p`s applied to `z`. Expressions like `s (p _)` and `p (s _)` are
-// not canonical forms.
+// number of applications of `p` to a `z` at the end. Expressions like
+// `s (p _)` and `p (s _)` are not canonical forms.
 
 // As to what the computation rules for constructors must look like, the basic
 // setting I've come up with is pretty easy to grasp. First, we use ordinary
@@ -31,7 +31,7 @@ data Z : Type :=
 // not need to be exhaustive. If a pattern doesn't appear in the computation
 // rules for a constructor then this pattern defines a canonical element of the
 // defined type. For example, the constructor `s` doesn't have any computation
-// rule for pattern `z`, so `s z` is a canonical form of `Z`. If a constructor
+// rule for pattern `z`, so `s z` is a canonical form of type `Z`. If a constructor
 // has no computation rules at all, it also defines a canonical element of the
 // type. For example, the constructor `z` has no associated computation rules,
 // so `z` is a canonical form of the type `Z`.
