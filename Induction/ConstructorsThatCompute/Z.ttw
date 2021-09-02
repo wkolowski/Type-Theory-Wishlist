@@ -1,8 +1,8 @@
 data Z : Type :=
   | z : Z
-  | s : Z -> Z :=
+  | s : Z -> Z
     | p k => k
-  | p : Z -> Z :=
+  | p : Z -> Z
     | s k => k
 
 // This is the type of integers, defined in a manner similar to the type of
@@ -161,7 +161,8 @@ abs-neg : (k : Z) -> abs (neg k) = abs k :=
 
 // From the induction hypothesis/recursive call after some computation we get:
 
-// `abs-neg (s k') : abs (neg (s k')) = s k'`.
+// `abs-neg (s 
+Note that as of now, the patterns allowed for constructors' computation rules are using first-match semantics, but that may change in the future.k') : abs (neg (s k')) = s k'`.
 
 // so it suffices to apply `s` on both sides of the equation using ap. The case
 // of `p (p k')` is analogous.
@@ -184,9 +185,9 @@ abs-neg : (k : Z) -> abs (neg k) = abs k :=
 // Below there are some more theorems in the same vein.
 
 add-assoc : (k l m : Z) -> add (add k l) m = add k (add l m) :=
-| z      l m => refl
-| (s k') l m => ap s (add-assoc k' l m)
-| (p k') l m => ap p (add-assoc k' l m)
+| z     l, m => refl
+| s k', l, m => ap s (add-assoc k' l m)
+| p k', l, m => ap p (add-assoc k' l m)
 
 // Nothing to see here, move along!
 
@@ -198,9 +199,9 @@ add-z : (k : Z) -> add k z = k :=
 // The proof is analogous to the analogous theorem for the natural numbers.
 
 add-s : (k l : Z) -> add k (s l) = s (add k l) :=
-| z      l => refl
-| (s k') l => ap s (add-s k' l)
-| (p k') l => ap p (add-s k' l)
+| z   , l => refl
+| s k', l => ap s (add-s k' l)
+| p k', l => ap p (add-s k' l)
 
 // This one is a bit tougher. The `z` case is trivial and the `s k'` case is
 // pretty easy, but `p k'` is much more mentally demanding because of the
@@ -219,25 +220,25 @@ add-s : (k l : Z) -> add k (s l) = s (add k l) :=
 // so the proof is finished.
 
 add-p : (k l : Z) -> add k (p l) = p (add k l) :=
-| z      l => refl
-| (s k') l => ap s (add-p k' l)
-| (p k') l => ap p (add-p k' l)
+| z   , l => refl
+| s k', l => ap s (add-p k' l)
+| p k', l => ap p (add-p k' l)
 
 // This one is analogous to `add-s`.
 
 // More functions.
 
 zeq : Z -> Z -> Bool :=
-| z      z      => true
-| (s k') (s l') => zeq k' l'
-| (p k') (p l') => zeq k' l'
-| _      _      => false
+| z  , z   => tt
+| s k, s l => zeq k l
+| p k, p l => zeq k l
+| _  , _   => false
 
 zeq-neg : (k l : Z) -> zeq (neg k) (neg l) = zeq k l :=
-| z      z      => refl
-| (s k') (s l') => zeq-neg k' l'
-| (p k') (p l') => zeq-neg k' l'
-| _      _      => refl
+| z   , z    => refl
+| s k', s l' => zeq-neg k' l'
+| p k', p l' => zeq-neg k' l'
+| _   , _    => refl
 
 // The last clause in the proof is a bit controversial. If we treat it as unfolding
 // to the patterns `z (s _)`, `z (p _)`, etc., then it's valid. But if not and for
@@ -246,24 +247,21 @@ zeq-neg : (k l : Z) -> zeq (neg k) (neg l) = zeq k l :=
 
 // `zeq (neg (s k')) (neg (s l')) => zeq (p (neg k')) (p (neg l')) => zeq (neg k') (neg l')`
 
-// Let's make our lives easier with overlapping patterns. See
-// https://jesper.sikanda.be/files/overlapping-and-order-independent-patterns.pdf
-// for an explanation of what exactly we're doing here.
-
 // The standard definition of addition is structurally recursive on the first
 // argument, which means that we get computation rules like `add z l => l` and
-// so on. But we need to manually prove that `add k z => k` etc., because even
-// when the second argument is known, the whole thing is in normal form (neutral
-// to be precise) and thus there's no computation.
+// so on. But we need to manually prove that `add k z => k`, `add k (s l) => s (add k l)`
+// and `add k (p l) => p (add k l)`, because even when the second argument is known, the
+// whole thing is in normal form (neutral to be precise) and thus there's no computation.
+// Let's make our lives a bit easier with overlapping patterns.
 
 %OverlappingPatterns
 add : Z -> Z -> Z :=
-| z     l     => l
-| (s k) l     => s (add k l)
-| (p k) l     => p (add k l)
-| k     z     => k
-| k     (s l) => s (add k l)
-| k     (p l) => p (add k l)
+| z  , l   => l
+| s k, l   => s (add k l)
+| p k, l   => p (add k l)
+| k  , z   => k
+| k  , s l => s (add k l)
+| k  , p l => p (add k l)
 
 // In short: in the new definition of `add`, we get three more pattern matching
 // clauses, which make `add k z` compute to `k` and similarly for `s` and `p`.

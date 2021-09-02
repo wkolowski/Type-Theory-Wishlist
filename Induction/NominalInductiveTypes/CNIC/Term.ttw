@@ -2,10 +2,10 @@
 // it should be, after all, pretty easy to model them!
 
 // The type of lambda calculus terms.
-data Term : Type =
-| Var : (x : Name Term) -> Term
-| App : (l r : Term) -> Term
-| Lam : (t : ∇ α : Term. Term) -> Term
+data Term : Type
+| Var (x : Name Term)
+| App (l r : Term)
+| Lam (t : ∇ α : Term. Term)
 
 // We can decide equality quite easily.
 dec : Term -> Term -> Bool :=
