@@ -367,7 +367,7 @@ See [this file](Induction/ConstructorsThatCompute/Z.ttw) for a more thorough exp
 
 ### [Nominal Inductive Types](Induction/NominalInductiveTypes/CNIC)
 
-For every type `A` there is a type `Name A` of `A`-names. There's also the nominal function type `∇ α : A. B` which expresses the idea of an element of `B` that may use the bound name `α` for an element of type `A`. The main use of names and the nominal function type is in conjunction with inductive types, to represent name binding in the syntax of programming languages, logics, calculi and so on.
+For every type `A` there is a type `Name A` whose elements can be thought of as "names for elements of `A`". There's also the nominal function type `∇ α : A. B` which expresses the idea of an element of `B` that may use the bound name `α` for an element of type `A`. The main use of names and the nominal function type is in conjunction with inductive types, to represent name binding in the syntax of programming languages, logics, calculi and so on.
 
 ```
 data Term : Type
@@ -376,7 +376,7 @@ data Term : Type
 | Lam (t : ∇ α : Term. Term)
 ```
 
-Representing lambda terms is easy enough. They consist of variables which are just names for terms wrapped in the constructor `Var`, application of one term to another, represented with `App`, and `Lam`bda abstraction, which is modeled as a term that binds a name.
+Representing lambda terms is easy enough. A term is either a variable which is just a name for a term wrapped in the constructor `Var`, application of one term to another, represented with `App`, or `Lam`bda abstraction, which is modeled as a term that binds a name.
 
 ```
 I : Term := Lam (ν α. Var α)
@@ -386,7 +386,7 @@ K : Term := Lam (ν α. Lam (ν β. Var α))
 S : Term := Lam (ν α. Lam (ν β. Lam (ν γ. App (App (Var α) (Var γ)) (App (Var β) (Var γ)))))
 ```
 
-Defining `Term`s corresponding to the identity function and the `K` and `S` combinators is easy, even though a bit convoluted.
+Defining `Term`s corresponding to the combinators `I`, `K` and `S` is easy, even though there's a lot of Greek letters and parentheses.
 
 ```
 I : Term := λ x. x
@@ -399,18 +399,26 @@ S : Term := λ x. λ y. λ z. App (App x z) (App y z)
 Assuming we have a good notation mechanism that fuses `Lam` and `ν x.` into `λ x.` and that `Var` is declared to be a coercion from `Name Term` to `Term`, our lambda terms become very readable.
 
 ```
-subst (t : Term) : (∇ α : Term. Term) -> Term
+subst (t : Term) : (s : ∇ α : Term. Term) -> Term
 | ν α. Var α => t
 | ν α. Var β => Var β 
 | ν α. App (l @ α) (r @ α) => App (subst l) (subst r)
 | ν α. Lam (t @ α) => Lam (ν β. subst (ν α. t @ α @ β))
 ```
 
-We can define functions our nominal inductive types using usual pattern matching and recursion, but we also have some additional powers at our disposal: we can pattern match on nominal function types, we can have non-linear patterns for elements of type `Name A` (which effectively means that we can decide equality of names).
+To define a function whose domain is a nominal inductive type, we can use recursion and pattern matching, but the pattern matching is a bit more powerful that usually. First, we can match on nominal function types. Second, patterns can have non-linear occurrences of elements of type `Name A`, which effectively means that we can decide equality of names.
+
+This makes it easy to define `subst`itution of the term `t` for the free variable in `s` (`s` is of type `∇ α : Term. Term`, so we can think of it as a term with precisely one free variable). There are four cases:
+- `ν α. Var α` - we have encountered the free variable, so we return `t`
+- `ν α. Var β` - we have encountered some other variable, so we leave it as is
+- `ν α. App (l @ α) (r @ α)` - `s` is an application of `l` to `r`, so we recurse to `subst`itute `t` in `l` and `r`
+- `ν α. Lam (t @ α)` - `s` is a lambda, so we descend under the lambda while making sure not to confuse the variable bound by the lambda with the one we are looking for.
 
 Papers:
 - [The Calculus of Nominal Inductive Constructions](https://homepage.divms.uiowa.edu/~astump/papers/cinic-lfmtp09.pdf)
 - [A Dependent Type Theory with Abstractable Names](https://www.sciencedirect.com/science/article/pii/S1571066115000079)
+
+Note: so far, our nominal inductive types are based on the first of these papers, i.e. the Calculus of Nominal Inductive Constructions. There are some reasons to think that the second paper may present a better system, but so far I haven't been able to decipher it on an intuitive level.
 
 **Status: prototype implemented for CNIC, but long ago (and with Lisp syntax, lol). Prototype implemented for FreshMLTT, but it looks like shit. No proof whether FreshMLTT has decidable typechecking.**
 
@@ -435,6 +443,11 @@ with Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
 In the above example, `Dense-R R` is the dense completion of its parameter relation `R`, which means that it represents the least dense relation that contains `R`. `Dense-R` is defined at the same time as `Dense R`, which represents its carrier - the type `A` with added midpoints of all pairs `x, y` such that `R x y`.
 
 Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `Dense-R` refer to constructors of `Dense`, and the indices of `Dense-R` refer to `Dense`. This is the idea of induction-induction.
+
+Papers:
+- [http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
+
+**Status: implemented in Agda, 
 
 ### [Induction-Recursion](Induction/Induction-Recursion)
 

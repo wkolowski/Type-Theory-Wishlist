@@ -1,0 +1,50 @@
+// Papers:
+- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf)
+- [Slides for the above](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)
+
+// Let's say that when both constructors of `T` have a field `a : A`,
+// then `a` becomes a function `a : T -> A`.
+
+// This is a type of lists with constant-time length.
+// The length is a piece of data that sits inside the constructors.
+// `len` is an OUTPUT here.
+data LenList (A : Type) : Type
+| Nil  (len : Nat => z)
+| Cons (h : A, t : LenList, len : Nat => s t.len)
+
+// Here the index is also an OUTPUT.
+data Vec (A : Type) : Nat -> Type
+| Nil : Vec z
+| Cons (h : A, #n : Nat, t : Vec A n) : Vec A (s n)
+
+// Here `n` is an INPUT.
+Vec (A : Type) : Nat -> Type
+| z   => Unit
+| s n => (h : A, t : Vec A n)
+
+// Record-o-inductive
+// WAAAAAAAAAAAAAAAAAAAAAAAAAAT?
+// Remember that `&` is a part of record syntax.
+data Vec (A : Type) : Type
+  indices
+  & n : Nat
+
+  // The index gets treated as output.
+  constructors
+  | Nil  (n => 0)
+  | Cons (h : A, t : Vec, n => s t.n)
+
+// Again, but differently.
+data Vec (A : Type) : Type
+  indices
+  & n : Nat
+
+  // The index gets treated as input.
+  constructors with n
+  | z    => Nil
+  | s n' => Cons (h : A, t : Vec (n => n'))
+
+// If the index is given as input, shit computes.
+ex (v : Vec A (n => z)) : v = Nil := refl
+
+eq-vec (x y : Vec A) : (x = y) = (p : x.n = y.n) 
