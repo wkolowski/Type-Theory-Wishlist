@@ -246,6 +246,7 @@ Inductive families are just the tip of the iceberg, as our inductive types are s
 - [Induction-Induction](#induction-induction)
 - [Induction-Recursion](#induction-recursion)
 - [Higher Inductive Types](#higher-inductive-types)
+- [Indices that Compute](#indices-that-compute)
 
 Let's do a quick tour.
 
@@ -474,7 +475,7 @@ As for sum types, we would like to have extensible sum types, akin to OCaml's po
 Papers:
 - [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf) (this one is also useful for extensible records)
 
-**Status: probably won't happen. The papers pormise much, but no good implementations/prototypes, so probably there's something wrong with them.**
+**Status: probably won't happen. The papers promise much, but no good implementations/prototypes, so probably there's something wrong with them.**
 
 ## [Coinductive types](Coinduction)
 

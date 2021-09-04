@@ -1,5 +1,5 @@
 // Ordinary, Coq-style inductive family.
-data Elem {A : Type} (x : A) : List A -> Type
+data Elem (x : A) : List A -> Type
 | z : (l : List A) -> Elem x (x :: l)
 | s : (h : A) {t : List A} (e : Elem x t) -> Elem x (h :: t)
 
