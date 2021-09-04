@@ -432,8 +432,6 @@ data Dense (R : A -> A -> Type) : Type
 | in (x : A)
 | mid (x y : Dense) (H : Dense-R R x y)
 | eq (x : Dense) (H : Dense-R x x) (i : I)
-  | x H i0 => mid x x H
-  | x H i1 => in x
 
 with Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
 | in : {x y : A} (H : R x y) -> Dense-R (in x) (in y)
@@ -446,9 +444,9 @@ In the above example, `Dense-R R` is the dense completion of its parameter relat
 Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `Dense-R` refer to constructors of `Dense`, and the indices of `Dense-R` refer to `Dense`. This is the idea of induction-induction.
 
 Papers:
-- [http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
+- [Inductive-inductive definitions](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
 
-**Status: implemented in Agda, 
+**Status: implemented in Agda, but absent in other mainstream languages. There are many papers which combine it with Higher Inductive Types. Probably not hard to implement. In general, looks good.** 
 
 ### [Induction-Recursion](Induction/Induction-Recursion)
 
@@ -464,9 +462,23 @@ Papers:
 Description: TODO
 
 Papers:
-- 
+- [QUOTIENTS, INDUCTIVE TYPES, & QUOTIENT INDUCTIVE TYPES](https://arxiv.org/pdf/2101.02994.pdf)
+- [Type theory in a type theory with quotient inductive types](http://www.cs.nott.ac.uk/~pszgmh/kaposi-thesis.pdf)
+- [Constructing Infinitary Quotient-Inductive Types](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7788612/)
+- [LARGE AND INFINITARY QUOTIENT INDUCTIVE-INDUCTIVE TYPES](https://arxiv.org/abs/2006.11736)
+- [Quotient inductive-inductive types](https://arxiv.org/abs/1612.02346)
+- [Codes for Quotient Inductive Inductive Types](https://akaposi.github.io/qiit.pdf)
+- [Constructing quotient inductive-inductive types](https://dl.acm.org/doi/10.1145/3290315)
+- [Quotient inductive-inductive definitions](http://eprints.nottingham.ac.uk/42317/1/thesis.pdf)
+- [A model of type theory with quotient inductive-inductive types](http://real.mtak.hu/112971/1/1.pdf)
+- [Higher Inductive Types, Inductive Families, and Inductive-Inductive Types](http://von-raumer.de/academic/phd_vonraumer.pdf)
+- [A Syntax for Higher Inductive-Inductive Types](https://drops.dagstuhl.de/opus/volltexte/2018/9190/pdf/LIPIcs-FSCD-2018-20.pdf)
+- [SIGNATURES AND INDUCTION PRINCIPLES FOR HIGHER INDUCTIVE-INDUCTIVE TYPES](https://lmcs.episciences.org/6100/pdf)
+- [CONSTRUCTING HIGHER INDUCTIVE TYPES AS GROUPOID QUOTIENTS](https://lmcs.episciences.org/7391/pdf)
+- [The Construction of Set-Truncated Higher Inductive Types](https://www.sciencedirect.com/science/article/pii/S1571066119301306)
+- [Semantics of higher inductive types](https://arxiv.org/abs/1705.07088)
 
-**Status: TODO**
+**Status: prototype implementations include [cubicaltt](https://github.com/mortberg/cubicaltt), Cubical Agda, Arend and some other minor languages. No general syntax for HITs is known. Various papers which describe subclasses of HITs or HITs combined with induction-induction or something like that. Probably it's very easy to get the most basic and useful HITs, but very hard to get all of them right.**
 
 ## Sum types
 

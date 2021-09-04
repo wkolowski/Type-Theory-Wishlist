@@ -1,0 +1,11 @@
+data Dense (R : A -> A -> Type) : Type
+| in  (x : A)
+| mid (x y : Dense) (H : Dense-R R x y)
+| eq  (x : Dense) (H : Dense-R x x) (i : I) with i
+  | i0 => mid x x H
+  | i1 => in x
+
+with Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
+| in : {x y : A} (H : R x y) -> Dense-R (in x) (in y)
+| midl : {x y : Dense R} (H : Dense-R x y) -> Dense-R (mid x y H) y
+| midr : {x y : Dense R} (H : Dense-R x y) -> Dense-R x (mid x y H)
