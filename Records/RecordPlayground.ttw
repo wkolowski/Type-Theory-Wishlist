@@ -33,7 +33,7 @@ translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
   (x $=> (+ n) & p)
 
-// Copatterns syntax.
+// Copattern syntax.
 
 // Copatterns are nice for mid-sized definitions.
 point : (x y z : Nat)
@@ -123,8 +123,7 @@ example-join-1 : (outl : A) & (outr : B) = (outl : A, outr : B) := refl
 // We can also combine record types dependently.
 example-join-2: (outl : A) & (outr : B outl) = (outl : A, outr : B outl) := refl
 
-// Probably a better syntax for implicit arguments: (#x : A) instead of {x : A}
-// It's more writing, but easier to modify and makes more sense inside records.
+// The join operation preserves implicitness of arguments.
 example-join-3 : (#outl : A) & (outr : B outl) = (#outl : A, outr : B outl) := refl
 
 // Renaming.

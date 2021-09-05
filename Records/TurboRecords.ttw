@@ -1,6 +1,6 @@
 // Turborecords.
 
-// If we allow some more freedom that shown in RecordPlayground.ttw, we get
+// If we allow some more freedom than shown in RecordPlayground.ttw, we get
 // really interesting results.
 
 // First, we should allow more dependency in record types, namely we should

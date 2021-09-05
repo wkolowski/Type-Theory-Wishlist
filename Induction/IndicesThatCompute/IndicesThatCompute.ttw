@@ -1,7 +1,3 @@
-// Papers:
-- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf)
-- [Slides for the above](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)
-
 // Let's say that when both constructors of `T` have a field `a : A`,
 // then `a` becomes a function `a : T -> A`.
 

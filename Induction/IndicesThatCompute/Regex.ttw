@@ -1,0 +1,37 @@
+// Type of regexes with smart constructors built-in.
+data Regex (A : Type) : Type
+| Empty
+| Epsilon
+| Char (c : A)
+| Seq (r1 r2 : Regex A)
+  | Empty    , _        => Empty
+  | _        , Empty    => Empty
+  | Epsilon  , r2       => r2
+  | r1       , Epsilon  => r1
+  | Seq r1 r2, r3       => Seq r1 (Seq r2 r3)
+  | Or r1 r2 , r3       => Or (Seq r1 r3) (Seq r2 r3)
+  | r1       , Or r2 r3 => Or (Seq r1 r2) (Seq r1 r3)
+| Or (r1 r2 : Regex A)
+  | Empty   , r2    => r2
+  | r1      , Empty => r1
+  | Or r1 r2, r3    => Or r1 (Or r2 r3)
+  // TODO: Epsilon
+| Star (r : Regex A)
+  | Empty   => Epsilon
+  | Epsilon => Epsilon
+  | Star r' => Star r'
+
+data Matches (l : List A) : Regex A -> Prop
+| Empty     => Empty
+| Epsilon   => MEpsilon (p : l = [])
+| Char c    => MChar (p : l = [c])
+| Or r1 r2  => MOrL (m : Matches l r1) | MOrR (m : Matches l r2)
+| Seq r1 r2 => MSeq (l1 l2 : list A) (p : l = l1 ++ l2)
+                    (m1 : Matches l1 r1) (m2 : Matches l2 r2)
+| Star r    => MStar (ms : MatchesStar l r)
+
+with MatchesStar : List A -> Regex A -> Prop :=
+| MS_Epsilon (r : Regex A) : MatchesStar [] r
+| MS_Seq (h : A, t l : List A, r : Regex A)
+         (m : Matches (h :: t) r, ms : MatchesStar l r)
+         : MatchesStar ((h :: t) ++ l) r

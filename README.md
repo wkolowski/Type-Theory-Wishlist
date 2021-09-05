@@ -43,21 +43,21 @@ TODO:
 
 | Name              | Formation        | Introduction     | Elimination      |
 | ----------------- | ---------------- | ---------------- | ---------------- |
-| [Record types](#Records)      | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
+| [Record types](#records)      | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
 | [Function type](#functions)     | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
-| [Inductive types](#basic-inductive-types)   | pretty standard, see below                             |
-| [Coinductive types](#coinductive-types) | pretty standard, see below                             |
+| [Inductive types](#inductives)   | pretty standard, see below                             |
+| [Coinductive types](#coinductives) | pretty standard, see below                             |
 | [Empty type](#empty-and-unit)        | `Empty`          | impossible       | `abort`          |
 | [Unit type](#empty-and-unit)         | `Unit`           | `unit`           | not needed       |
 | [Strict universes](#universes)  | `Type h p`       | `Type h p`       | impossible       |
 | [Non-strict universes](#universes) | `hType h p`      | `hType h p`      | impossible       |
-| [Subtype universes](#subtyping-and-subtype-universes) | `Sub A`          | implicit (?)     | implicit (?)     |
-| [Refinement types](#refinement-types)  | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
-| [Path type](#path-types)         | `x = y`          | `path i => e`    | `p i`            |
-| [Nabla type](#nominal-inductive-types)        | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`          |
-| [Type of names](#nominal-inductive-types)     | `Name A`         | with `∇` and `ν` | pattern matching |
-| [Primitive types](#primitive-types-and-arrays)   | `i32`, `f64`, etc. | literals       | not needed       |
-| [Arrays](#primitive-types-and-arrays)            | `Array A n`      | `Arr (i => e)`   | `A[i]`           |
+| [Subtype universes](#subtypes) | `Sub A`          | implicit (?)     | implicit (?)     |
+| [Refinement types](#refinements)  | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
+| [Path type](#paths)         | `x = y`          | `path i => e`    | `p i`            |
+| [Nabla type](#names)        | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`          |
+| [Name](#names)     | `Name A`         | with `∇` and `ν` | pattern matching |
+| [Primitive types](#primitives)   | `i32`, `f64`, etc. | literals       | not needed       |
+| [Arrays](#primitives)            | `Array A n`      | `Arr (i => e)`   | `A[i]`           |
 
 ## [Records](Records) <a id="records"></a> [↩](#types)
 
@@ -77,6 +77,7 @@ Papers on dependent records in type theory:
 
 TODO:
 - Finish thinking about records.
+- How to turn typing contexts into record types? This would free us from some duplication at the meta level. But beware! This is not the same idea as "first-class typing contexts" and certainly not the same as "first-class evaluation contexts".
 
 ## Functions <a id="functions"></a> [↩](#types)
 
@@ -125,7 +126,7 @@ id (x : A) : A := x
 comp (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 ```
 
-We can omit writing implicit arguments altogether when they are easily inferable from something else. This piece of syntax is inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments). We will call it "super implicit arguments". It is used pretty often in this repo, almost always with `A` and `B` standing for types.
+We can omit writing implicit arguments altogether when they are easily inferable from something else. This piece of syntax is inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments). We will call it "super implicit arguments". It is used pretty often in this repo, almost always with `A` and `B` standing in for types.
 
 There are also other kinds of implicitness, like looking up typeclass instances, but these are dealth with by [records](#records).
 
@@ -180,13 +181,12 @@ complex-application
 ```
 Last but not least, there is special syntax for applying functions which have a lot of complex arguments. To apply a function `f` in this way, we write `f $` and then list the arguments below on separate lines. We can supply the arguments positionally in order and also by name, in which case they can appear out of order. This syntax is inspired by Haskell's `$` operator, and may also be used to avoid parenthesis hell when a function takes a lot of other functions as arguments.
 
-
-**Status: standard.**
+**Status: mostly standard, with `@` for explicit arguments and `$` for complex application being new, but very easy to implement.**
 
 TODO:
 - Figure out the precise workings of "all functions take just one argument which is a big record".
 
-## Basic Inductive Types
+## Basic Inductive Types <a id="inductives"></a> [↩](#types)
 
 Basic inductive types work mostly as usual, but as for functions, we want to think that all constructors take just one argument which is a (possibly dependent) record.
 
@@ -303,39 +303,16 @@ filter (p : A -> Bool) : List A -> List A
   | ff => filter t
 ```
 
-For inductive families, we need to explicitly write the constructor's return type (because it depends on the index), but we still don't need to write the parameters.
-```
-data Vec (A : Type) : Nat -> Type
-| Nil  : Vec 0
-| Cons : (hd : A) {n : Nat} (tl : Vec n) -> Vec (s n)
-```
-
-When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of that family with that index. We call these _inaccessible_ patterns (following [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns)).
-
-```
-head : {n : Nat} (v : Vec (s n)) -> A
-| .n', Cons h n' t => h
-```
-
 **Status: standard, with Agda probably being the closest implementation to what has been described so far.**
 
 TODO:
 - Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments.
 
-## [Advanced Inductive Types](Induction)
+## Pattern matching on steroids
 
-Inductive families are just the tip of the iceberg, as our inductive types are supposed to be REALLY powerful. We take the usual inductive families as baseline and add:
 - [Overlapping and Order-Independent Patterns](#overlapping-and-order-independent-patterns)
 - [Decidable Equality Patterns](#decidable-equality-patterns)
-- [Constructors that Compute](#constructors-that-compute)
-- [Nominal Inductive Types](#nominal-inductive-types)
-- [Induction-Induction](#induction-induction)
-- [Induction-Recursion](#induction-recursion)
-- [Higher Inductive Types](#higher-inductive-types)
-- [Indices that Compute](#indices-that-compute)
-
-Let's do a quick tour.
 
 ### [Overlapping and Order-Independent Patterns](Induction/OverlappingPatterns)
 
@@ -421,6 +398,101 @@ Not papers:
 
 **Status: no papers and nowhere implemented, but looks very easy to get right.**
 
+### Inductive families
+
+For inductive families, we need to explicitly write the constructor's return type (because it depends on the index), but we still don't need to write the parameters.
+```
+data Vec (A : Type) : Nat -> Type
+| Nil  : Vec 0
+| Cons : (hd : A) {n : Nat} (tl : Vec n) -> Vec (s n)
+```
+
+When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of that family with that index. We call these _inaccessible_ patterns (following [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns)).
+
+```
+head : {n : Nat} (v : Vec (s n)) -> A
+| .n', Cons h n' t => h
+```
+
+### [Indices that Compute](Induction/IndicesThatCompute)
+
+```
+data Even : Nat -> Prop
+| Even_z  : Even z
+| Even_ss (#n : Nat, e : Even n) : Even (s (s n))
+```
+
+Pros:
+- induction principle
+- irrelevance (thanks SProp!)
+
+Cons:
+- quadratic proof size
+- need to manually implement decision procedure
+- hard to prove 1 is not even (inversion needed)
+- to sum up: doesn't compute
+
+```
+even : Nat -> Bool
+| z       => tt
+| s z     => ff
+| s (s n) => even n
+```
+
+Pros:
+- constant proof size
+- it is its own decision procedure
+- easy to prove 1 not even
+- to sum up: it computes
+
+Cons:
+- no induction principle
+- nonstandard shape of recursion
+- hard to prove equalities like `(even n = true) = ...`, especially for beginners
+
+So what? Let's merge both of these!
+
+```
+data EVEN : Nat -> Type :=
+| z       => EVEN_z : EVEN z
+| s z     => Empty
+| s (s n) => EVEN_ss (e : EVEN n) : EVEN (s (s n))
+```
+
+Pros:
+- constant proof size
+- easy to prove 1 not even
+- it computes
+- induction principle
+
+Cons:
+- need to manually implement decision procedure
+
+Q: Can we do anything nice with this?
+
+A: in such a banal case as parity of naturals probably not, but in more complicated ones I think so! Example: matching a regular expression against a string. This can't be easily implemented by recursion, so induction is needed. But even though we use induction, it would be nice if some cases of the definition could compute/simplify to help us a bit.
+
+Papers:
+- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf)
+- [Slides for the above](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)
+- [A simpler encoding of indexed types](https://dl.acm.org/doi/10.1145/3471875.3472991)
+
+**Status: very wild speculations.**
+
+TODO:
+- Think.
+
+## [Advanced Inductive Types](Induction)
+
+Inductive families are just the tip of the iceberg, as our inductive types are supposed to be REALLY powerful. We take the usual inductive families as baseline and add:
+- [Induction-Induction](#induction-induction)
+- [Induction-Recursion](#induction-recursion)
+- [Nominal Inductive Types](#nominal-inductive-types)
+- [Constructors that Compute](#constructors-that-compute)
+- [Higher Inductive Types](#higher-inductive-types)
+
+Let's do a quick tour.
+
 ### [Constructors that Compute](Induction/ConstructorsThatCompute)
 
 The basic idea here is that during inductive type definition constructors can pattern match on their arguments and compute (almost) like ordinary recursive functions. Let's see an example.
@@ -453,7 +525,7 @@ See [this file](Induction/ConstructorsThatCompute/Z.ttw) for a more thorough exp
 
 **Status: highly experimental. It looks like if we put reasonable constraints on the kinds of computation rules associated with constructors, there isn't any abvious contradiction, nontermination or anything like that. However, there are no prototypes and no papers, except that some constructors that compute can be simulated using [Self Types](https://github.com/uwu-tech/Kind/blob/master/blog/1-beyond-inductive-datatypes.md).**
 
-### [Nominal Inductive Types](Induction/NominalInductiveTypes/CNIC)
+### [Nominal Inductive Types](Induction/NominalInductiveTypes/CNIC) <a id="names"></a> [↩](#types)
 
 For every type `A` there is a type `Name A` whose elements can be thought of as "names for elements of `A`". There's also the nominal function type `∇ α : A. B` which expresses the idea of an element of `B` that may use the bound name `α` for an element of type `A`. The main use of names and the nominal function type is in conjunction with inductive types, to represent name binding in the syntax of programming languages, logics, calculi and so on.
 
@@ -576,7 +648,7 @@ Papers:
 
 **Status: probably won't happen. The papers promise much, but no good implementations/prototypes, so probably there's something wrong with them.**
 
-## [Coinductive types](Coinduction)
+## [Coinductive types](Coinduction) <a id="coinductives"></a> [↩](#types)
 
 Coinductives should be dual to inductives, but that will be hard to achieve as they are underresearched. The minimum is to have a nice syntax sugar for "positive" coinductive types (like the coinductive duals of natural numbers and lists). Another nice thing to have would be mixed inductive-coinductived types of the form `ν X. μ Y. T`, i.e. we can define a coinductive type that has 
 
@@ -631,7 +703,7 @@ Papers:
 
 **Status: basic coinductives are standard (even though rare), the rest is speculation.**
 
-## [Empty](TypesThatCompute/Empty.ttw) and [Unit](TypesThatCompute/Unit.ttw)
+## [Empty](Rewriting/Empty.ttw) and [Unit](Rewriting/Unit.ttw) <a id="empty-and-unit"></a> [↩](#types)
 
 `Empty` and `Unit` are a little special in that all their terms are computationally equal, i.e. they are strict propositions, and they also enjoy special computational properties:
 - `Empty + A = A`
@@ -648,9 +720,9 @@ Relevant papers:
 - [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
 - [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf)
 
-Status: the universe of strict propositions is implemented in Agda and Coq. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's Prop, but I think this shouldn't be a problem.
+**Status: the universe of strict propositions is implemented in Agda and Coq. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's Prop, but I think this shouldn't be a problem.**
 
-## [Types that Compute](TypesThatCompute)
+## [Types that Compute](Rewriting)
 
 Of course we don't want to confine ourselves to just built-in computational equalities for `Empty` and `Unit` - we want to be able to define custom types with custom equalities of this kind. One way to do this is with rewrite rules. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) for more on rewrite rules.
 
@@ -658,13 +730,13 @@ TODO:
 - Find how these types will be declared.
 - Make sure that it all makes sense
 
-## [Universes](Universes/Universes.md)
+## [Universes](Universes/Universes.md) <a id="universes"></a> [↩](#types)
 
 We want to have a multidimensional hierarchy of universes stratified both by the usual predicative level and by homotopy level, similar to the [Arend language](https://arend-lang.github.io/about/arend-features#universe-levels). The predicative levels are basicaly naturals, whereas the homotopy levels are natural numbers extended with infinity (for untruncated types). In fact, there will be (at least) two type hierarchies: the strict one and the non-strict one.
 
-In the strict hierarchy, `SType (h = 0)` (abbreviated `SContr`) is the universe of contractible types (whose only member is itself), `SType (h = 1)` (abbreviated `SProp`) is the universe of strict (i.e. definitionally irrelevant) propositions (like Coq's [SProp](https://coq.inria.fr/refman/addendum/sprop.html) or Agda's [Prop](https://agda.readthedocs.io/en/v2.6.0/language/prop.html)), `SType (h = 2)` (abbreviated `SSet`) is the universe of strict sets (types for which the type of paths is a strict proposition) and so on, up to `SType (h = ω)`, the universe of strict untruncated types.
+In the strict hierarchy, `Type (h = 0)` (abbreviated `SContr`) is the universe of contractible types (whose only member is itself), `Type (h = 1)` (abbreviated `Prop`) is the universe of strict (i.e. definitionally irrelevant) propositions (like Coq's [Prop](https://coq.inria.fr/refman/addendum/sprop.html) or Agda's [Prop](https://agda.readthedocs.io/en/v2.6.0/language/prop.html)), `Type (h = 2)` (abbreviated `Set`) is the universe of strict sets (types for which the type of paths is a strict proposition) and so on, up to `Type (h = oo)`, the universe of strict untruncated types.
 
-The non-strict hierarchy (written simply `Type` without the "S" at the beginning) is similar. Knowing that a type has a homotopy level `h` should bring benefits which are similar but weaker than these for the strict universes.
+The non-strict hierarchy (written `hType`) is similar. Knowing that a type has a homotopy level `h` should bring benefits which are similar but weaker than these for the strict universes.
 
 Some reading on universes:
 - [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
@@ -674,44 +746,66 @@ Some reading on universes:
 TODO:
 - Write some code dealing with universes.
 
-## Subtyping and Subtype Universes
+## Subtype Universes <a id="subtypes"></a> [↩](#types)
 
-It would be nice to have subtyping, but it's hard to say how easy (or hard) it is to achieve in a dependently-typed setting.
+The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
+
+```
+translateX (n : Nat) (r : Sub (x : Nat)) : R :=
+  (x $=> (+ n) & r)
+```
+
+Here we translate the `x`-coordinate by `n` in any record that has a field named `x`, while making sure to return a record of the same type without truncating it.
+
+Papers:
+- [Subtype Universes](http://www.cs.rhul.ac.uk/home/zhaohui/Subtype%20Universes.pdf)
+- [Luo's thesis](http://www.cs.rhul.ac.uk/home/zhaohui/ECS-LFCS-90-118.pdf) (see here for [a book version of the thesis](https://global.oup.com/academic/product/computation-and-reasoning-9780198538356?cc=gb&lang=en&)) describes the type theory on which the above paper is based. It's called ECC and is a particular presentation of the Calculus of Constructions extended with coercive subtyping, described in
+- [Coercive subtyping: Theory and implementation](https://hal.archives-ouvertes.fr/hal-01130574/document)
+
+**Status: the paper looks good, but there is no prototype implementation and it is not clear how useful subtype universes are.**
+
+TODO:
+- Find out how subtype universes interact with records.
+
+## Subtyping and coercions
+
+To be able to profit from subtype universes, we need to have subtyping. Since we already have a subtyping judgement anyway (because of universe cumulativity), let's extend it to all types.
 
 The subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`. It should also be possible to declare custom coercions.
 
-TODO: cite Luo.
 
-Subtyping for universes is simple. We have `c : U_i <= U_j` whenever `i <= j` and the coercion `c` is a trivial lift.
+| Name              | Rule             | Coercion     | Elimination      |
+| ----------------- | ---------------- | ---------------- | ---------------- |
+| Universes         | if `i <= j` <br> then `Type h i <= Type h j` | lift |
+| Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | `c` magically working on subtypes |
+| Record types      | [complicated](Records/TurboRecords.ttw) |
+| Function type     | if `f : A <= A'` and `g : B <= B'` <br> then `A' -> B <= A -> B'` | `fun h a => a \|> f \|> h \|> g` |
+| Sums              | `inl : A <= A + B` <br> `inr : B <= A + B` | `inl` and `inr` |
+| Inductives        | not sure |
+| Coinductives      | not sure |
+| `Empty`           | `Empty <= A`     | `abort` |
+| `Unit`            | `A <= Unit`      | `fun _ => unit` |
+| Refinements       | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` <br> and `{x : A \| P} <= A` | identity |
+| Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
+| Nabla type        | if `c : A <= B` <br> then `∇ α : N. A <= ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
+| Name              | no subtyping | none |
+| Primitive types   | `i8 <= i16 <= i32 <= i64` <br> `u8 <= u16 <= u32 <= u64` <br> `f32 <= f64` <br> maybe others, like `u8 <= i16` | built-in |
+| Arrays            | if `c : A <= A'` <br> and `n' <= n` <br> then `Array A n <= Array A' n'` | `map c` and clip the result to the correct length |
 
-Subtyping for records is a bit complicated. See [this file](Records/TurboRecords.ttw).
+There's a question of what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <= B` then `Name A <= Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. Similarly, I think that `∇` could be contravariant just like function types, but I'm not sure.
 
-Subtyping for functions is contravariant, i.e. `A <= A'` and `B <= B'` implies `A' -> B <= A -> B'`.
+**Status: universe cumulativity is semi-standard, as some proof assistant don't have it. Coercions have been implemented in Coq for a long time. Subtyping of anything else in type theory is mostly wild speculations.**
 
-We could make `abort : Empty -> A` and `delete : A -> Unit` into coercions if we wanted.
-
-For sums, we basically have `A <= A + B` and `B <= A + B`.
-
-Not sure about subtyping for inductives and coinductives.
-
-For subtype universes, we have `A <= B` implies `Sub A <= Sub B`.
-
-For refinement types, we have `{x : A \| P x} <= A`.
-
-For nablas, we should have `A <= A'` and `B <= B'` implies `∇ α : A. B α <= ∇ α : A'. B' α`.
-
-For paths types, I think `I` is invariant, so given `c : A <= B` and `p : x ={A} y` we have `path i => c (p i) : c x ={B} c y`
-
-## [Path types](Paths)
+## [Path types and the rest of the cubical stuff](Paths) <a id="paths"></a> [↩](#types)
 
 We take Cubical Type Theory and the homotopical style of doing mathematics for granted. The revolution has already occurred!
 
-But we also want to benefit from [Types that Compute](#types-that-compute) when it comes to paths, i.e. we want path characterizations like "paths between pairs are pairs of paths" to hold by computation, without needing to prove anything. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (section 2.6) for how to accomplish something like this for Agda's usual (i.e. inductive) equality. If I read the paper correctly, it's also possible for Path types. See [here](TypesThatCompute/Paths.ttw) for some details.
+But we also want to benefit from [Types that Compute](#types-that-compute) when it comes to paths, i.e. we want path characterizations like "paths between pairs are pairs of paths" to hold by computation, without needing to prove anything. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (section 2.6) for how to accomplish something like this for Agda's usual (i.e. inductive) equality. If I read the paper correctly, it's also possible for Path types. See [here](Rewriting/Paths.ttw) for some details.
 
 TODO:
 - Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
 
-## Refinement types
+## Refinement types <a id="refinements"></a> [↩](#types)
 
 The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solvers, but that's meh) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
 
@@ -720,11 +814,42 @@ F* also has some additional nice features related to refinement types that make 
 - Projections which project constructor arguments out of a term (given that the term was really made using that constructor): `Cons?.hd : l : list 'a{Cons? l} -> 'a`, `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
 - Note that the above are written in F* syntax and require refinement types to get anywhere.
 
-## Primitive types and arrays
+## Singleton types
+
+
+
+## Primitive types and arrays <a id="primitives"></a> [↩](#types)
 
 Primitive constants are used to include in type theory various types known from more mainstream languages, like ints, floats, arrays, etc.
 
-## Modern tooling
+## Nice features that are not part of the language for now
+
+This wishlist is not comprehensive. We could probably do better (i.e. have more nice things), but we have to stop somewhere, not to mention that all the interaction between all the different features blows the complexity of the language dramatically.
+
+### Typed Holes
+
+Holes are a way of leaving a part of a term unfilled as a kind of local "axiom". They can be later revisited with the help of the language's type inference, filled automatically or serve as names for goals in the proving mode. More ambitious works try to use holes for accomodating ill-typed, ill-formed and incomplete (yet unwritten) programs into the semantics.
+
+TODO: Typed Holes have something to do with First-Class Patterns. And what if we could make typed holes first-class?
+
+We would get, let's call them, Partial types - something like Singleton Types.
+
+Examples:
+1. `{x : nat ^^^ x = S (S ?n)}` - type of naturals that definitionally compute to `2 + something`. How do we compute with this? Dunno, but maybe `coe : {x : nat ^^^ _} -> nat`, with the rule `coe x => S (S ?n)`, whatever that means.
+2. `{l : list A ^^^ l = []}` - singleton type of empty lists.
+3. `{p : nat * nat ^^^ fst p = 42}` - type of pairs of naturals whose left component is definitionally equal to `42`, i.e. `fst (coe p) = 42`.
+4. `{x : nat + bool ^^^ x = inr ?b}` - sum type of `nat` and `bool`, but its element are definitionally equal to `inr something`, so that `match coe x with | inl a => f a | inr b => g b end` computes to `g ?b`.
+5. `{s : Stream nat ^^^ hd s = 42}` - type of streams whose head is `42`.
+6. `{f : bool -> nat ^^^ f true = 42}` - type of functions from `bool` to `nat` that compute to `42` on `true`.
+7. `{f : bool -> nat ^^^ f true = f false}` - type of definitionally weakly constant functions from `bool` to `nat`.
+8. `{f : bool -> nat ^^^ f _ = 42}` - type of definitionally strongly constant functions that always returns `42`.
+9. Maybe we need intersection and union types for this?
+
+### Quantiative Type Theory
+
+### Algebraic Effects
+
+## Modern (i.e. futuristic) tooling
 
 [The Unison Language](https://www.unisonweb.org/) has a very futuristic tooling and some good ideas, including:
 - codebases - Unison code is literraly stored as an AST in a nice database managed with a dedicated tool
@@ -733,12 +858,6 @@ Primitive constants are used to include in type theory various types known from 
 
 ## Things to investigate
 
-### Turning contexts into record types
-
-How to turn typing contexts into record types so that we can have records in the language for free.
-
-Beware! This is not the same idea as "first-class typing contexts" and certainly not the same as "first-class evaluation contexts".
-
 ### Global definitions/declarations
 
 Global definitions are those that can appear in the typing context, as opposed to local definitions which can be represented by let-bindings and ultimately as just functions. Global definitions could be useful in investigating record types with manifest fields.
@@ -746,10 +865,6 @@ Global definitions are those that can appear in the typing context, as opposed t
 ### Bidirectional typechecking
 
 Bidirectional typechecking is a way of presenting the typing rules that is more algorithmic and thus better suited for implementation. It is also said to increase the quality of error messages. But most importantly, putting rules into the bidirectional format makes them less fishy.
-
-### Typed holes
-
-Holes are a way of leaving a part of a term unfilled as a kind of local "axiom". They can be later revisited with the help of the language's type inference, filled automatically or serve as names for goals in the proving mode. More ambitious works try to use holes for accomodating ill-typed, ill-formed and incomplete (yet unwritten) programs into the semantics.
 
 ### Explicit substitutions
 
