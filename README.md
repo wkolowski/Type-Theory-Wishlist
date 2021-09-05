@@ -13,7 +13,7 @@ Comments start with `//` like in C.
 // This is a comment.
 ```
 
-Multiline comments are enclosed between ``(* *)`` like in the ML languages and can be nested. TODO: revisit this later.
+Multiline comments are enclosed between ``(* *)`` like in the ML languages and can be nested.
 ```
 (* A multiline (* nested *) comment. *)
 ```
@@ -34,27 +34,34 @@ Directives that modify the language start with a `%`. They can be used to turn o
 wut : Empty := wut
 ```
 
+TODO:
+- Revisit the comment syntax.
+- Invent syntax for documentation comments.
+- Documentation is well known for its tendency to go out of sync with the code. So maybe it's time to make it strongly-typed? See [the Unison Language](https://www.unisonweb.org/docs/documentation) for more on typed documentation.
+
 ## Types
 
 | Name              | Formation        | Introduction     | Elimination      |
 | ----------------- | ---------------- | ---------------- | ---------------- |
-| Record types      | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
-| Function type     | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
-| Inductive types   | pretty standard, see below                             |
-| Coinductive types | pretty standard, see below                             |
-| Empty type        | `Empty`          | impossible       | `abort`          |
-| Unit type         | `Unit`           | `unit`           | not needed       |
-| Universes         | `Type h p`       | `Type h p`       | impossible       |
-| Strict universes  | `SType h p`      | `SType h p`      | impossible       |
-| Subtype universes | `Sub A`          | implicit (?)     | implicit (?)     |
-| Refinement types  | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
-| Path type         | `x = y`          | `path i => e`    | `p i`            |
-| Nabla type        | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`          |
-| Type of names     | `Name A`         | with `∇` and `ν` | pattern matching |
+| [Record types](#Records)      | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
+| [Function type](#functions)     | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
+| [Inductive types](#basic-inductive-types)   | pretty standard, see below                             |
+| [Coinductive types](#coinductive-types) | pretty standard, see below                             |
+| [Empty type](#empty-and-unit)        | `Empty`          | impossible       | `abort`          |
+| [Unit type](#empty-and-unit)         | `Unit`           | `unit`           | not needed       |
+| [Strict universes](#universes)  | `Type h p`       | `Type h p`       | impossible       |
+| [Non-strict universes](#universes) | `hType h p`      | `hType h p`      | impossible       |
+| [Subtype universes](#subtyping-and-subtype-universes) | `Sub A`          | implicit (?)     | implicit (?)     |
+| [Refinement types](#refinement-types)  | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
+| [Path type](#path-types)         | `x = y`          | `path i => e`    | `p i`            |
+| [Nabla type](#nominal-inductive-types)        | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`          |
+| [Type of names](#nominal-inductive-types)     | `Name A`         | with `∇` and `ν` | pattern matching |
+| [Primitive types](#primitive-types-and-arrays)   | `i32`, `f64`, etc. | literals       | not needed       |
+| [Arrays](#primitive-types-and-arrays)            | `Array A n`      | `Arr (i => e)`   | `A[i]`           |
 
-## [Records](Records)
+## [Records](Records) <a id="records"></a> [↩](#types)
 
-Record types are the central feature of the language and they subsume modules, typeclasses, sigma types, product types, and so on (and this even extends to packaging constructs like). See below for:
+Record types are the central feature of the language and they subsume modules, typeclasses, sigma types, product types, and so on (and this even extends to packaging constructs, like Java's packages or Rust's crates). See below for:
 - [a list of problems with records](Records/ProblemsWithRecords.md) (in Coq, but these problems occur everywhere)
 - [a partial solution of these problems](Records/RecordPlayground.ttw)
 - [a wild and more ambitious idea of how records should be](Records/TurboRecords.ttw)
@@ -68,34 +75,49 @@ Papers on dependent records in type theory:
 
 **Status: mostly wild speculation.**
 
-## Functions
+TODO:
+- Finish thinking about records.
 
-Function types work mostly as usual, except that we want to think that all functions (including dependent ones) take just one argument which is a big (dependent) record. This view is distinct from the usual "every function takes one argument, and then maybe returns another function").
+## Functions <a id="functions"></a> [↩](#types)
 
-```
-add : (n m : Nat) -> Nat :=
-  fun n m : Nat => ...
-```
-
-Of course we can also bind arguments together with the name, to the left of the final colon.
+Function types work mostly as usual, except that we want to think that all functions (including dependent ones) take just one argument which is a big (dependent) record. This view is distinct from the usual "every function takes one argument, and then maybe returns another function".
 
 ```
-add (n m : Nat) : Nat := ...
+f : (x y : A) -> B :=
+  fun x y : A => ...
 ```
 
-Of course there is a mechanism of implicit arguments:
+Typical (non-recursive) function definition.
 
 ```
-id {A : Type} (x : A) : A := x
+f (x y : A) : B := ...
 ```
 
-Better syntax for implicit arguments (inspired by [the F* language](https://www.fstar-lang.org/)):
+We can bind arguments together with the name, to the left of the final colon.
 
 ```
 id (#A : Type) (x : A) : A := x
 ```
 
-But we can also omit writing implicit arguments when they are easily inferable from something else (this piece of syntax is inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments)). Example:
+There is a mechanism of implicit arguments. The syntax is inspired by [the F* language](https://www.fstar-lang.org/).
+
+```
+comp1 (#A #B #C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
+
+comp2 #(A B C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
+```
+
+If there are many implicit arguments, like in `comp1` above, the syntax gets quite heavy. This is why we can prefix `#` in front of a group of arguments, like in `comp2` above, which makes them all implicit at once.
+
+```
+// Function composition with the middle type (`B`) explicit.
+comp3 #(A @B C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
+
+// An equivalent but longer definition of the above.
+comp3' (#A : Type) (B : Type) (#C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
+```
+
+But then syntax gets heavy when we want to mark as implicit all argument in a group except one. In such cases, we may prefix the argument with `@` (inspired by Coq's and Haskell's syntax for explicit arguments), which overrides the group's implicitness.
 
 ```
 id (x : A) : A := x
@@ -103,11 +125,72 @@ id (x : A) : A := x
 comp (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 ```
 
+We can omit writing implicit arguments altogether when they are easily inferable from something else. This piece of syntax is inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments). We will call it "super implicit arguments". It is used pretty often in this repo, almost always with `A` and `B` standing for types.
+
+There are also other kinds of implicitness, like looking up typeclass instances, but these are dealth with by [records](#records).
+
+```
+(|>) (x : A) (f : A -> B) : B := f x
+
+(<|) (f : A -> B) (x : A) : B := f x
+
+(>>) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
+
+(<<) (g : B -> C) (f : A -> B) (x : A) : C := g (f x)
+```
+
+Names of functions are allowed to consist entirely of symbols, although this style is discouraged except for the most common functions, like the above operators borrowed from F#: pipe forward `|>`, pipe backward `<|`, forward function composition `>>` and backward function composition `<<`.
+
+```
+f0 (l : List Nat) : List Nat :=
+  l |> filter (_ `mod` 2 =? 0) |> map (* 3)
+
+// The same definition, but with desugared operator sections and desugared backticked
+// functions.
+f1 (l : List Nat) : List Nat :=
+  l |> filter (fun n : Nat => mod n 2 =? 0) |> map (fun n : Nat => n * 3)
+
+// The same, but using function compositions operators.
+f2 (l : List Nat) : List Nat :=
+  l |> (filter (not << odd) >> map (* 3))
+```
+
+There are two syntaxes for operator sections. The first one (`(* 3)` above) is borrowed from Haskell and works only for already-defined functions whose names are symbols. The second one (`(_ `mod` 2 =? 0)` above) works for any expression that represents a single-argument function, with the underscore `_` used to mark the argument. We can turn any function into an infix operator by enclosing the function's name in backticks, like for `mod` above.
+
+Together with the pipe operators and function composition operators, this makes data processing easy and readable.
+
+```
+self-comp (h : Nat -> Nat) : Nat -> Nat :=
+  comp {A => Nat, B => Nat, C => Nat} {g => h} {f => h}
+```
+
+Functions can be applied not only positionally, but also by naming the argument. With such application, the order of the arguments doesn't matter anymore. This is also useful when we need to explicitly provide an implicit argument.
+
+```
+complex-application
+  (f : (x1 : A) (x2 : B) (x3 : C) (x4 : D) (x5 : E -> E') (x6 : F) (x7 : G -> G') -> X) : X :=
+  f $
+    arg1
+    x2 => arg2
+    x4 => arg4
+    arg3
+    fun x => ...
+    arg6
+    x7 => fun y => ...
+```
+Last but not least, there is special syntax for applying functions which have a lot of complex arguments. To apply a function `f` in this way, we write `f $` and then list the arguments below on separate lines. We can supply the arguments positionally in order and also by name, in which case they can appear out of order. This syntax is inspired by Haskell's `$` operator, and may also be used to avoid parenthesis hell when a function takes a lot of other functions as arguments.
+
+
 **Status: standard.**
+
+TODO:
+- Figure out the precise workings of "all functions take just one argument which is a big record".
 
 ## Basic Inductive Types
 
-The different classes of inductive types (enumerations, parameterized types, inductive families, etc.) have progressively more complete syntaxes, so that simple types can be written in a simple way and only the more complicated ones require more details.
+Basic inductive types work mostly as usual, but as for functions, we want to think that all constructors take just one argument which is a (possibly dependent) record.
+
+The different genres of inductive types (enumerations, parameterized types, inductive families, etc.) have progressively more complete syntaxes, so that simple types can be written in a simple way and only the more complicated ones require more details.
 
 Enumerations can NOT be written in a single line and must have the initial bar. Note that we don't need to (and should not) write the return type of the constructors when it's the same in every case.
 ```
@@ -235,6 +318,10 @@ head : {n : Nat} (v : Vec (s n)) -> A
 ```
 
 **Status: standard, with Agda probably being the closest implementation to what has been described so far.**
+
+TODO:
+- Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
+- Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments.
 
 ## [Advanced Inductive Types](Induction)
 
@@ -446,14 +533,14 @@ Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `D
 Papers:
 - [Inductive-inductive definitions](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
 
-**Status: implemented in Agda, but absent in other mainstream languages. There are many papers which combine it with Higher Inductive Types. Probably not hard to implement. In general, looks good.** 
+**Status: implemented in Agda, but absent in other mainstream languages. There are many papers which combine it with Higher Inductive Types. Probably not hard to implement. In general, looks good.**
 
 ### [Induction-Recursion](Induction/Induction-Recursion)
 
 Description: TODO
 
 Papers:
--
+- TODO
 
 **Status: TODO**
 
@@ -585,7 +672,6 @@ Some reading on universes:
 - [Notes on Universes in Type Theory](http://www.cs.rhul.ac.uk/home/zhaohui/universes.pdf)
 
 TODO:
-- Work out the details of non-strict universes.
 - Write some code dealing with universes.
 
 ## Subtyping and Subtype Universes
@@ -616,7 +702,7 @@ For nablas, we should have `A <= A'` and `B <= B'` implies `∇ α : A. B α <= 
 
 For paths types, I think `I` is invariant, so given `c : A <= B` and `p : x ={A} y` we have `path i => c (p i) : c x ={B} c y`
 
-## [Path types and the rest of Cubical Type Theory](Paths)
+## [Path types](Paths)
 
 We take Cubical Type Theory and the homotopical style of doing mathematics for granted. The revolution has already occurred!
 
@@ -624,7 +710,6 @@ But we also want to benefit from [Types that Compute](#types-that-compute) when 
 
 TODO:
 - Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
-
 
 ## Refinement types
 
@@ -634,6 +719,10 @@ F* also has some additional nice features related to refinement types that make 
 - Discriminators that check which constructor was used to make the given term, e.g. `Nil? : list 'a -> bool`, `Cons? : list 'a -> bool`
 - Projections which project constructor arguments out of a term (given that the term was really made using that constructor): `Cons?.hd : l : list 'a{Cons? l} -> 'a`, `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
 - Note that the above are written in F* syntax and require refinement types to get anywhere.
+
+## Primitive types and arrays
+
+Primitive constants are used to include in type theory various types known from more mainstream languages, like ints, floats, arrays, etc.
 
 ## Modern tooling
 
@@ -652,7 +741,7 @@ Beware! This is not the same idea as "first-class typing contexts" and certainly
 
 ### Global definitions/declarations
 
-Global definitions are those that can appear in the typing context, as opposed to local definitions which can be represented by let-bindings and ultimately as just functions. Global definitions could be useful in investigating record types with already-set fields.
+Global definitions are those that can appear in the typing context, as opposed to local definitions which can be represented by let-bindings and ultimately as just functions. Global definitions could be useful in investigating record types with manifest fields.
 
 ### Bidirectional typechecking
 
@@ -662,12 +751,6 @@ Bidirectional typechecking is a way of presenting the typing rules that is more 
 
 Holes are a way of leaving a part of a term unfilled as a kind of local "axiom". They can be later revisited with the help of the language's type inference, filled automatically or serve as names for goals in the proving mode. More ambitious works try to use holes for accomodating ill-typed, ill-formed and incomplete (yet unwritten) programs into the semantics.
 
-### Typed documentation
-
-Documentation is well known for its tendency to go out of sync with the code. So maybe it's time to make it strongly-typed?
-
-See [the Unison Language](https://www.unisonweb.org/) for more on typed documentation.
-
 ### Explicit substitutions
 
 Another way to make the presentation of your type theory less fishy, more concrete and down-to-earth and more amenable to implementation.
@@ -675,7 +758,3 @@ Another way to make the presentation of your type theory less fishy, more concre
 ### Normal forms
 
 How to infer, in general, an inductive characterization of normal forms from the reduction relation?
-
-### The status of primitive constants
-
-Primitive constants are used to include in type theory various types known from more mainstream languages, like ints, floats, arrays, etc.

@@ -99,7 +99,7 @@ module
   x : Nat $=> (+ n)
 end
 
-// Record types with set fields.
+// Record types with manifest fields.
 
 // Our record types can have some fields set in advance, like the following
 // type of points that have `x`, `y` and `z` coordinates, but the `z`
@@ -133,7 +133,7 @@ example-join-3 : (#outl : A) & (outr : B outl) = (#outl : A, outr : B outl) := r
 example-rename-1 :
   (x y z : Nat) renaming (x to a) = (a y z : Nat) := refl
 
-// Renaming also works on set fields.
+// Renaming also works on manifest fields.
 example-rename-2 :
   (x y : Nat, z : Nat := 0) renaming (z to w) = (x y : Nat, w : Nat := 0) := refl
 
@@ -172,7 +172,7 @@ example-prototyping :
 // Bigger record types are subtypes of smaller record types.
 // (x y z : Nat) <= (x y : Nat)
 
-// But record types with set fields are subtypes of record types without
+// But record types with manifest fields are subtypes of record types without
 // fields set.
 // (x y : Nat, z : Nat := 0) <= (x y z : Nat)
 

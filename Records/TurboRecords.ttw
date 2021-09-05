@@ -4,8 +4,8 @@
 // really interesting results.
 
 // First, we should allow more dependency in record types, namely we should
-// allow the value of a set field to depend on the value of an unset field.
-// This effectively turns record types into functions.
+// allow the value of a manifest field to depend on the value of a non-manifest
+// field. This effectively turns record types into functions.
 f : RType :=
   (n : Nat, m : Nat := n + n)
 
@@ -28,9 +28,9 @@ proj-example : f.m = f.n + f.n := refl
 // But functions are eliminated by application. Can function-like records
 // be applied too? Not yet.
 
-// The second thing that should be allowed are unset fields not just in record
-// types, but in records. It follows that we can use record type operations like
-// `unset` also on records.
+// The second thing that should be allowed are non-manifest fields not just in
+// record types, but in records. It follows that we can use record type
+// operations like `unset` also on records.
 x : f :=
   (n : Nat, m : Nat => n + n)
 
@@ -38,9 +38,9 @@ y : (n m : Nat) := (unset m & x)
 
 // But now, we indeed can apply function-like records. And it turns out that
 // such record application has a lot to do with prototyping. Application is
-// like a join, but only on set fields and it transfers set fields from
-// argument to function only. To better see it, let's prove that function-like
-// record types are almost isomorphic to usual function types.
+// like a join, but only on manifest fields and it transfers manifest fields
+// from argument to function only. To better see it, let's prove that
+// function-like record types are almost isomorphic to usual function types.
 fun-to-rec (f : A -> B) : (a : A, b : B := f a) :=
   (a : A, b => f a)
 
