@@ -1,9 +1,9 @@
-data Z : Type :=
-  | z : Z
-  | s : Z -> Z
-    | p k => k
-  | p : Z -> Z
-    | s k => k
+data Z : Type
+| z
+| s (pred : Z)
+  | p k => k
+| p (succ : Z)
+  | s k => k
 
 // This is the type of integers, defined in a manner similar to the type of
 // natural numbers. We have three constructors: `z`, `s` and `p`, but the type
@@ -11,9 +11,8 @@ data Z : Type :=
 // equalities, which stem from computations performed by the constructors.
 
 // The computation rule for `s` says that `s (p k)` reduces to `k`. We indicate
-// this by following the constructor `s` with the symbol `:=` and stating the
-// computation rule in the next line using the same syntax as for ordinary
-// definitions by pattern matching.
+// this by stating the computation rule in the next line using the same syntax
+// as for ordinary definitions by pattern matching.
 
 // Note that `| p k => k` means that `s (p k)` computes to `k`, not that `p k`
 // computes to `k` - we don't write the constructor name when pattern matching,
@@ -45,7 +44,7 @@ data Z : Type :=
 // define a normal recursive function (modulo the fact that pattern matching
 // needs not be exhaustive), then these computation rules are OK.
 
-abs : Z -> Z :=
+abs : Z -> Z
 | z   => z
 | s k => s k
 | p k => s (abs k)
@@ -56,7 +55,7 @@ abs : Z -> Z :=
 // its absolute value is equal to itself. If the input is `p k`, then we know
 // the number is negative, so we have to recursively flip all the `p` into `s`.
 
-abs-abs : (k : Z) -> abs (abs k) = abs k :=
+abs-abs : (k : Z) -> abs (abs k) = abs k
 | z   => refl
 | s k => refl
 | p k => refl
@@ -82,17 +81,17 @@ abs-abs : (k : Z) -> abs (abs k) = abs k :=
 // rules we attached to constructors. The proof would go through in the same
 // way if `Z` didn't have them.
 
-neg : Z -> Z :=
+neg : Z -> Z
 | z   => z
 | s k => p (neg k)
 | p k => s (neg k)
 
-add : Z -> Z -> Z :=
+add : Z -> Z -> Z
 | z     l => l
 | (s k) l => s (add k l)
 | (p k) l => p (add k l)
 
-sub : Z -> Z -> Z :=
+sub : Z -> Z -> Z
 | k z     => k
 | k (s l) => p (sub k l)
 | k (p l) => s (sub k l)
@@ -109,7 +108,7 @@ sub : Z -> Z -> Z :=
 // The definition of subtraction is the mirror image of that of addition - what
 // a beautiful symmetry!
 
-sub-spec : (k l : Z) -> sub k l = add (neg l) k :=
+sub-spec : (k l : Z) -> sub k l = add (neg l) k
 | k z     => refl
 | k (s l') => ap p (sub-spec k l')
 | k (p l') => ap s (sub-spec k l')
@@ -131,11 +130,11 @@ sub-spec : (k l : Z) -> sub k l = add (neg l) k :=
 
 // so it suffices to add a `p` on both sides of this equation using `ap` (we
 // use `ap` to denote the fact that functions preserve equality, i.e. we have
-// `ap : {A B : Type} -> (f : A -> B) -> {x y : A} -> x = y -> f x = f y`).
+// `ap : #(A B : Type) (f : A -> B) #(x y : A) -> x = y -> f x = f y`).
 
 // For `p l'`, the proof is analogous.
 
-abs-neg : (k : Z) -> abs (neg k) = abs k :=
+abs-neg : (k : Z) -> abs (neg k) = abs k
 | z        => refl
 | s z      => refl
 | s (s k') => ap s (abs-neg (s k'))
@@ -184,21 +183,21 @@ Note that as of now, the patterns allowed for constructors' computation rules ar
 
 // Below there are some more theorems in the same vein.
 
-add-assoc : (k l m : Z) -> add (add k l) m = add k (add l m) :=
+add-assoc : (k l m : Z) -> add (add k l) m = add k (add l m)
 | z     l, m => refl
 | s k', l, m => ap s (add-assoc k' l m)
 | p k', l, m => ap p (add-assoc k' l m)
 
 // Nothing to see here, move along!
 
-add-z : (k : Z) -> add k z = k :=
+add-z : (k : Z) -> add k z = k
 | z    => refl
 | s k' => ap s (add-z k')
 | p k' => ap p (add-z k')
 
 // The proof is analogous to the analogous theorem for the natural numbers.
 
-add-s : (k l : Z) -> add k (s l) = s (add k l) :=
+add-s : (k l : Z) -> add k (s l) = s (add k l)
 | z   , l => refl
 | s k', l => ap s (add-s k' l)
 | p k', l => ap p (add-s k' l)
@@ -219,7 +218,7 @@ add-s : (k l : Z) -> add k (s l) = s (add k l) :=
 // whose type computes to `p (add k' (s l)) = add k' l`,
 // so the proof is finished.
 
-add-p : (k l : Z) -> add k (p l) = p (add k l) :=
+add-p : (k l : Z) -> add k (p l) = p (add k l)
 | z   , l => refl
 | s k', l => ap s (add-p k' l)
 | p k', l => ap p (add-p k' l)
@@ -228,13 +227,13 @@ add-p : (k l : Z) -> add k (p l) = p (add k l) :=
 
 // More functions.
 
-zeq : Z -> Z -> Bool :=
+zeq : Z -> Z -> Bool
 | z  , z   => tt
 | s k, s l => zeq k l
 | p k, p l => zeq k l
 | _  , _   => false
 
-zeq-neg : (k l : Z) -> zeq (neg k) (neg l) = zeq k l :=
+zeq-neg : (k l : Z) -> zeq (neg k) (neg l) = zeq k l
 | z   , z    => refl
 | s k', s l' => zeq-neg k' l'
 | p k', p l' => zeq-neg k' l'
@@ -255,7 +254,7 @@ zeq-neg : (k l : Z) -> zeq (neg k) (neg l) = zeq k l :=
 // Let's make our lives a bit easier with overlapping patterns.
 
 %OverlappingPatterns
-add : Z -> Z -> Z :=
+add : Z -> Z -> Z
 | z  , l   => l
 | s k, l   => s (add k l)
 | p k, l   => p (add k l)
@@ -269,7 +268,7 @@ add : Z -> Z -> Z :=
 // otherwise are much more annoying, but ultimately easy, like commutativity of
 // addition.
 
-add-comm : (k l : Z) -> add k l = add l k :=
+add-comm : (k l : Z) -> add k l = add l k
 | z      l => refl
 | (s k') l => ap s (add-comm k' l)
 | (p k') l => ap p (add-comm k' l)
@@ -277,7 +276,7 @@ add-comm : (k l : Z) -> add k l = add l k :=
 // Proving commutativity of addition is now as easy as proving associativity.
 
 %OverlappingPatterns
-sub : Z -> Z -> Z :=
+sub : Z -> Z -> Z
 | k     z     => k
 | k     (s l) => p (sub k l)
 | k     (p l) => s (sub k l)
@@ -289,7 +288,7 @@ sub : Z -> Z -> Z :=
 // `neg l` and this would probably be awkward in some situations... although
 // this is just my speculation.
 
-sub-diag : (k : Z) -> sub k k = z :=
+sub-diag : (k : Z) -> sub k k = z
 | z    => refl
 | s k' => sub-diag k'
 | p k' => sub-diag k'
@@ -306,7 +305,7 @@ sub-diag : (k : Z) -> sub k k = z :=
 // so it suffices to use the induction hypothesis. The case of `p k'` is
 // analogous.
 
-sub-add : (k l m : Z) -> sub k (add l m) = sub (sub k l) m :=
+sub-add : (k l m : Z) -> sub k (add l m) = sub (sub k l) m
 | k z      m => refl
 | k (s l') m => ap p (sub-add k l' m)
 | k (p l') m => ap s (sub-add k l' m)

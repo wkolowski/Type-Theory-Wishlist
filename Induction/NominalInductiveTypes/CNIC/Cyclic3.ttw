@@ -1,6 +1,6 @@
 // In this file we explore yet another variation of cyclic lists.
 
-data V : Type :=
+data V : Type
 
 // A representation similar to Cyclic2, but constructors that compute are not
 // needed - they are replaced with a use of a separate inductive type. Nominal

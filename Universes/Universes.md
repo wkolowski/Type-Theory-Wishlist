@@ -47,7 +47,7 @@ The base case of our strict universe hierarchy is h-level 1, i.e. the universe o
 
 ```
 // All proof of a strict proposition are computationally equal.
-isProp-from-SProp {A : Prop} (x y : A) : x = y := refl
+isProp-from-SProp (#A : Prop) (x y : A) : x = y := refl
 ```
 
 We then extend the hierarchy upwards. This is done with the formation rule for equality type/`Path` type, which says that if `A : Type h p` and `x y : A`, then `x = y : Type (pred h) p` (and similarly for `hType`; from now we will omit `hType` and concern ourselves only with `Type`).
@@ -58,12 +58,12 @@ How this works in practice:
 
 ```
 // `A : Set`, so `x = y : Prop` and so trivially `p = q`.
-isSet-from-Set {A : Set} {x y : A} (p q : x = y) : p = q := refl
+isSet-from-Set (#A : Set) #(x y : A) (p q : x = y) : p = q := refl
 ```
 
 ```
 // Analogously for strict groupoids.
-isGrpd-from-Grpd {A : Grpd} {x y : A} {p q : x = y (r s : p = q)
+isGrpd-from-Grpd (#A : Grpd) #(x y : A) #(p q : x = y) (r s : p = q)
   : r = s := refl
 ```
 
@@ -167,13 +167,13 @@ even : SNat -> Type
 
 data Even : SNat -> Type
 | Ez  : Even z
-| Ess : {n : SNat} -> Even n -> Even (s (s n))
+| Ess (#n : SNat) (e : Even n) : Even (s (s n))
 
 // This definition looks quite illegal: `n = m : Prop` but `P m : Type`.
-transport {P : SNat -> Type} {n m : SNat} (x : P n) : n = m -> P m
+transport (#P : SNat -> Type) #(n m : SNat) (x : P n) : n = m -> P m
 | refl => x
 
-Zero-not-Succ {n : SNat} (p : z = s n) : Empty :=
+Zero-not-Succ (#n : SNat) (p : z = s n) : Empty :=
 let
   P : SNat -> hType
   | z => Unit

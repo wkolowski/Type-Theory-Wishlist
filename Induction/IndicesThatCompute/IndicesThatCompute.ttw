@@ -11,7 +11,7 @@ data LenList (A : Type) : Type
 // Here the index is also an OUTPUT.
 data Vec (A : Type) : Nat -> Type
 | Nil : Vec z
-| Cons (h : A, #n : Nat, t : Vec A n) : Vec A (s n)
+| Cons (h : A, #n : Nat, t : Vec A n) : Vec (s n)
 
 // Here `n` is an INPUT.
 Vec (A : Type) : Nat -> Type
@@ -43,4 +43,40 @@ data Vec (A : Type) : Type
 // If the index is given as input, shit computes.
 ex (v : Vec A (n => z)) : v = Nil := refl
 
-eq-vec (x y : Vec A) : (x = y) = (p : x.n = y.n) 
+eq-vec (x y : Vec A) : (x = y) = (p : x.n = y.n) * (x ={Vec A x.n} y) // bad
+
+data Eq {A : Type} (x : A) : Type
+  indices
+  & y : A
+
+  constructors
+  | refl (y => x)
+
+data Even : Type
+  indices
+  & n : Nat
+
+  constructors
+  | Ez  (n => 0)
+  | Ess (e : Even, n => s (s e.n))
+
+data Even : Type
+  indices
+  & n : Nat
+
+  constructors with n
+  | z => Ez
+  | s (s n) => Ess (e : Even (n => n))
+
+Even-1 : Even (s z) = Empty := refl
+
+data Fin : Type
+  indices
+  & n : Nat
+
+  constructors with n
+  | s n =>
+    | Fz
+    | Fs (f : Fin (n => n))
+
+Fin-example : Fin z = Empty := refl

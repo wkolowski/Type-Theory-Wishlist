@@ -1,33 +1,33 @@
 // Note: this is not a "positive" coinductive type, but rather just a notation
 // for a proper, negative coinductive type.
-codata Conat : Type :=
-| z : Conat
-| s : Conat -> Conat
+codata Conat : Type
+| z
+| s (pred : Conat)
 
 %OverlappingPatterns
-add : (n m : Conat) -> Conat :=
-| z, _ => m
-| _, z => n
-| s n', _ => s (add n' m)
-| _, s m' => s (add n m')
+add : (n m : Conat) -> Conat
+| z   , _    => m
+| _   , z    => n
+| s n', _    => s (add n' m)
+| _   , s m' => s (add n m')
 
 // In reality, the above is an encoding of the following.
 module Expanded
 
-  data ConatX (X : Type) : Type :=
-  | zR : ConatX
-  | sR : X -> ConatX X
+  data ConatX (X : Type) : Type
+  | zR
+  | sR (x : X)
 
-  codata Conat : Type :=
+  codata Conat : Type
   & out : ConatX Conat
 
-  z : Conat :=
+  z : Conat
   & out => zR
 
-  s (n : Conat) : Conat :=
+  s (n : Conat) : Conat
   & out => sR n
 
-  add : (n m : Conat) -> Conat :=
+  add : (n m : Conat) -> Conat
   | z   , _    => { out := out m; }
   | _   , z    => { out := out n; }
   | s n', _    => { out := s (add n' m); }
@@ -39,8 +39,8 @@ end Expanded
 // conaturals is both associative and commutative, something that is very
 // hard to do in Coq.
 
-add-assoc : (a b c : Conat) -> add (add a b) c = add a (add b c) :=
-  fun a b c : Conat => path i =>
+add-assoc (a b c : Conat) : add (add a b) c = add a (add b c) :=
+  path i =>
   match a with
   | z    => add b c
   | s a' => s (add-assoc a' b c i)
@@ -52,19 +52,18 @@ add-comm : (n m : Conat) -> add n m = add m n
 
 // omega also comes easily.
 
-omega : Conat :=
-  s omega
+omega : Conat := s omega
 
 // Translation:
-// omega : Conat :=
+// omega : Conat
 // & out := sR omega
 
 add-z-inv-l : (n m : Conat) -> add n m = z -> n = z
 | z   , _ => fun _ => refl
 | s n', _ => fun p : s (add n' m) = z => abort p
 
-add-z-inv-r : (n m : Conat) -> add n m = z -> m = z :=
-  fun n m p => add-z-inv-l m n (add-comm m n ^ p)
+add-z-inv-r (n m : Conat) (p : add n m = z) : m = z
+  add-z-inv-l m n (add-comm m n ^ p)
 
 add-omega-l : (n : Conat) -> add omega n = omega
 | z    => refl

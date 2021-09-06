@@ -12,6 +12,5 @@ add : (n m : NatInf) -> NatInf
 | _   , oo   => oo
 | _   , s m' => s (add n m')
 
-mul : (n m : NatInf) -> NatInf
-
-sub : (n m : NatInf) -> NatInf
+mul : (n m : NatInf) -> NatInf // TODO
+sub : (n m : NatInf) -> NatInf // TODO

@@ -1,47 +1,39 @@
 // A type of integers modulo 2...
-data Z2 : Type :=
-  | z : Z2
-  | s : Z2 -> Z2 :=
-    | s k => k
+data Z2 : Type
+| z
+| s (x : Z2)
+  | s k => k
 
 // Also integers mod 2, but an alternative implementation.
 data Z2' : Type :=
-  | in : nat -> Z2' :=
-    | S (S n) => in n
+| in (n : Nat)
+  | s (s n) => in n
 
 // Integers mod n in general?
 
-data Zmod (n : nat) : Type :=
-  | in : nat -> Zmod n :=
-    | in k => if k <? n then canonical else in (mod k n)
-
-// Native integers mod n?
-data Zmod' (n : nat) : Type :=
-  | z : Zmod' (S n)
-  | s : Zmod' n -> Zmod' (S n) :=
-    | looks like this doesn't work
+data Zmod (n : nat) : Type
+| in (k : Nat)
+  | in k => if k <? n then canonical else in (mod k n)
 
 // Lists of natural numbers without consecutive repetitions.
 
-data WList : Type :=
-  | wnil : WList
-  | wcons : nat -> WList -> WList :=
-    | n (wcons m w) =>
-        if n =? m then wcons m w else canonical
+data WList : Type
+| wnil
+| wcons (n : Nat) (l : WList)
+  | n, wcons m w => if n =? m then wcons m w else canonical
 
 // Here the keyword `canonical` denotes that in the given case the constructor
 // does not compute.
 // So we have `wcons 0 (wcons 0 wnil) => wcons 0 wnil` but
 // `wcons 1 (wcons 0 (wcons 1 wnil))` is in canonical form.
 
-data UList : Type :=
-  | unil : UList
-  | ucons : nat -> UList -> UList :=
-    | n w => if elem n w then w else canonical
+data UList : Type
+| unil
+| ucons (n : Nat) (l : UList)
+  | n, w => if elem n w then w else canonical
 
-with
-elem : nat -> UList -> bool :=
-| _ unil => false
-| n (ucons m u) => n =? m || elem n u
+with elem : Nat -> UList -> Bool
+| _, unil => ff
+| n, ucons m u => n =? m || elem n u
 
 // We have `ucons 5 (ucons 0 (ucons 5 unil)) => ucons 0 (ucons 5 nil)`.

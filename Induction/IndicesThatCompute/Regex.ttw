@@ -30,8 +30,8 @@ data Matches (l : List A) : Regex A -> Prop
                     (m1 : Matches l1 r1) (m2 : Matches l2 r2)
 | Star r    => MStar (ms : MatchesStar l r)
 
-with MatchesStar : List A -> Regex A -> Prop :=
-| MS_Epsilon (r : Regex A) : MatchesStar [] r
-| MS_Seq (h : A, t l : List A, r : Regex A)
+with MatchesStar : List A -> Regex A -> Prop
+| MS-Epsilon (r : Regex A) : MatchesStar [] r
+| MS-Seq (h : A, t l : List A, r : Regex A)
          (m : Matches (h :: t) r, ms : MatchesStar l r)
          : MatchesStar ((h :: t) ++ l) r

@@ -1,4 +1,4 @@
-data V : Type :=
+data V : Type
 
 data CBin (A V : Type) : Type
 | E
@@ -79,9 +79,9 @@ qed
 spam (x : A) : CBin A :=
   Fix (ν α. N x (Var α) (Var α))
 
-data Size : Type :=
-  | Finite (n : Nat)
-  | Infinite
+data Size : Type
+| Finite (n : Nat)
+| Infinite
 
 size-aux : CBin A -> Nat
 | E       => 0

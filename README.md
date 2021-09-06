@@ -57,7 +57,7 @@ TODO:
 | [Nabla type](#names)        | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`          |
 | [Name](#names)     | `Name A`         | with `∇` and `ν` | pattern matching |
 | [Primitive types](#primitives)   | `i32`, `f64`, etc. | literals       | not needed       |
-| [Arrays](#primitives)            | `Array A n`      | `Arr (i => e)`   | `A[i]`           |
+| [Arrays](#primitives)            | `Array A n`      | `fromFun (fun i => e)` | `A[i]`           |
 
 ## [Records](Records) <a id="records"></a> [↩](#types)
 
@@ -274,7 +274,7 @@ This distinction applies both to inductive and recursive definitions. It looks a
 
 ```
 map (f : A -> B) : List A -> List B :=
-| [] => []
+| []     => []
 | h :: t => f h :: map t
 ```
 
@@ -282,7 +282,7 @@ The distinction between parameters and indices has some other consequences too. 
 
 ```
 add (n : Nat) : Nat -> Nat :=
-| z    => n
+| z   => n
 | s m => s (add m)
 ```
 
@@ -303,20 +303,20 @@ filter (p : A -> Bool) : List A -> List A
   | ff => filter t
 ```
 
-**Status: standard, with Agda probably being the closest implementation to what has been described so far.**
+**Status: inductive types and pattern matching are standard, with Agda probably being the closest implementation to what has been described so far.**
 
 TODO:
-- Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments.
 
 ## Pattern matching on steroids
 
-- [Overlapping and Order-Independent Patterns](#overlapping-and-order-independent-patterns)
+Besides the usual pattern matching, we also allow some extensions which significantly raise it's power:
 - [Decidable Equality Patterns](#decidable-equality-patterns)
+- [Overlapping and Order-Independent Patterns](#overlapping-and-order-independent-patterns)
 
 ### [Overlapping and Order-Independent Patterns](Induction/OverlappingPatterns)
 
-This is basically pattern matching on steroids. Consider the usual definitions of addition of natural numbers.
+Consider the usual definitions of addition of natural numbers.
 
 ```
 add : (n m : Nat) -> Nat
@@ -364,6 +364,8 @@ dec : (n m : Nat) -> Bool
 
 Now the definition is ok, because we explicitly mark the fact that it uses the first-match semantics.
 
+Note that allowing overlapping patterns has some deep metatheoretical consequences, namely that definitions by pattern matching can no longer be translated into definitions with eliminators. However, we consider this price to be worth paying.
+
 Papers:
 - [Overlapping and Order-Independent Patterns: Definitional Equality for All](https://link.springer.com/content/pdf/10.1007%2F978-3-642-54833-8_6.pdf).
 
@@ -371,20 +373,19 @@ Papers:
 
 ### Decidable Equality Patterns
 
-The idea is that for type that have decidable equality, we can have syntax sugar for non-linear patterns when pattern matching and have it translated into uses of the decision procedure for equality.
-
-For example, we could use this feature to implement the below function which removes adjacent duplicates from a list provided that the type of elements in the list has decidable equality.
+For types which have decidable equality, while pattern matching we can use non-linear patterns and get them desugared into uses of the corresponding decision procedure for equality.
 
 ```
-dedupConsecutive {A : EqType} : List A -> List A
+dedupConsecutive (#A : EqType) : List A -> List A
 | []          => []
 | h :: h :: t => dedupConsecutive (h :: t)
 | h :: t      => h :: dedupConsecutive t
 ```
 
-The above desugars to
+For example, we can use this feature to implement the above function which removes adjacent duplicates from a list, provided that the type of elements has decidable equality. This will be automatically desugared to the definition below.
+
 ```
-dedupConsecutive {A : EqType} : List A -> List A
+dedupConsecutive (#A : EqType) : List A -> List A
 | [] => []
 | x :: y :: t with x =? y
   | tt =>      dedupConsecutive (y :: t)
@@ -398,70 +399,83 @@ Not papers:
 
 **Status: no papers and nowhere implemented, but looks very easy to get right.**
 
-### Inductive families
+## Inductive families
 
 For inductive families, we need to explicitly write the constructor's return type (because it depends on the index), but we still don't need to write the parameters.
+
 ```
 data Vec (A : Type) : Nat -> Type
 | Nil  : Vec 0
-| Cons : (hd : A) {n : Nat} (tl : Vec n) -> Vec (s n)
+| Cons : (hd : A, #n : Nat, tl : Vec n) -> Vec (s n)
 ```
 
-When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of that family with that index. We call these _inaccessible_ patterns (following [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns)).
-
+When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of this family with that index.
 ```
-head : {n : Nat} (v : Vec (s n)) -> A
+head : (#n : Nat) (v : Vec (s n)) -> A
 | .n', Cons h n' t => h
 ```
 
-### [Indices that Compute](Induction/IndicesThatCompute)
+We call these _inaccessible_ patterns, following [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns).
+
+**Status: inductive families are standard in proof assistants and dependently-typed languages. Dependent pattern matching is semi-standard, as some languages (notably Coq) have problems with supporting it properly so it's hard to use, while some others (Idris 2 and formerly Agda) have implementations of it that entail Uniqueness of Identity Proofs, which is incompatible with Univalence. The closest implementation of what's described here is probably Agda.**
+
+## [Indices that Compute](Induction/IndicesThatCompute)
+
+We use the name "Indices that Compute" for a suite of ideas centered around an alternative syntax for inductive families and the idea that it would be good to "merge" recursive and inductive definitions of type families. To make this more precise, consider the two below definitions of what it means for a natural number to be even.
 
 ```
 data Even : Nat -> Prop
-| Even_z  : Even z
-| Even_ss (#n : Nat, e : Even n) : Even (s (s n))
+| Even-z  : Even z
+| Even-ss (#n : Nat, e : Even n) : Even (s (s n))
 ```
+
+The first definition is a predicate defined as an inductive family. It effectively says that `z` (zero) is even and that if `n` is even, then `s (s n)` (2 + n) is also even. What are the pros and cons of this definition?
 
 Pros:
-- induction principle
-- irrelevance (thanks SProp!)
+- we can pattern match on it
+- induction principle (in a Coq-like language)
+- irrelevance - as we will see later, thanks to `Prop`, any two `e1, e2 : Even n` can be proven equal using just `refl`exivity
 
 Cons:
-- quadratic proof size
-- need to manually implement decision procedure
-- hard to prove 1 is not even (inversion needed)
-- to sum up: doesn't compute
+- quadratic proof size if there is no sharing of the implicit `n`s between constructors
+- need to implement the decision procedure manually
+- hard to prove that 1 is not even - we need a tactic like Coq's `inversion`, or some boilerplate, or very well-implemented dependent patern matching
+- no uniqueness principle - if the codomain weren't `Prop`, we would need to prove manually that all `e1, e2 : Even n` are equal
 
 ```
-even : Nat -> Bool
-| z       => tt
-| s z     => ff
-| s (s n) => even n
-```
-
-Pros:
-- constant proof size
-- it is its own decision procedure
-- easy to prove 1 not even
-- to sum up: it computes
-
-Cons:
-- no induction principle
-- nonstandard shape of recursion
-- hard to prove equalities like `(even n = true) = ...`, especially for beginners
-
-So what? Let's merge both of these!
-
-```
-data EVEN : Nat -> Type :=
-| z       => EVEN_z : EVEN z
+Even : Nat -> Prop
+| z       => Unit
 | s z     => Empty
-| s (s n) => EVEN_ss (e : EVEN n) : EVEN (s (s n))
+| s (s n) => Even n
 ```
+
+The second definition is recursive. It says that zero is even, one is not even, and that 2 + n is even when n is. What are the pros and cons of this definition?
 
 Pros:
 - constant proof size
-- easy to prove 1 not even
+- very easy to prove that 1 is not even (`Even (s z)` computes to `Empty`), so the proof of `Even 1 -> Empty` is the identity function
+- irrelevance
+- uniqueness principle - even if the codomain wasn't `Prop`, all `e : Even n` compute to the same type when `n` is known
+
+Cons:
+- can't pattern match on the proof, only on the argument
+- need to implement the decision procedure manually
+- no induction principle (again, if we're hanging in Coq's vicinity)
+- non-standard shape of recursion (i.e. different from what appears in `Nat`'s definition)
+
+The idea behind the name "Indices that Compute" is to merge both of these definitiosn into one, better.
+
+```
+data EVEN : Nat -> Prop
+| z       => EVEN-z : EVEN z
+| s (s n) => EVEN-ss (e : EVEN n) : EVEN (s (s n))
+```
+
+This definition is similar to the second definition of `Even` in that it is a definition by pattern matching on the index `n`. However, the pattern matching is not exhaustive, because we omitted the case for `s z`. This means that `EVEN (s z)` will compute to `Empty`. The definition is also similar to the first definition of `Even` in that it provides two constructors, one for proving that `z` is even and the other for proving that `s (s n)` is even if `n` is.
+
+Pros:
+- constant proof size
+- easy to prove that 1 is not even
 - it computes
 - induction principle
 
@@ -472,6 +486,30 @@ Q: Can we do anything nice with this?
 
 A: in such a banal case as parity of naturals probably not, but in more complicated ones I think so! Example: matching a regular expression against a string. This can't be easily implemented by recursion, so induction is needed. But even though we use induction, it would be nice if some cases of the definition could compute/simplify to help us a bit.
 
+There's also an alternative way for easy predicates like "being an even number", namely: just implement the decision procedure and declare `(= true)` as a coercion. With special computation rules `Empty`, `Unit` and `=`, this should be more than enough.
+
+```
+even : Nat -> Bool
+| z       => tt
+| s z     => ff
+| s (s n) => even n
+
+Bool-to-Prop : Bool -> Prop
+| tt => Unit
+| ff => Empty
+```
+
+Pros:
+- constant proof size
+- it is its own decision procedure
+- easy to prove that 1 is not even
+- to sum up: it computes
+
+Cons:
+- nonstandard shape of recursion
+
+Note: induction principles may be problematic in Coq or other languages where pattern matching is equivalent to eliminators, but after some thinking, using an induction principle of a type or function (functional induction) in a proof just amounts to copying that type's constructors/functions cases and pasting them in the proof.
+
 Papers:
 - [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf)
 - [Slides for the above](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)
@@ -480,7 +518,8 @@ Papers:
 **Status: very wild speculations.**
 
 TODO:
-- Think.
+- Think about this more.
+- Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
 
 ## [Advanced Inductive Types](Induction)
 
@@ -495,14 +534,14 @@ Let's do a quick tour.
 
 ### [Constructors that Compute](Induction/ConstructorsThatCompute)
 
-The basic idea here is that during inductive type definition constructors can pattern match on their arguments and compute (almost) like ordinary recursive functions. Let's see an example.
+The basic idea here is that in inductive type definitions constructors can pattern match on their arguments and compute (almost) like ordinary recursive functions. Let's see an example.
 
 ```
 data Z : Type
-| z : Z
-| s : Z -> Z
+| z
+| s (pred : Z)
   | p k => k
-| p : Z -> Z
+| p (succ : Z)
   | s k => k
 ```
 
@@ -511,7 +550,7 @@ The above is a definition of the type of integers `Z` with three constructors: `
 Note that as of now, the patterns allowed for constructors' computation rules are using first-match semantics, but that may change in the future.
 
 ```
-abs : Z -> Z :=
+abs : Z -> Z
 | z   => z
 | s k => s k
 | p k => s (abs k)
@@ -588,14 +627,14 @@ Induction-induction allows us to simultaneously define two or more types such th
 
 ```
 data Dense (R : A -> A -> Type) : Type
-| in (x : A)
+| in  (x : A)
 | mid (x y : Dense) (H : Dense-R R x y)
-| eq (x : Dense) (H : Dense-R x x) (i : I)
+| eq  (x : Dense) (H : Dense-R x x) (i : I)
 
 with Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
-| in : {x y : A} (H : R x y) -> Dense-R (in x) (in y)
-| midl : {x y : Dense R} (H : Dense-R x y) -> Dense-R (mid x y H) y
-| midr : {x y : Dense R} (H : Dense-R x y) -> Dense-R x (mid x y H)
+| in   : #(x y : A) (H : R x y) -> Dense-R (in x) (in y)
+| midl : #(x y : Dense R) (H : Dense-R x y) -> Dense-R (mid x y H) y
+| midr : #(x y : Dense R) (H : Dense-R x y) -> Dense-R x (mid x y H)
 ```
 
 In the above example, `Dense-R R` is the dense completion of its parameter relation `R`, which means that it represents the least dense relation that contains `R`. `Dense-R` is defined at the same time as `Dense R`, which represents its carrier - the type `A` with added midpoints of all pairs `x, y` such that `R x y`.

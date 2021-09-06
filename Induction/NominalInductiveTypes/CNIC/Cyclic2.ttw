@@ -1,6 +1,6 @@
 // In this file we explore a more explicit representation.
 
-data V : Type :=
+data V : Type
 
 %ConstructorsThatCompute
 data Cyclic (A : Type) : Type

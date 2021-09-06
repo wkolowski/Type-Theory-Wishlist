@@ -1,14 +1,14 @@
 // We use overlapping patterns by default.
 
-data Bool : Type :=
+data Bool : Type
 | ff : Bool
 | tt : Bool
 
-notb : Bool -> Bool :=
+notb : Bool -> Bool
 | ff => tt
 | tt => ff
 
-orb : (x y : Bool) -> Bool :=
+orb : (x y : Bool) -> Bool
 | ff y  => y
 | x  ff => x
 | tt _  => tt
@@ -20,7 +20,7 @@ orb : (x y : Bool) -> Bool :=
 // ``orb ff tt => tt`` (clause 1) and ``orb ff tt => tt`` (clause 4), so ok.
 // ``orb tt ff => tt`` (clause 2) and ``orb tt ff => tt`` (clause 3), so ok.
 
-andb : (x y : Bool) -> Bool :=
+andb : (x y : Bool) -> Bool
 | ff _  => ff
 | _  ff => ff
 | tt y  => y
@@ -31,7 +31,7 @@ andb : (x y : Bool) -> Bool :=
 module Comparison
 
   %FirstMatch
-  orb' (x : Bool) : Bool -> Bool :=
+  orb' (x : Bool) : Bool -> Bool
   | tt => tt
   | ff => x
 
@@ -49,7 +49,7 @@ end Comparison
 // resort to the old way of doing pattern matching by annotating the function
 // with %FirstMatch.
 %FirstMatch
-eqb : (x y : Bool) : Bool :=
+eqb : (x y : Bool) : Bool
 | tt tt => tt
 | ff ff => tt
 | _  _  => ff

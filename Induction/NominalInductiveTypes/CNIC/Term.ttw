@@ -37,7 +37,7 @@ dec-refl : (t : Term) -> dec t t = tt
           ) refl
     end
 
-dec-spec-r {t1 t2 : Term} : t1 = t2 -> dec t1 t2 = tt
+dec-spec-r #(t1 t2 : Term) : t1 = t2 -> dec t1 t2 = tt
 | refl => dec-refl t1
 
 dec-spec-l : (t1 t2 : Term) -> dec t1 t2 = tt -> t1 = t2
@@ -62,12 +62,12 @@ dec-spec-l : (t1 t2 : Term) -> dec t1 t2 = tt -> t1 = t2
 // Again, if we are stupid, we can do the same using the encode-decode method.
 module Stupid2
 
-	data Code : Term -> Term -> Type :=
+	data Code : Term -> Term -> Type
 	| cvar : (x y : Name Term) -> x = y -> Code (Var x) (Var y)
 	| capp : (l1 l2 r1 r2 : Term) -> Code l1 r1 -> Code l2 r2 -> Code (App l1 l2) (App r1 r2)
 	| clam : (l r : ∇ α : Term. Term) -> ∇ α : Term. Code (l @ α) (r @ α) -> Code (Lam l) (Lam r)
 
-	isProp_Code {t1 t2 : Term} : (c1 c2 : Code t1 t2) -> c1 = c2 :=
+	isProp_Code #(t1 t2 : Term}) : (c1 c2 : Code t1 t2) -> c1 = c2 :=
 	| cvar x y p, cvar .x .y q =>
 		  isSet-Name Term p q
 	| capp l1 l2 r1 r2 c11 c12, capp .l1 .l2 .r1 .r2 c21 c22 =>

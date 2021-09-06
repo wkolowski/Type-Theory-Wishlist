@@ -52,7 +52,7 @@ gf : (l : list A) -> f (g l) = l
 // It suffices to prepend `h ::` on both sides of the equation.
 
 list-is-free-mon (A : Type) : FM A = list A :=
-  ... // by univalence, as (f, g, fg, gf) is an equivalence
+  // by univalence, as (f, g, fg, gf) is an equivalence
 
 // It is not possible to define the free group with this approach, because we
 // encounter non-linear patterns when trying to enforce x(x^-1) = id.
