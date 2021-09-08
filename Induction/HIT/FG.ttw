@@ -35,7 +35,7 @@ map (f : A -> B) : FG A -> FG B
 // `map f x (invl x i1) => map f x e => e`
 // `invl (map f x) i0 => op (inv (map f x)) (map f x)`
 // `invl (map f x) i1 => id`
-// and analogously for invr.
+// and analogously for `invr`.
 
 rev : FG A -> FG A
 | in a     => in a

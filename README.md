@@ -524,13 +524,13 @@ TODO:
 ## [Advanced Inductive Types](Induction)
 
 Inductive families are just the tip of the iceberg, as our inductive types are supposed to be REALLY powerful. We take the usual inductive families as baseline and add:
-- [Induction-Induction](#induction-induction)
-- [Induction-Recursion](#induction-recursion)
-- [Nominal Inductive Types](#nominal-inductive-types)
 - [Constructors that Compute](#constructors-that-compute)
 - [Higher Inductive Types](#higher-inductive-types)
+- [Nominal Inductive Types](#nominal-inductive-types)
+- [Induction-Induction](#induction-induction)
+- [Induction-Recursion](#induction-recursion)
 
-Let's do a quick tour.
+We have listed the various enhancements in order from most to least wild. We take the former ones for granted when describing the latter, so as to show their synergy.
 
 ### [Constructors that Compute](Induction/ConstructorsThatCompute)
 
@@ -547,7 +547,7 @@ data Z : Type
 
 The above is a definition of the type of integers `Z` with three constructors: `z` - zero, `s`- successor, `p` - predecessor. Using ordinary inductive types this is not a good definition, because it does not represent the integers - there are terms like `s (p z)` which do not correspond to numbers. But in the above definition the constructors `s` and `p` have associated computation rules, which say that `s (p k)` computes to `k` (this is the rule for `s`) and that `p (s k)` computes to `k` (this is the rule for `p`). This means that the only legal closed normal form terms of type `Z` are `z`, finitely many `s`s applied to `z` and finitely many `p`s applied to `z`. Therefore `Z` is a good representation of the integers.
 
-Note that as of now, the patterns allowed for constructors' computation rules are using first-match semantics, but that may change in the future.
+Note that the patterns allowed for constructors' computation rules are using first-match semantics, but that may change in the future.
 
 ```
 abs : Z -> Z
@@ -556,13 +556,118 @@ abs : Z -> Z
 | p k => s (abs k)
 ```
 
-We can define functions using pattern matching and structural recursion, just like for ordinary inductive types. We only need to handle patterns that correspond to closed terms in normal form - terms that will be "computed away" by constructors' computation rules need not (and cannot) be handled. For `z` this means that we need to handle `z`, `s k` and `p k`, but we must not handle `s (p k)` or `p (s k)`, and optionally we may separately handle `s z`, `p z` etc.
+We can define functions using pattern matching and structural recursion, just like for ordinary inductive types. We only need to handle patterns that correspond to closed terms in normal form - terms that will be "computed away" by constructors' computation rules need not (and cannot) be handled. For `Z` this means that we need to handle `z`, `s k` and `p k`, but we must not handle `s (p k)` or `p (s k)`, and optionally we may separately handle `s z`, `p z` etc.
 
 In the above example we want to compute the absolute value of the argument. For non-negative integers this is easy and we just return the argument, whereas for negative numbers we need to recursively turn predecessors into successors.
 
-See [this file](Induction/ConstructorsThatCompute/Z.ttw) for a more thorough explanation exploration of the type of integers defined using constructors that compute.
+See [this file](Induction/ConstructorsThatCompute/Z.ttw) for a more thorough explanation and exploration of the type of integers defined using constructors that compute.
 
 **Status: highly experimental. It looks like if we put reasonable constraints on the kinds of computation rules associated with constructors, there isn't any abvious contradiction, nontermination or anything like that. However, there are no prototypes and no papers, except that some constructors that compute can be simulated using [Self Types](https://github.com/uwu-tech/Kind/blob/master/blog/1-beyond-inductive-datatypes.md).**
+
+TODO:
+- Come up with more examples of useful constructors that compute.
+
+### [Higher Inductive Types](Induction/HIT)
+
+Higher Inductive Types are inductive types which can be defined using not only point ("ordinary") constructors, but also path constructors which put additional paths into the type. This has two serious uses: the more practical one is for making all kinds of quotients and quotient-like types (and a lot of these can't be made using constructors that compute, because there is no canonical form of some collection of terms) and the more theoretical one is synthetic homotopy theory.
+
+```
+data Set (A : Type) : Type
+| in (x : A)
+| id
+| union (x y : Set A)
+  | id, y  => y
+  | x , id => x
+  | union x y, z => union x (union y z)
+| comm (x y : Set A) with (i : I)
+  | i0 => union x y
+  | i1 => union y x
+| idem (x : Set A) with (i : I)
+  | i0 => union x x
+  | i1 => x
+| isSet (x y : Set A) (p q : x = y) (i j : I) with i
+  | i0 => p j
+  | i1 => q j
+```
+
+Consider this higher-inductive definition of a set, in the sense of a collection of things of type `A`. This type has three point constructors (including one with additional computation rules) and three path constructors (including a two-dimensional one).
+
+The constructor `in` can be used to construct a singleton set (which is an embedding of `A` in `Set`, hence the name), `id` is the empty set (which is the `id`entity of set union, hence the name) and `union` denotes set union. The additional computation rules of `union` guarantee that it is associative and that its neutral element is the empty set `id`.
+
+But with only these three constructors, `Set A` wouldn't be a set at all - the operation of set union must also be commutative (i.e. `union x y = union y x`) and idempotent (i.e. `union x x = x`). This, however, cannot be guaranteed with the point constructors even with additional computation rules, because the term `union x y` does not have a normal form and we cannot in general make `union x x` compute to `x`, because `x` occurs non-linearly in `union x x`.
+
+To deal with this, we have two more constructors, `comm` and `idem`, which create paths `union x y = union y x` and `union x x = x`, respectively. This is done by having an additional constructor argument `i : I` - an element of the abstract interval - which then is declared to compute on its endpoints `i0` and `i1` to the left and right hand sides of the desired equations.
+
+But this still doesn't yield a set, at least not in the sense of Homotopy Type Theory. Because we added so many paths to the type (as many as the powerset of `A`), `Set A` would be a groupoid (or even higher, depending on the h-level of `A`) if not for an additional constructor, `isSet`, which guarantees that all paths in `Set A` are equal.
+
+```
+map (f : A -> B) : Set A -> Set B
+| in    x           => in (f x)
+| id                => id
+| union x y         => union (map x) (map y)
+| comm  x y     i   => comm  (map x) (map y) i
+| idem  x       i   => idem  (map x)         i
+| isSet x y p q i j => isSet (map x) (map y) (path i => map (p i)) (path i => map (q i)) i j
+```
+
+We can define functions out of higher inductive types by pattern matching. On point constructors, it works as usual - to map a function `f` over a singleton, we apply it to the only element there; to map it over empty set, we return the empty set; and to map it over a union, we map it over each argument of the union.
+
+For path constructors, the rules are similar but a bit more constrained. For `comm x y i`, we must return a generic point on a path between `union (map x) (map y)` and `union (map y) (map x)`. This is because we have mapped the endpoints of `comm`, i.e. `union x y` and `union y x`, to `union (map x) (map y)` and `union (map y) (map x)`, respectively. In practice this means that `comm (map x) (map y) i0` must compute to `union (map x) (map y)` (which it does) and at `comm (map x) (map y) i1` must compute to `union (map y) (map x)` (which it also does). The story for `idem` and `isSet` is analogous, even though for `isSet` it's much harder to mentally check the requirements, because the paths involved are two dimensional.
+
+Papers:
+- [QUOTIENTS, INDUCTIVE TYPES, & QUOTIENT INDUCTIVE TYPES](https://arxiv.org/pdf/2101.02994.pdf)
+- [Type theory in a type theory with quotient inductive types](http://www.cs.nott.ac.uk/~pszgmh/kaposi-thesis.pdf)
+- [Constructing Infinitary Quotient-Inductive Types](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7788612/)
+- [LARGE AND INFINITARY QUOTIENT INDUCTIVE-INDUCTIVE TYPES](https://arxiv.org/abs/2006.11736)
+- [Quotient inductive-inductive types](https://arxiv.org/abs/1612.02346)
+- [Codes for Quotient Inductive Inductive Types](https://akaposi.github.io/qiit.pdf)
+- [Constructing quotient inductive-inductive types](https://dl.acm.org/doi/10.1145/3290315)
+- [Quotient inductive-inductive definitions](http://eprints.nottingham.ac.uk/42317/1/thesis.pdf)
+- [A model of type theory with quotient inductive-inductive types](http://real.mtak.hu/112971/1/1.pdf)
+- [Higher Inductive Types, Inductive Families, and Inductive-Inductive Types](http://von-raumer.de/academic/phd_vonraumer.pdf)
+- [A Syntax for Higher Inductive-Inductive Types](https://drops.dagstuhl.de/opus/volltexte/2018/9190/pdf/LIPIcs-FSCD-2018-20.pdf)
+- [SIGNATURES AND INDUCTION PRINCIPLES FOR HIGHER INDUCTIVE-INDUCTIVE TYPES](https://lmcs.episciences.org/6100/pdf)
+- [CONSTRUCTING HIGHER INDUCTIVE TYPES AS GROUPOID QUOTIENTS](https://lmcs.episciences.org/7391/pdf)
+- [The Construction of Set-Truncated Higher Inductive Types](https://www.sciencedirect.com/science/article/pii/S1571066119301306)
+- [Semantics of higher inductive types](https://arxiv.org/abs/1705.07088)
+
+**Status: prototype implementations include [cubicaltt](https://github.com/mortberg/cubicaltt), Cubical Agda, Arend and some other minor languages. No general syntax for HITs is known. Various papers which describe subclasses of HITs or HITs combined with induction-induction or something like that. Probably it's very easy to get the most basic and useful HITs, but very hard to get all of them right.**
+
+### [Induction-Induction](Induction/Induction-Induction)
+
+Induction-induction allows us to simultaneously define two or more types such that the later ones can be indexed by the earlier ones.
+
+```
+data Dense (R : A -> A -> Type) : Type
+| in   (x : A)
+| mid #(x y : Dense) (H : Dense-R R x y)
+| eq  #(x : Dense)   (H : Dense-R R x x) with (i : I)
+  | i0 => mid x x H
+  | i1 => in x
+
+with Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
+| in   : #(x y : A) (H : R x y) -> Dense-R (in x) (in y)
+| midl : #(x y : Dense R) (H : Dense-R x y) -> Dense-R (mid x y H) y
+| midr : #(x y : Dense R) (H : Dense-R x y) -> Dense-R x (mid x y H)
+```
+
+In the above example, `Dense-R R` is the dense completion of its parameter relation `R`, which means that it represents the least dense relation that contains `R`. `Dense-R` is defined at the same time as `Dense R`, which represents its carrier - the type `A` with added midpoints of all pairs `x, y` such that `R x y`.
+
+Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `Dense-R` refer to constructors of `Dense`, and the indices of `Dense-R` refer to `Dense`. This is the idea of induction-induction.
+
+Papers:
+- [Inductive-inductive definitions](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
+
+**Status: implemented in Agda, but absent in other mainstream languages. There are many papers which combine it with Higher Inductive Types. Probably not hard to implement. In general, looks good.**
+
+### [Induction-Recursion](Induction/Induction-Recursion)
+
+Description: TODO
+
+Papers:
+- TODO
+
+**Status: TODO**
 
 ### [Nominal Inductive Types](Induction/NominalInductiveTypes/CNIC) <a id="names"></a> [↩](#types)
 
@@ -620,63 +725,6 @@ Papers:
 Note: so far, our nominal inductive types are based on the first of these papers, i.e. the Calculus of Nominal Inductive Constructions. There are some reasons to think that the second paper may present a better system, but so far I haven't been able to decipher it on an intuitive level.
 
 **Status: prototype implemented for CNIC, but long ago (and with Lisp syntax, lol). Prototype implemented for FreshMLTT, but it looks like shit. No proof whether FreshMLTT has decidable typechecking.**
-
-### [Induction-Induction](Induction/Induction-Induction)
-
-Induction-induction allows us to simultaneously define two or more types such that the later ones can be indexed by the earlier ones.
-
-```
-data Dense (R : A -> A -> Type) : Type
-| in  (x : A)
-| mid (x y : Dense) (H : Dense-R R x y)
-| eq  (x : Dense) (H : Dense-R x x) (i : I)
-
-with Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
-| in   : #(x y : A) (H : R x y) -> Dense-R (in x) (in y)
-| midl : #(x y : Dense R) (H : Dense-R x y) -> Dense-R (mid x y H) y
-| midr : #(x y : Dense R) (H : Dense-R x y) -> Dense-R x (mid x y H)
-```
-
-In the above example, `Dense-R R` is the dense completion of its parameter relation `R`, which means that it represents the least dense relation that contains `R`. `Dense-R` is defined at the same time as `Dense R`, which represents its carrier - the type `A` with added midpoints of all pairs `x, y` such that `R x y`.
-
-Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `Dense-R` refer to constructors of `Dense`, and the indices of `Dense-R` refer to `Dense`. This is the idea of induction-induction.
-
-Papers:
-- [Inductive-inductive definitions](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
-
-**Status: implemented in Agda, but absent in other mainstream languages. There are many papers which combine it with Higher Inductive Types. Probably not hard to implement. In general, looks good.**
-
-### [Induction-Recursion](Induction/Induction-Recursion)
-
-Description: TODO
-
-Papers:
-- TODO
-
-**Status: TODO**
-
-### [Higher Inductive Types](Induction/HIT)
-
-Description: TODO
-
-Papers:
-- [QUOTIENTS, INDUCTIVE TYPES, & QUOTIENT INDUCTIVE TYPES](https://arxiv.org/pdf/2101.02994.pdf)
-- [Type theory in a type theory with quotient inductive types](http://www.cs.nott.ac.uk/~pszgmh/kaposi-thesis.pdf)
-- [Constructing Infinitary Quotient-Inductive Types](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7788612/)
-- [LARGE AND INFINITARY QUOTIENT INDUCTIVE-INDUCTIVE TYPES](https://arxiv.org/abs/2006.11736)
-- [Quotient inductive-inductive types](https://arxiv.org/abs/1612.02346)
-- [Codes for Quotient Inductive Inductive Types](https://akaposi.github.io/qiit.pdf)
-- [Constructing quotient inductive-inductive types](https://dl.acm.org/doi/10.1145/3290315)
-- [Quotient inductive-inductive definitions](http://eprints.nottingham.ac.uk/42317/1/thesis.pdf)
-- [A model of type theory with quotient inductive-inductive types](http://real.mtak.hu/112971/1/1.pdf)
-- [Higher Inductive Types, Inductive Families, and Inductive-Inductive Types](http://von-raumer.de/academic/phd_vonraumer.pdf)
-- [A Syntax for Higher Inductive-Inductive Types](https://drops.dagstuhl.de/opus/volltexte/2018/9190/pdf/LIPIcs-FSCD-2018-20.pdf)
-- [SIGNATURES AND INDUCTION PRINCIPLES FOR HIGHER INDUCTIVE-INDUCTIVE TYPES](https://lmcs.episciences.org/6100/pdf)
-- [CONSTRUCTING HIGHER INDUCTIVE TYPES AS GROUPOID QUOTIENTS](https://lmcs.episciences.org/7391/pdf)
-- [The Construction of Set-Truncated Higher Inductive Types](https://www.sciencedirect.com/science/article/pii/S1571066119301306)
-- [Semantics of higher inductive types](https://arxiv.org/abs/1705.07088)
-
-**Status: prototype implementations include [cubicaltt](https://github.com/mortberg/cubicaltt), Cubical Agda, Arend and some other minor languages. No general syntax for HITs is known. Various papers which describe subclasses of HITs or HITs combined with induction-induction or something like that. Probably it's very easy to get the most basic and useful HITs, but very hard to get all of them right.**
 
 ## Sum types
 
