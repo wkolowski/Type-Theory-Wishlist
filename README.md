@@ -612,7 +612,34 @@ map (f : A -> B) : Set A -> Set B
 
 We can define functions out of higher inductive types by pattern matching. On point constructors, it works as usual - to map a function `f` over a singleton, we apply it to the only element there; to map it over empty set, we return the empty set; and to map it over a union, we map it over each argument of the union.
 
-For path constructors, the rules are similar but a bit more constrained. For `comm x y i`, we must return a generic point on a path between `union (map x) (map y)` and `union (map y) (map x)`. This is because we have mapped the endpoints of `comm`, i.e. `union x y` and `union y x`, to `union (map x) (map y)` and `union (map y) (map x)`, respectively. In practice this means that `comm (map x) (map y) i0` must compute to `union (map x) (map y)` (which it does) and at `comm (map x) (map y) i1` must compute to `union (map y) (map x)` (which it also does). The story for `idem` and `isSet` is analogous, even though for `isSet` it's much harder to mentally check the requirements, because the paths involved are two dimensional.
+For path constructors, the rules are similar but a bit more constrained. For `comm x y i`, we must return a generic point on a path between `union (map x) (map y)` and `union (map y) (map x)`. This is because we have mapped the endpoints of `comm`, i.e. `union x y` and `union y x`, to `union (map x) (map y)` and `union (map y) (map x)`, respectively. In practice this means that `comm (map x) (map y) i0` must compute to `union (map x) (map y)` (which it does) and at `comm (map x) (map y) i1` must compute to `union (map y) (map x)` (which it also does). The story for `idem` and `isSet` is analogous, even though for `isSet` it's much harder to mentally check the requirements, because the paths involved are two dimensional. See [this file](Induction/HIT/Set.ttw) for more details on higher-inductive definition of sets.
+
+```
+data S1 : Type
+| base
+| loop with (i : I)
+  | i0 => base
+  | i1 => base
+```
+
+The other use of HITs is to define the various objects studied in homotopy theory, like the homotopical circle shown above. It consists of a single point called `base` and a path from this point to itself, called `base`. Because `S1` is freely generated, what ends up in it is not only the path `loop`, but also also its self-composites like `loop ^ loop`, `loop ^ loop ^ loop`, ..., `loop ^ n`, and also the self-composites of its inverse, `loop ^ -n`.
+
+```
+code : S1 -> Type
+| base => Z
+| loop i => ua equiv-s i
+
+encode (x : S1) (p : base = x) : code x :=
+  transport p z
+
+decode : (x : S1) -> code x -> x = base
+| base  , z   => refl
+| base  , s k => loop ^ decode base k
+| base  , p k => loop ^ decode base k
+| loop i, k   => ...
+```
+
+Having defined the circle, we may go on and use pattern matching to attempt proving that `(base = base) = Z`... but we won't do that, as our main motivation for having HITs in the language is more practical programming rather than doing homotopy theory.
 
 Papers:
 - [QUOTIENTS, INDUCTIVE TYPES, & QUOTIENT INDUCTIVE TYPES](https://arxiv.org/pdf/2101.02994.pdf)
@@ -631,43 +658,7 @@ Papers:
 - [The Construction of Set-Truncated Higher Inductive Types](https://www.sciencedirect.com/science/article/pii/S1571066119301306)
 - [Semantics of higher inductive types](https://arxiv.org/abs/1705.07088)
 
-**Status: prototype implementations include [cubicaltt](https://github.com/mortberg/cubicaltt), Cubical Agda, Arend and some other minor languages. No general syntax for HITs is known. Various papers which describe subclasses of HITs or HITs combined with induction-induction or something like that. Probably it's very easy to get the most basic and useful HITs, but very hard to get all of them right.**
-
-### [Induction-Induction](Induction/Induction-Induction)
-
-Induction-induction allows us to simultaneously define two or more types such that the later ones can be indexed by the earlier ones.
-
-```
-data Dense (R : A -> A -> Type) : Type
-| in   (x : A)
-| mid #(x y : Dense) (H : Dense-R R x y)
-| eq  #(x : Dense)   (H : Dense-R R x x) with (i : I)
-  | i0 => mid x x H
-  | i1 => in x
-
-with Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
-| in   : #(x y : A) (H : R x y) -> Dense-R (in x) (in y)
-| midl : #(x y : Dense R) (H : Dense-R x y) -> Dense-R (mid x y H) y
-| midr : #(x y : Dense R) (H : Dense-R x y) -> Dense-R x (mid x y H)
-```
-
-In the above example, `Dense-R R` is the dense completion of its parameter relation `R`, which means that it represents the least dense relation that contains `R`. `Dense-R` is defined at the same time as `Dense R`, which represents its carrier - the type `A` with added midpoints of all pairs `x, y` such that `R x y`.
-
-Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `Dense-R` refer to constructors of `Dense`, and the indices of `Dense-R` refer to `Dense`. This is the idea of induction-induction.
-
-Papers:
-- [Inductive-inductive definitions](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
-
-**Status: implemented in Agda, but absent in other mainstream languages. There are many papers which combine it with Higher Inductive Types. Probably not hard to implement. In general, looks good.**
-
-### [Induction-Recursion](Induction/Induction-Recursion)
-
-Description: TODO
-
-Papers:
-- TODO
-
-**Status: TODO**
+**Status: prototype implementations include [cubicaltt](https://github.com/mortberg/cubicaltt), [Cubical Agda](https://agda.readthedocs.io/en/v2.6.0/language/cubical.html), [Arend](https://arend-lang.github.io/) and some other minor languages. No general syntax for HITs is known. Various papers describe subclasses of HITs or HITs combined with induction-induction or something like that. Probably it's very easy to get the most basic and useful HITs, but very hard to get all of them right.**
 
 ### [Nominal Inductive Types](Induction/NominalInductiveTypes/CNIC) <a id="names"></a> [↩](#types)
 
@@ -725,6 +716,118 @@ Papers:
 Note: so far, our nominal inductive types are based on the first of these papers, i.e. the Calculus of Nominal Inductive Constructions. There are some reasons to think that the second paper may present a better system, but so far I haven't been able to decipher it on an intuitive level.
 
 **Status: prototype implemented for CNIC, but long ago (and with Lisp syntax, lol). Prototype implemented for FreshMLTT, but it looks like shit. No proof whether FreshMLTT has decidable typechecking.**
+
+### [Induction-Induction](Induction/Induction-Induction)
+
+Induction-induction allows us to simultaneously define two or more types such that the later ones can be indexed by the earlier ones.
+
+```
+data Dense (R : A -> A -> Prop) : Type
+| in   (x : A)
+| mid #(x y : Dense) (H : Dense-R R x y)
+| eq  #(x : Dense)   (H : Dense-R R x x) with (i : I)
+  | i0 => mid x x H
+  | i1 => in x
+
+with Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
+| in   : #(x y : A) (H : R x y) -> Dense-R (in x) (in y)
+| midl : #(x y : Dense R) (H : Dense-R x y) -> Dense-R (mid x y H) y
+| midr : #(x y : Dense R) (H : Dense-R x y) -> Dense-R x (mid x y H)
+```
+
+In the above example, `Dense-R R` is the dense completion of its parameter relation `R`, which means that it represents the least dense relation that contains `R`. `Dense-R` is defined at the same time as `Dense`, which represents its carrier - the type `A` with added midpoints of all pairs `x, y` such that `R x y`.
+
+Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `Dense-R` refer to constructors of `Dense`, and the indices of `Dense-R` refer to `Dense`. This is characteristic of induction-induction. Also note that `eq` is a path constructor - we may freely mix inductive-inductive types with higher inductive types.
+
+Papers:
+- [Inductive-inductive definitions](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
+- Also see a the papers on HITs, a lot of which deal specifically with higher inductive-inductive types.
+
+**Status: implemented in Agda, but absent in other mainstream languages. There are many papers which combine it with Higher Inductive Types. Probably not hard to implement. In general, looks good.**
+
+### [Induction-Recursion](Induction/Induction-Recursion)
+
+Induction-Recursion is an enhancement of inductive types which allows us to mutually define an inductive type `I` and a recursive function of type `I -> D` for some type `D`. There are two common use cases:
+- defining closed universes of types - `D` is `Type`
+- defining data types in a manner similar to induction-induction, but with more computational niceties - here `D` is not `Type`
+
+```
+data U : Type
+| 0
+| 1
+| + (u1 u2 : U)
+| * (u1 u2 : U)
+| → (u1 u2 : U)
+| pi (dom : U) (cod : El dom -> U)
+| eq (u : U) (x y : El u)
+
+and El : (u : U) -> Type
+| 0        => Empty
+| 1        => Unit
+| u + v    => El u + El v
+| u * v    => El u * El v
+| u → v    => El u -> El v
+| pi u v   => (x : El u) -> El (v x)
+| eq u x y => x ={El u} y
+```
+
+This is a definition of a universe of codes `U`, which contains codes for the `Empty` type (`0`), the `Unit` type (`1`), sum type (`+`), product type (`*`), function type (`→`), dependent function type (`pi`) and equality type (`eq`). Mutually with `U` we define the function `El` which interprets elements of `U` as ordinary type, i.e. it interprets `0` as `Empty`, `1` as `Unit` and so on. Note that `El` refers to `U` and its constructors (obviously), but also that `U`'s constructors refer to `El`, which is indispensable to correctly represent codes for dependent functions and equality.
+
+We can combine induction-recursion with constructors that compute to get a more interesting kind of universe - one in which the various type isomorphisms (like `Empty + A = A`) hold by definition!
+
+```
+data U : Type
+| 0
+| 1
+| + (u1 u2 : U)
+  | 0, u => u
+  | u, 0 => u
+  | u1 + u2, u3 => u1 + (u2 + u3)
+| * (u1 u2 : U)
+  | 0, _ => 0
+  | _, 0 => 0
+  | 1, u => u
+  | u, 1 => u
+  | u1 * u2, u3 => u1 * (u2 * u3)
+  | u1, u2 + u3 => (u1 * u2) + (u1 * u3)
+  | u1 + u2, u3 => (u1 * u3) + (u2 * u3)
+| → (u1 u2 : U)
+  | _, 1 => 1
+  | 0, _ => 1
+  | 1, u => u
+  | u1 * u2, u3 => u1 → (u2 → u3)
+  | u1 + u2, u3 => (u1 → u3) * (u2 → u3)
+  | u1, u2 * u3 => (u1 → u2) * (u1 → u3)
+| pi (dom : U) (cod : El dom -> U)
+  | 0, _ => 1
+  | 1, _ => cod unit
+  | u1 * u2, _ => pi u1 (fun x => pi u2 (fun y => cod (x, y)))
+  | u1 + u2, _ => pi u1 (fun x => dom (inl x)) * pi u2 (fun y => dom (inr y))
+| eq (u : U) (x y : El u)
+  | 0      , _     , _      => Unit
+  | 1      , _     , _      => Unit
+  | u1 + u2, inl x', inl y' => eq u1 x' y'
+  | u1 + u2, inr x', inr y' => eq u2 x' y'
+  | u1 + u2, _     , _      => Empty
+  | u1 * u2, x1, y1, x2, y2 => eq u1 x1 x2 * eq u2 y1 y2
+  | u1 → u2, f     , g      => // no forall
+
+and El : (u : U) -> Type
+| 0        => Empty
+| 1        => Unit
+| u + v    => El u + El v
+| u * v    => El u * El v
+| u → v    => El u -> El v
+| pi u v   => (x : El u) -> El (v x)
+| eq u x y => x = y
+```
+
+
+
+Papers:
+- TODO
+
+**Status: TODO**
 
 ## Sum types
 
