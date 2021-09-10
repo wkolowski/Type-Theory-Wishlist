@@ -417,6 +417,9 @@ head : (#n : Nat) (v : Vec (s n)) -> A
 
 We call these _inaccessible_ patterns, following [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns).
 
+Papers:
+- [A Syntax for Mutual Inductive Families](https://drops.dagstuhl.de/opus/volltexte/2020/12345/pdf/LIPIcs-FSCD-2020-23.pdf)
+
 **Status: inductive families are standard in proof assistants and dependently-typed languages. Dependent pattern matching is semi-standard, as some languages (notably Coq) have problems with supporting it properly so it's hard to use, while some others (Idris 2 and formerly Agda) have implementations of it that entail Uniqueness of Identity Proofs, which is incompatible with Univalence. The closest implementation of what's described here is probably Agda.**
 
 ## [Indices that Compute](Induction/IndicesThatCompute)
@@ -657,6 +660,8 @@ Papers:
 - [CONSTRUCTING HIGHER INDUCTIVE TYPES AS GROUPOID QUOTIENTS](https://lmcs.episciences.org/7391/pdf)
 - [The Construction of Set-Truncated Higher Inductive Types](https://www.sciencedirect.com/science/article/pii/S1571066119301306)
 - [Semantics of higher inductive types](https://arxiv.org/abs/1705.07088)
+- [Impredicative Encodings of (Higher) Inductive Types](https://arxiv.org/pdf/1802.02820.pdf)
+- [On Higher Inductive Types in Cubical Type Theory](https://arxiv.org/pdf/1802.01170.pdf)
 
 **Status: prototype implementations include [cubicaltt](https://github.com/mortberg/cubicaltt), [Cubical Agda](https://agda.readthedocs.io/en/v2.6.0/language/cubical.html), [Arend](https://arend-lang.github.io/) and some other minor languages. No general syntax for HITs is known. Various papers describe subclasses of HITs or HITs combined with induction-induction or something like that. Probably it's very easy to get the most basic and useful HITs, but very hard to get all of them right.**
 
@@ -741,6 +746,7 @@ Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `D
 
 Papers:
 - [Inductive-inductive definitions](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
+- [A categorical semantics for inductive-inductive definitions](https://www.cs.nott.ac.uk/~psztxa/publ/catind2.pdf)
 - Also see a the papers on HITs, a lot of which deal specifically with higher inductive-inductive types.
 
 **Status: implemented in Agda, but absent in other mainstream languages. There are many papers which combine it with Higher Inductive Types. Probably not hard to implement. In general, looks good.**
@@ -748,8 +754,8 @@ Papers:
 ### [Induction-Recursion](Induction/Induction-Recursion)
 
 Induction-Recursion is an enhancement of inductive types which allows us to mutually define an inductive type `I` and a recursive function of type `I -> D` for some type `D`. There are two common use cases:
-- defining closed universes of types - `D` is `Type`
-- defining data types in a manner similar to induction-induction, but with more computational niceties - here `D` is not `Type`
+- defining closed universes of types - here `D` is `Type`
+- defining data types in a manner similar to induction-induction, but with more computational niceties - here `D` is something  other than `Type`
 
 ```
 data U : Type
@@ -771,9 +777,7 @@ and El : (u : U) -> Type
 | eq u x y => x ={El u} y
 ```
 
-This is a definition of a universe of codes `U`, which contains codes for the `Empty` type (`0`), the `Unit` type (`1`), sum type (`+`), product type (`*`), function type (`→`), dependent function type (`pi`) and equality type (`eq`). Mutually with `U` we define the function `El` which interprets elements of `U` as ordinary type, i.e. it interprets `0` as `Empty`, `1` as `Unit` and so on. Note that `El` refers to `U` and its constructors (obviously), but also that `U`'s constructors refer to `El`, which is indispensable to correctly represent codes for dependent functions and equality.
-
-We can combine induction-recursion with constructors that compute to get a more interesting kind of universe - one in which the various type isomorphisms (like `Empty + A = A`) hold by definition!
+This is a definition of a universe of codes `U`, which contains codes for the `Empty` type (`0`), the `Unit` type (`1`), sum type (`+`), product type (`*`), function type (`→`), dependent function type (`pi`) and equality type (`eq`). Mutually with `U` we define the function `El` which interprets elements of `U` as ordinary types, i.e. it interprets `0` as `Empty`, `1` as `Unit` and so on. Note that `El` refers to `U` and its constructors (obviously), but also that `U`'s constructors refer to `El`, which is indispensable to correctly represent codes for dependent function type and equality type.
 
 ```
 data U : Type
@@ -804,13 +808,14 @@ data U : Type
   | u1 * u2, _ => pi u1 (fun x => pi u2 (fun y => cod (x, y)))
   | u1 + u2, _ => pi u1 (fun x => dom (inl x)) * pi u2 (fun y => dom (inr y))
 | eq (u : U) (x y : El u)
-  | 0      , _     , _      => Unit
-  | 1      , _     , _      => Unit
-  | u1 + u2, inl x', inl y' => eq u1 x' y'
-  | u1 + u2, inr x', inr y' => eq u2 x' y'
-  | u1 + u2, _     , _      => Empty
-  | u1 * u2, x1, y1, x2, y2 => eq u1 x1 x2 * eq u2 y1 y2
-  | u1 → u2, f     , g      => // no forall
+  | 0     , _       , _        => Unit
+  | 1     , _       , _        => Unit
+  | u + v , inl x'  , inl y'   => eq u x' y'
+  | u + v , inr x'  , inr y'   => eq v x' y'
+  | u + v , _       , _        => Empty
+  | u * v , (x1, y1), (x2, y2) => eq u x1 x2 * eq v y1 y2
+  | u → v , f       , g        => pi u1 (fun x : El u1 => eq u2 (f x) (g x))
+  | pi u v, f       , g        => pi u (fun x : El u => eq v (f x) (g x))
 
 and El : (u : U) -> Type
 | 0        => Empty
@@ -822,12 +827,26 @@ and El : (u : U) -> Type
 | eq u x y => x = y
 ```
 
-
+We can combine induction-recursion with constructors that compute to get a more interesting kind of universe - one in which the various type isomorphisms hold by definition. For the boring isomorphisms like `Empty + A = A` this is not very useful (as it's helpful only rarely), but it's extremely useful for the equality type - thanks to constructors that compute we can have `(f = g) = (x : A) -> f x = g x`, `((x1, y1) = (x2, y2)) = (x1 = x2) * (y1 = y2)` and so on.
 
 Papers:
-- TODO
+- [A General Formulation of Simultaneous Inductive-Recursive Definitions in Type Theory](https://www.cse.chalmers.se/~peterd/papers/Inductive_Recursive.pdf)
+- [A Finite Axiomatization of Inductive-Recursive Definitions](https://www.cse.chalmers.se/~peterd/papers/Finite_IR.pdf)
+- [Induction-Recursion and Initial Algebras](https://www.cse.chalmers.se/~peterd/papers/InductionRecursionInitialAlgebras.pdf)
+- [Indexed induction–recursion](https://www.sciencedirect.com/sdfe/reader/pii/S1567832605000536/pdf)
+- [Small Induction Recursion](https://www.cs.nott.ac.uk/~psztxa/publ/tlca13-small-ir.pdf)
+- [Containers, monads and induction recursion](https://sci-hub.se/10.1017/s0960129514000127)
+- [Positive Inductive-Recursive Definitions](https://arxiv.org/pdf/1502.05561.pdf)
+- [Variations on Inductive-Recursive Definitions](https://strathprints.strath.ac.uk/62321/1/Ghani_etal_MPCS_2017_Variations_on_inductive_recursive.pdf)
+- [Fibred Data Types](https://www.researchgate.net/publication/261165437_Fibred_Data_Types)
 
-**Status: TODO**
+More tangentially related:
+- [Higher inductive-recursive univalence and type-directed definitions](https://homotopytypetheory.org/2014/06/08/hiru-tdd/) - see for a definition of universe with type-directed equality like the one presented above, but using higher-inductive types instead of constructor that compute
+- [Simulating Induction-Recursion for Partial Algorithms](https://members.loria.fr/DLarchey/files/papers/TYPES_2018_paper_19.pdf) - how to define complicated recursive functions without resorting to induction-recursion
+- [Fully Generic Programming Over Closed Universes of Inductive-Recursive Types](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=4656&context=open_access_etds) - generic programming with universes
+- [A polymorphic representation of induction-recursion](https://www.researchgate.net/publication/244448805_A_polymorphic_representation_of_induction-recursion) ([slides](http://www.cs.ru.nl/dtp11/slides/capretta.pdf)
+
+**Status: induction-recursion is implemented in Agda and in Idris 1 (or at least this is what Wiki claims), and there was an experimental branch of Coq that implemented it a long time ago. In general, however, it is not mainstream. Implementation should not be problematic.**
 
 ## Sum types
 
