@@ -35,7 +35,7 @@ mul : (n m : Nat) -> Nat
 // `mul 1 m => add (mul z m) m => add z m = m`
 // So a separate case for `mul 1 m` is not needed.
 
-// ``mul n 1 => add n (mul n z) => add n z => n``
+// `mul n 1 => add n (mul n z) => add n z => n`
 // Similarly, a separate case for `mul n 1` is not needed.
 
 // mul (s n') (s m')    => add (mul n' (s m')) m => add (add n (mul n' m')) m
@@ -49,8 +49,8 @@ pow : (n m : Nat) -> Nat
 | n, z    => 1
 | n, s m' => mul n (pow n m')
 
-// ``pow z (s m') => z``
-// ``pow z (s m') => mul z (pow z m') => z``
+// `pow z (s m') => z`
+// `pow z (s m') => mul z (pow z m') => z`
 // the first clause is not needed
 
 %FirstMatch
@@ -94,13 +94,13 @@ binom : (n k : Nat) -> Nat
 // sub - 1 equation:  sub n z => n
 // mul - 1 equation:  mul n z => z
 // pow - 1 equation:  pow z (s m') => z
-// eq  - z equations
-// le  - z equations
-// lt  - z equations
+// eq  - 0 equations
+// le  - 0 equations
+// lt  - 0 equations
 // min - 1 equation: min n z => z
 // max - 1 equation: max n z => n
-// half  z equations
-// binom z equations
+// half  0 equations
+// binom 0 equations
 
 min-max : (n m : Nat) -> min n (max n m) = n
 | z   , _    => refl

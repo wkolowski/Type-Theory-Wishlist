@@ -52,11 +52,12 @@ add-comm : (n m : Conat) -> add n m = add m n
 
 // omega also comes easily.
 
-omega : Conat := s omega
+omega : Conat :=
+  s omega
 
 // Translation:
 // omega : Conat
-// & out := sR omega
+// & out => sR omega
 
 add-z-inv-l : (n m : Conat) -> add n m = z -> n = z
 | z   , _ => fun _ => refl

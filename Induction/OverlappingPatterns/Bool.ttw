@@ -15,10 +15,10 @@ orb : (x y : Bool) -> Bool
 | _  tt => tt
 
 // Confluence check for orb:
-// ``orb ff ff => ff`` (clause 1) and ``orb ff ff => ff`` (clause 2), so ok.
-// ``orb tt tt => tt`` (clause 3) and ``orb tt tt => tt`` (clause 4), so ok.
-// ``orb ff tt => tt`` (clause 1) and ``orb ff tt => tt`` (clause 4), so ok.
-// ``orb tt ff => tt`` (clause 2) and ``orb tt ff => tt`` (clause 3), so ok.
+// `orb ff ff => ff` (clause 1) and `orb ff ff => ff` (clause 2), so ok.
+// `orb tt tt => tt` (clause 3) and `orb tt tt => tt` (clause 4), so ok.
+// `orb ff tt => tt` (clause 1) and `orb ff tt => tt` (clause 4), so ok.
+// `orb tt ff => tt` (clause 2) and `orb tt ff => tt` (clause 3), so ok.
 
 andb : (x y : Bool) -> Bool
 | ff _  => ff

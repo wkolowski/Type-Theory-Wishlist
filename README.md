@@ -45,8 +45,8 @@ TODO:
 | ----------------- | ---------------- | ---------------- | ---------------- |
 | [Record types](#records)      | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
 | [Function type](#functions)     | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
-| [Inductive types](#inductives)   |  see below                             |
-| [Coinductive types](#coinductives) |  see below                             |
+| [Inductive types](#inductives)   |  see below | constructors | pattern matching |
+| [Coinductive types](#coinductives) |  see below | copattern matching | field selection |
 | [Empty type](#empty-and-unit)        | `Empty`          | impossible       | `abort`          |
 | [Unit type](#empty-and-unit)         | `Unit`           | `unit`           | not needed       |
 | [Strict universes](#universes)  | `Type h p`       | `Type h p`       | impossible       |
@@ -415,7 +415,7 @@ head : (#n : Nat) (v : Vec (s n)) -> A
 | .n', Cons h n' t => h
 ```
 
-We call these _inaccessible_ patterns, following [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns).
+We call these _forced patterns, contrary to [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns) which calls them _inaccessible patterns_.
 
 Papers:
 - [A Syntax for Mutual Inductive Families](https://drops.dagstuhl.de/opus/volltexte/2020/12345/pdf/LIPIcs-FSCD-2020-23.pdf)
@@ -778,7 +778,7 @@ Tangentially related:
 - [Higher inductive-recursive univalence and type-directed definitions](https://homotopytypetheory.org/2014/06/08/hiru-tdd/) - see for a definition of universe with type-directed equality like the one presented above, but using higher-inductive types instead of constructor that compute
 - [Simulating Induction-Recursion for Partial Algorithms](https://members.loria.fr/DLarchey/files/papers/TYPES_2018_paper_19.pdf) - how to define complicated recursive functions without resorting to induction-recursion
 - [Fully Generic Programming Over Closed Universes of Inductive-Recursive Types](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=4656&context=open_access_etds) - generic programming with universes
-- [A polymorphic representation of induction-recursion](https://www.researchgate.net/publication/244448805_A_polymorphic_representation_of_induction-recursion) ([slides](http://www.cs.ru.nl/dtp11/slides/capretta.pdf)
+- [A polymorphic representation of induction-recursion](https://www.researchgate.net/publication/244448805_A_polymorphic_representation_of_induction-recursion) ([slides](http://www.cs.ru.nl/dtp11/slides/capretta.pdf))
 - [A Formalisation of a Dependently Typed Language as an Inductive-Recursive Family](https://www.cse.chalmers.se/~nad/publications/danielsson-types2006.pdf)
 
 **Status: induction-recursion is implemented in Agda and in Idris 1 (or at least this is what Wiki claims), and there was an experimental branch of Coq that implemented it a long time ago. In general, however, it is not mainstream. Implementation should not be problematic.**
@@ -798,14 +798,9 @@ Coinductive types are underresearched and less well though-out than inductive ty
 
 Another possibility for handling coinductives is for them to be just (co)recursive records, but this depends on how cool and foreign records will be.
 
-Wut:
-- [Basic syntax](#coinductives-basic-syntax)
-- [Special syntax for single-field coinductive types]
-- mixed inductive-coinductived types (of the form `ν X. μ Y. T`)
+### Basic syntax of coinductive types
 
-### Basic syntax of coinductive types <a id="coinductives-basic-syntax"></a>
-
-Coinductive types are "negative", i.e. they are record-like types which are defined by saying what fields they have. Definitions of coinductive types start with the keyword `codata`. Then, in separate lines starting with `&`, we list field names and their types.
+Coinductive types are "negative", i.e. they are record-like types which are defined by saying what fields they have. Definitions of coinductive types start with the keyword `codata`. Then, in separate lines starting with `&`, we list field names and their types. Below we define a coinductive product type whose left projection is `l` and right projection is `r`.
 
 ```
 codata _*_ (A B : Type) : Type
@@ -830,7 +825,7 @@ open x in
 & r => l
 ```
 
-But things are even more ecomfortable: coinductive values are unpacked for us automatically and we only need to use the dot notation in case of ambiguity.
+But things are even more comfortable: coinductive values are unpacked for us automatically and we only need to use the dot notation in case of ambiguity.
 
 ```
 swap (x : A * B) : B * A
@@ -846,7 +841,7 @@ codata Stream (A : Type) : Type
 & tl : Stream
 ```
 
-Corecursive definitions by copattern matching work essentially the same as those which are not corecursive. Note that, just like for recursive definitions, we must omit the parameters of the definition, which may look weird at first and require some getting used to.
+Corecursive definitions by copattern matching work essentially the same as those which are not corecursive. Note that, just like for recursive definitions, we must omit the parameters of the definition, which may look weird at first and requires some getting used to.
 
 ```
 map (f : A -> B) : (s : Stream A) -> Stream B
@@ -863,7 +858,7 @@ interleave : (l r : Stream A) -> Stream A
 & tl tl => interleave l.tl r.tl
 ```
 
-This definition is equivalent to the following which doesn't use deep copatterns.
+The above definition is equivalent to the following one which doesn't use deep copatterns.
 
 ```
 interleave : (l r : Stream A) -> Stream A
@@ -891,7 +886,7 @@ split : (s : Stream A) : Stream A * Stream A
 & r tl => (split s.tl.tl).r
 ```
 
-Last but not least, we can combine copattern matching with pattern matching. Below we define a function `streamize (x : A) -> List A -> Stream A` that turns a list into a stream - once we run out of list elements, the rest of the stream is all `x`s. In this definition, our copatterns match the output (of type `Stream A`), whereas the patterns match the input (of type `List A`).
+Last but not least, we can combine copattern matching with pattern matching. Below we define a function `streamize (x : A) : List A -> Stream A` that turns a list into a stream - once we run out of list elements, the rest of the stream is all `x`s. In this definition, our copatterns match the output (of type `Stream A`), whereas the patterns match the input (of type `List A`).
 
 ```
 streamize (x : A) : List A -> Stream A
@@ -903,9 +898,9 @@ streamize (x : A) : List A -> Stream A
 
 We should interpret this definition as follows:
 - the head of the output stream is `x` when the input is `[]`
-- the tail of the output stream is `streamize []` when ethe input is `[]`
+- the tail of the output stream is `streamize []` when the input is `[]`
 - the head of the output stream is `h` when the input is `Cons h _`
-- the tail of the output stream is `streamize t` when hte input is `Cons _ t`
+- the tail of the output stream is `streamize t` when the input is `Cons _ t`
 
 The grouping of the copatterns and patterns doesn't matter much (besides aesthetics). The definition below, in which the second and third clauses are swapped, is computationally equal to the previous one.
 
@@ -942,9 +937,16 @@ streamize (x : A) : List A -> Stream A
 ```
 
 Papers:
-- 
+- [Copatterns Programming Infinite Structures by Observations](https://www.researchgate.net/profile/Anton-Setzer/publication/262366004_Copatterns_Programming_Infinite_Structures_by_Observations/links/587fe0f208ae9275d4ee3ae2/Copatterns-Programming-Infinite-Structures-by-Observations.pdf)
+- [Unnesting of Copatterns](http://www2.tcs.ifi.lmu.de/~abel/rtatlca14.pdf)
+- [Wellfounded Recursion with Copatterns and Sized Types](http://www2.tcs.ifi.lmu.de/~abel/jfp15.pdf)
+- [Elaborating dependent (co)pattern matching](https://jesper.sikanda.be/files/elaborating-dependent-copattern-matching.pdf)
+- [Copattern matching and first-class observations in OCaml, with a macro](https://hal.inria.fr/hal-01653261/document)
 
-**Status: xd**
+Not papers:
+- [Pattern and Copattern matching](http://www1.maths.leeds.ac.uk/pure/logic/images/slidesLeedsLogicSeminarMay2015.pdf)
+
+**Status: negative inductive types are imeplemented in Agda and Coq. Additionally, copattern matching is implemented in Agda. The Agda implementation of copatterns is based on one of the papers, which means things look pretty good.**
 
 TODO:
 - Maybe if we start with patterns, then the definition should still be interpreted as legal corecursive definition?
@@ -952,38 +954,75 @@ TODO:
 
 ### Syntax sugar for single-field coinductive types
 
-So far so good, but what about coinductive lists, conatural numbers and other single-field coinductives? We shall have a syntax sugar for that! Example:
+We have special syntax for coinductive types that have only a single field, like coinductive lists, conatural numbers and so on.
 
 ```
-codata CoList (A : Type) : Type :=
+codata CoList (A : Type) : Type
 | CoNil
-| CoCons (hd : A) (tl : CoList)
+| CoCons (hd : A, tl : CoList)
 ```
 
-The above is neither an inductive type nor a "positive" coinductive type. It is just a syntax sugar to represent something like this:
+The above is neither an inductive type nor a "positive" coinductive type. It is just a syntax sugar that desugars to the following ordinary coinductive type definition.
 
 ```
-data CoListX (X A : Type) : Type :=
+data CoListX (X A : Type) : Type
 | CoNilX
-| CoConsX (hd : A) (tl : X)
+| CoConsX (hd : A, tl : X)
 
-codata CoList (A : Type) : Type :=
+codata CoList (A : Type) : Type
 & Out : CoListX CoList A
 
-CoNil : CoList a :=
+CoNil : CoList A
 & Out => CoNilX
 
-CoCons (h : a) (t : CoList a) : CoList a :=
+CoCons (h : A) (t : CoList A) : CoList A
 & Out => CoConsX h t
 ```
 
-See [this file](Coinduction/Conat.ttw) for more details on this notation.
+We can use pattern matching on values of such single-field coinductive types as if their type was inductive. Additionally, we can omit copattern matching when defining functions into such types, as there is only one field anyway. These two features can be combined.
 
-### Mixed coinductive-inductive definitions
+```
+app : (l1 l2 : CoList A) -> CoList A
+| CoNil     , _ => l2
+| CoCons h t, _ => CoCons h (app t l2)
+```
 
-TODO!
+To desugar this definition, we need to add the single-field copattern at the top level, replace patterns refering to "constructors" of `CoList` with patterns taht refer to constructors of `CoListX`, and turn naked uses of colists (i.e. `l : CoList A`) into uses of their field (i.e. `l.Out : CoListX (CoList A) A`.
 
-**Status: basic (negative) coinductive types are now standard (even though somewhat rare), the rest is speculation.**
+```
+app : (l1 l2 : CoList A) -> CoList A
+& Out
+  | CoNilX     , _ => l2.Out
+  | CoConsX h t, _ => CoConsX h (app t l2)
+```
+
+Use of overlapping (and order-independent) patterns is of course allowed when using this syntax sugar.
+
+```
+app : (l1 l2 : CoList A) -> CoList A
+| CoNil     , _     => l2
+| _         , CoNil => l1
+| CoCons h t, _     => CoCons h (app t l2)
+```
+
+The above definition gets desugared to the one below, which uses overlapping patterns.
+
+```
+%OverlappingPatterns
+app : (l1 l2 : CoList A) -> CoList A
+& Out
+  | CoNilX     , _      => l2.Out
+  | _          , CoNilX => l1.Out
+  | CoConsX h t, _      => CoConsX h (app t l2)
+```
+
+See [the file dealing with conatural numbers](Coinduction/Conat.ttw) for more details on this notation.
+
+**Status: Highly experimental. No papers or prototype implementations. However, it looks pretty reasonable.**
+
+TODO:
+- Check the details.
+- Does it work for dependent coinductive types?
 
 ## [Empty](Rewriting/Empty.ttw) and [Unit](Rewriting/Unit.ttw) <a id="empty-and-unit"></a> [↩](#types)
 
