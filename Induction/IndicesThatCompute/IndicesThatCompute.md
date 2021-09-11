@@ -1,0 +1,101 @@
+## [Indices that Compute](Induction/IndicesThatCompute)
+
+We use the name "Indices that Compute" for a suite of ideas centered around an alternative syntax for inductive families and the idea that it would be good to "merge" recursive and inductive definitions of type families. To make this more precise, consider the two below definitions of what it means for a natural number to be even.
+
+```
+data Even : Nat -> Prop
+| Even-z  : Even z
+| Even-ss (#n : Nat, e : Even n) : Even (s (s n))
+```
+
+The first definition is a predicate defined as an inductive family. It effectively says that `z` (zero) is even and that if `n` is even, then `s (s n)` (2 + n) is also even. What are the pros and cons of this definition?
+
+Pros:
+- we can pattern match on it
+- induction principle (in a Coq-like language)
+- irrelevance - as we will see later, thanks to `Prop`, any two `e1, e2 : Even n` can be proven equal using just `refl`exivity
+
+Cons:
+- quadratic proof size if there is no sharing of the implicit `n`s between constructors
+- need to implement the decision procedure manually
+- hard to prove that 1 is not even - we need a tactic like Coq's `inversion`, or some boilerplate, or very well-implemented dependent patern matching
+- no uniqueness principle - if the codomain weren't `Prop`, we would need to prove manually that all `e1, e2 : Even n` are equal
+
+```
+Even : Nat -> Prop
+| z       => Unit
+| s z     => Empty
+| s (s n) => Even n
+```
+
+The second definition is recursive. It says that zero is even, one is not even, and that 2 + n is even when n is. What are the pros and cons of this definition?
+
+Pros:
+- constant proof size
+- very easy to prove that 1 is not even (`Even (s z)` computes to `Empty`), so the proof of `Even 1 -> Empty` is the identity function
+- irrelevance
+- uniqueness principle - even if the codomain wasn't `Prop`, all `e : Even n` compute to the same type when `n` is known
+
+Cons:
+- can't pattern match on the proof, only on the argument
+- need to implement the decision procedure manually
+- no induction principle (again, if we're hanging in Coq's vicinity)
+- non-standard shape of recursion (i.e. different from what appears in `Nat`'s definition)
+
+The idea behind the name "Indices that Compute" is to merge both of these definitiosn into one, better.
+
+```
+data EVEN : Nat -> Prop
+| z       => EVEN-z : EVEN z
+| s (s n) => EVEN-ss (e : EVEN n) : EVEN (s (s n))
+```
+
+This definition is similar to the second definition of `Even` in that it is a definition by pattern matching on the index `n`. However, the pattern matching is not exhaustive, because we omitted the case for `s z`. This means that `EVEN (s z)` will compute to `Empty`. The definition is also similar to the first definition of `Even` in that it provides two constructors, one for proving that `z` is even and the other for proving that `s (s n)` is even if `n` is.
+
+Pros:
+- constant proof size
+- easy to prove that 1 is not even
+- it computes
+- induction principle
+
+Cons:
+- need to manually implement decision procedure
+
+Q: Can we do anything nice with this?
+
+A: in such a banal case as parity of naturals probably not, but in more complicated ones I think so! Example: matching a regular expression against a string. This can't be easily implemented by recursion, so induction is needed. But even though we use induction, it would be nice if some cases of the definition could compute/simplify to help us a bit.
+
+There's also an alternative way for easy predicates like "being an even number", namely: just implement the decision procedure and declare `(= true)` as a coercion. With special computation rules `Empty`, `Unit` and `=`, this should be more than enough.
+
+```
+even : Nat -> Bool
+| z       => tt
+| s z     => ff
+| s (s n) => even n
+
+Bool-to-Prop : Bool -> Prop
+| tt => Unit
+| ff => Empty
+```
+
+Pros:
+- constant proof size
+- it is its own decision procedure
+- easy to prove that 1 is not even
+- to sum up: it computes
+
+Cons:
+- nonstandard shape of recursion
+
+Note: induction principles may be problematic in Coq or other languages where pattern matching is equivalent to eliminators, but after some thinking, using an induction principle of a type or function (functional induction) in a proof just amounts to copying that type's constructors/functions cases and pasting them in the proof.
+
+Papers:
+- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf)
+- [Slides for the above](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)
+- [A simpler encoding of indexed types](https://dl.acm.org/doi/10.1145/3471875.3472991)
+
+**Status: very wild speculations.**
+
+TODO:
+- Think about this more.
+- Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).

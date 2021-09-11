@@ -1,10 +1,10 @@
 // New syntactic innovation: we can write `with (x_0 : A_0) ... (x_n : A_n)`
 // to mark that `x_0`, ..., `x_n` are arguments of the constructors that we
 // intend to pattern match on.
-data Dense (R : A -> A -> Type) : Type
-| in  (x : A)
-| mid (x y : Dense) (H : Dense-R R x y)
-| eq  (x : Dense) (H : Dense-R x x) with (i : I)
+data Dense (R : A -> A -> Prop) : Type
+| in   (x : A)
+| mid #(x y : Dense) (H : Dense-R R x y)
+| eq  #(x : Dense)   (H : Dense-R R x x) with (i : I)
   | i0 => mid x x H
   | i1 => in x
 

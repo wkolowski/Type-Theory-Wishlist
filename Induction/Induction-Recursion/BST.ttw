@@ -1,0 +1,10 @@
+data BST (R : A -> A -> Prop) : Type
+| E
+| N (v : A, l r : BST R, ok : OK R v l r)
+
+and OK (R : A -> A -> Prop) (v : A) : (l r : BST R) -> Prop
+| E, E => Unit
+| N, E => R l.v v
+| E, N => R v r.v
+| N, N => R l.v v * R v r.v
+

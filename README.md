@@ -45,8 +45,8 @@ TODO:
 | ----------------- | ---------------- | ---------------- | ---------------- |
 | [Record types](#records)      | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
 | [Function type](#functions)     | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
-| [Inductive types](#inductives)   | pretty standard, see below                             |
-| [Coinductive types](#coinductives) | pretty standard, see below                             |
+| [Inductive types](#inductives)   |  see below                             |
+| [Coinductive types](#coinductives) |  see below                             |
 | [Empty type](#empty-and-unit)        | `Empty`          | impossible       | `abort`          |
 | [Unit type](#empty-and-unit)         | `Unit`           | `unit`           | not needed       |
 | [Strict universes](#universes)  | `Type h p`       | `Type h p`       | impossible       |
@@ -311,8 +311,8 @@ TODO:
 ## Pattern matching on steroids
 
 Besides the usual pattern matching, we also allow some extensions which significantly raise it's power:
-- [Decidable Equality Patterns](#decidable-equality-patterns)
 - [Overlapping and Order-Independent Patterns](#overlapping-and-order-independent-patterns)
+- [Decidable Equality Patterns](#decidable-equality-patterns)
 
 ### [Overlapping and Order-Independent Patterns](Induction/OverlappingPatterns)
 
@@ -422,108 +422,6 @@ Papers:
 
 **Status: inductive families are standard in proof assistants and dependently-typed languages. Dependent pattern matching is semi-standard, as some languages (notably Coq) have problems with supporting it properly so it's hard to use, while some others (Idris 2 and formerly Agda) have implementations of it that entail Uniqueness of Identity Proofs, which is incompatible with Univalence. The closest implementation of what's described here is probably Agda.**
 
-## [Indices that Compute](Induction/IndicesThatCompute)
-
-We use the name "Indices that Compute" for a suite of ideas centered around an alternative syntax for inductive families and the idea that it would be good to "merge" recursive and inductive definitions of type families. To make this more precise, consider the two below definitions of what it means for a natural number to be even.
-
-```
-data Even : Nat -> Prop
-| Even-z  : Even z
-| Even-ss (#n : Nat, e : Even n) : Even (s (s n))
-```
-
-The first definition is a predicate defined as an inductive family. It effectively says that `z` (zero) is even and that if `n` is even, then `s (s n)` (2 + n) is also even. What are the pros and cons of this definition?
-
-Pros:
-- we can pattern match on it
-- induction principle (in a Coq-like language)
-- irrelevance - as we will see later, thanks to `Prop`, any two `e1, e2 : Even n` can be proven equal using just `refl`exivity
-
-Cons:
-- quadratic proof size if there is no sharing of the implicit `n`s between constructors
-- need to implement the decision procedure manually
-- hard to prove that 1 is not even - we need a tactic like Coq's `inversion`, or some boilerplate, or very well-implemented dependent patern matching
-- no uniqueness principle - if the codomain weren't `Prop`, we would need to prove manually that all `e1, e2 : Even n` are equal
-
-```
-Even : Nat -> Prop
-| z       => Unit
-| s z     => Empty
-| s (s n) => Even n
-```
-
-The second definition is recursive. It says that zero is even, one is not even, and that 2 + n is even when n is. What are the pros and cons of this definition?
-
-Pros:
-- constant proof size
-- very easy to prove that 1 is not even (`Even (s z)` computes to `Empty`), so the proof of `Even 1 -> Empty` is the identity function
-- irrelevance
-- uniqueness principle - even if the codomain wasn't `Prop`, all `e : Even n` compute to the same type when `n` is known
-
-Cons:
-- can't pattern match on the proof, only on the argument
-- need to implement the decision procedure manually
-- no induction principle (again, if we're hanging in Coq's vicinity)
-- non-standard shape of recursion (i.e. different from what appears in `Nat`'s definition)
-
-The idea behind the name "Indices that Compute" is to merge both of these definitiosn into one, better.
-
-```
-data EVEN : Nat -> Prop
-| z       => EVEN-z : EVEN z
-| s (s n) => EVEN-ss (e : EVEN n) : EVEN (s (s n))
-```
-
-This definition is similar to the second definition of `Even` in that it is a definition by pattern matching on the index `n`. However, the pattern matching is not exhaustive, because we omitted the case for `s z`. This means that `EVEN (s z)` will compute to `Empty`. The definition is also similar to the first definition of `Even` in that it provides two constructors, one for proving that `z` is even and the other for proving that `s (s n)` is even if `n` is.
-
-Pros:
-- constant proof size
-- easy to prove that 1 is not even
-- it computes
-- induction principle
-
-Cons:
-- need to manually implement decision procedure
-
-Q: Can we do anything nice with this?
-
-A: in such a banal case as parity of naturals probably not, but in more complicated ones I think so! Example: matching a regular expression against a string. This can't be easily implemented by recursion, so induction is needed. But even though we use induction, it would be nice if some cases of the definition could compute/simplify to help us a bit.
-
-There's also an alternative way for easy predicates like "being an even number", namely: just implement the decision procedure and declare `(= true)` as a coercion. With special computation rules `Empty`, `Unit` and `=`, this should be more than enough.
-
-```
-even : Nat -> Bool
-| z       => tt
-| s z     => ff
-| s (s n) => even n
-
-Bool-to-Prop : Bool -> Prop
-| tt => Unit
-| ff => Empty
-```
-
-Pros:
-- constant proof size
-- it is its own decision procedure
-- easy to prove that 1 is not even
-- to sum up: it computes
-
-Cons:
-- nonstandard shape of recursion
-
-Note: induction principles may be problematic in Coq or other languages where pattern matching is equivalent to eliminators, but after some thinking, using an induction principle of a type or function (functional induction) in a proof just amounts to copying that type's constructors/functions cases and pasting them in the proof.
-
-Papers:
-- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf)
-- [Slides for the above](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)
-- [A simpler encoding of indexed types](https://dl.acm.org/doi/10.1145/3471875.3472991)
-
-**Status: very wild speculations.**
-
-TODO:
-- Think about this more.
-- Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
-
 ## [Advanced Inductive Types](Induction)
 
 Inductive families are just the tip of the iceberg, as our inductive types are supposed to be REALLY powerful. We take the usual inductive families as baseline and add:
@@ -564,6 +462,9 @@ We can define functions using pattern matching and structural recursion, just li
 In the above example we want to compute the absolute value of the argument. For non-negative integers this is easy and we just return the argument, whereas for negative numbers we need to recursively turn predecessors into successors.
 
 See [this file](Induction/ConstructorsThatCompute/Z.ttw) for a more thorough explanation and exploration of the type of integers defined using constructors that compute.
+
+Papers:
+- None, this idea is brand new invention of mine.
 
 **Status: highly experimental. It looks like if we put reasonable constraints on the kinds of computation rules associated with constructors, there isn't any abvious contradiction, nontermination or anything like that. However, there are no prototypes and no papers, except that some constructors that compute can be simulated using [Self Types](https://github.com/uwu-tech/Kind/blob/master/blog/1-beyond-inductive-datatypes.md).**
 
@@ -651,7 +552,7 @@ Papers:
 - [LARGE AND INFINITARY QUOTIENT INDUCTIVE-INDUCTIVE TYPES](https://arxiv.org/abs/2006.11736)
 - [Quotient inductive-inductive types](https://arxiv.org/abs/1612.02346)
 - [Codes for Quotient Inductive Inductive Types](https://akaposi.github.io/qiit.pdf)
-- [Constructing quotient inductive-inductive types](https://dl.acm.org/doi/10.1145/3290315)
+- [Constructing quotient inductive-inductive types](https://akaposi.github.io/finitaryqiit.pdf)
 - [Quotient inductive-inductive definitions](http://eprints.nottingham.ac.uk/42317/1/thesis.pdf)
 - [A model of type theory with quotient inductive-inductive types](http://real.mtak.hu/112971/1/1.pdf)
 - [Higher Inductive Types, Inductive Families, and Inductive-Inductive Types](http://von-raumer.de/academic/phd_vonraumer.pdf)
@@ -662,6 +563,7 @@ Papers:
 - [Semantics of higher inductive types](https://arxiv.org/abs/1705.07088)
 - [Impredicative Encodings of (Higher) Inductive Types](https://arxiv.org/pdf/1802.02820.pdf)
 - [On Higher Inductive Types in Cubical Type Theory](https://arxiv.org/pdf/1802.01170.pdf)
+- [Mutual and Higher Inductive Types in Homotopy Type Theory](https://paolocapriotti.com/assets/away-day-2014/mhit.pdf)
 
 **Status: prototype implementations include [cubicaltt](https://github.com/mortberg/cubicaltt), [Cubical Agda](https://agda.readthedocs.io/en/v2.6.0/language/cubical.html), [Arend](https://arend-lang.github.io/) and some other minor languages. No general syntax for HITs is known. Various papers describe subclasses of HITs or HITs combined with induction-induction or something like that. Probably it's very easy to get the most basic and useful HITs, but very hard to get all of them right.**
 
@@ -744,10 +646,30 @@ In the above example, `Dense-R R` is the dense completion of its parameter relat
 
 Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `Dense-R` refer to constructors of `Dense`, and the indices of `Dense-R` refer to `Dense`. This is characteristic of induction-induction. Also note that `eq` is a path constructor - we may freely mix inductive-inductive types with higher inductive types.
 
+```
+data BHeap (R : A -> A -> Prop) : Type
+| E
+| N (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
+
+and OK (R : A -> A -> Prop) (v : A) : BHeap R -> Prop
+| OK-E : OK E
+| OK-N : (x : A) (l r : BHeap R) -> R v x -> OK (N x l r)
+```
+
+Another classic use of induction-induction is to define data structures with non-trivial invariants. Above, we define the type of binary heaps (ordered by the relation `R`), which can be either `E`mpty, or consist of a `N`ode that holds a `v`alue and two subheaps `l` and `r`, which are `OK`, i.e. satisfy the (one-layer, non-recursive) heap condition, which holds for empty heaps and for nodes whose value is smaller than the values in their subheaps.
+
+Binary heaps could be easily defined even without induction-induction, by first defining binary trees inductively, then the heap condition as an inductive family and finally by putting them together in a dependent record and lifting all binary tree operations to binary heaps. Note, however, that an inductive-inductive definition is so much simpler and more elegant.
+
 Papers:
 - [Inductive-inductive definitions](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
 - [A categorical semantics for inductive-inductive definitions](https://www.cs.nott.ac.uk/~psztxa/publ/catind2.pdf)
-- Also see a the papers on HITs, a lot of which deal specifically with higher inductive-inductive types.
+- [For Finitary Induction-Induction, Induction is Enough](http://real.mtak.hu/112922/1/paper.pdf)
+- [A Finite Axiomatisation of Inductive-Inductive Definitions](https://www.degruyter.com/document/doi/10.1515/9783110324921.259/html)
+
+Not papers:
+- [Inductive-Inductive Definitions](https://pdfs.semanticscholar.org/5f17/7aaa7559aa8530e64bf59fbb02567a3b16da.pdf) (slides with some examples)
+- [Inductive-inductive definitions](https://personal.cis.strath.ac.uk/fredrik.nordvall-forsberg/talks/BCTCS_2010/indind_BCTCS.pdf) (other slides with some other examples)
+- Also see the papers on HITs, a lot of which deal specifically with higher inductive-inductive types.
 
 **Status: implemented in Agda, but absent in other mainstream languages. There are many papers which combine it with Higher Inductive Types. Probably not hard to implement. In general, looks good.**
 
@@ -827,7 +749,19 @@ and El : (u : U) -> Type
 | eq u x y => x = y
 ```
 
-We can combine induction-recursion with constructors that compute to get a more interesting kind of universe - one in which the various type isomorphisms hold by definition. For the boring isomorphisms like `Empty + A = A` this is not very useful (as it's helpful only rarely), but it's extremely useful for the equality type - thanks to constructors that compute we can have `(f = g) = (x : A) -> f x = g x`, `((x1, y1) = (x2, y2)) = (x1 = x2) * (y1 = y2)` and so on.
+We can combine induction-recursion with constructors that compute to get a more interesting kind of universe - one in which the various type isomorphisms hold by definition. For the boring isomorphisms like `Empty + A = A` this is not very useful (as it's helpful only rarely), but it's extremely useful for the equality type - thanks to constructors that compute we can have `(f = g) = (x : A) -> f x = g x` and `((x1, y1) = (x2, y2)) = (x1 = x2) * (y1 = y2)` and so on.
+
+```
+data BHeap (R : A -> A -> Prop) : Type
+| E
+| N (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
+
+and OK (R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop
+| E => Unit
+| N => R v h.v
+```
+
+Induction-Recursion, just like induction-induction, can also be used to define data structures with complex invariants. Above we have the binary heaps again, but this time the (non-recursive) heap condition is defined by pattern matching mutually with the type of binary heaps.
 
 Papers:
 - [A General Formulation of Simultaneous Inductive-Recursive Definitions in Type Theory](https://www.cse.chalmers.se/~peterd/papers/Inductive_Recursive.pdf)
@@ -840,11 +774,12 @@ Papers:
 - [Variations on Inductive-Recursive Definitions](https://strathprints.strath.ac.uk/62321/1/Ghani_etal_MPCS_2017_Variations_on_inductive_recursive.pdf)
 - [Fibred Data Types](https://www.researchgate.net/publication/261165437_Fibred_Data_Types)
 
-More tangentially related:
+Tangentially related:
 - [Higher inductive-recursive univalence and type-directed definitions](https://homotopytypetheory.org/2014/06/08/hiru-tdd/) - see for a definition of universe with type-directed equality like the one presented above, but using higher-inductive types instead of constructor that compute
 - [Simulating Induction-Recursion for Partial Algorithms](https://members.loria.fr/DLarchey/files/papers/TYPES_2018_paper_19.pdf) - how to define complicated recursive functions without resorting to induction-recursion
 - [Fully Generic Programming Over Closed Universes of Inductive-Recursive Types](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=4656&context=open_access_etds) - generic programming with universes
 - [A polymorphic representation of induction-recursion](https://www.researchgate.net/publication/244448805_A_polymorphic_representation_of_induction-recursion) ([slides](http://www.cs.ru.nl/dtp11/slides/capretta.pdf)
+- [A Formalisation of a Dependently Typed Language as an Inductive-Recursive Family](https://www.cse.chalmers.se/~nad/publications/danielsson-types2006.pdf)
 
 **Status: induction-recursion is implemented in Agda and in Idris 1 (or at least this is what Wiki claims), and there was an experimental branch of Coq that implemented it a long time ago. In general, however, it is not mainstream. Implementation should not be problematic.**
 
@@ -859,26 +794,163 @@ Papers:
 
 ## [Coinductive types](Coinduction) <a id="coinductives"></a> [↩](#types)
 
-Coinductives should be dual to inductives, but that will be hard to achieve as they are underresearched. The minimum is to have a nice syntax sugar for "positive" coinductive types (like the coinductive duals of natural numbers and lists). Another nice thing to have would be mixed inductive-coinductived types of the form `ν X. μ Y. T`, i.e. we can define a coinductive type that has 
+Coinductive types are underresearched and less well though-out than inductive types, but the guiding principle here is that these two should be dual to each other. The syntax, contrary to inductive types, is uniform, and "coinductive families" are defined by just putting paths where we want them.
 
-A possibility for handling coinductives is for them to be just (co)recursive records, but this depend on how cool and foreign records will be.
+Another possibility for handling coinductives is for them to be just (co)recursive records, but this depends on how cool and foreign records will be.
 
-It would be nice to have a compact syntax for coinductive types. Let's try some crazy `&`s!
+Wut:
+- [Basic syntax](#coinductives-basic-syntax)
+- [Special syntax for single-field coinductive types]
+- mixed inductive-coinductived types (of the form `ν X. μ Y. T`)
+
+### Basic syntax of coinductive types <a id="coinductives-basic-syntax"></a>
+
+Coinductive types are "negative", i.e. they are record-like types which are defined by saying what fields they have. Definitions of coinductive types start with the keyword `codata`. Then, in separate lines starting with `&`, we list field names and their types.
 
 ```
-codata Stream (A : Type) : Type :=
+codata _*_ (A B : Type) : Type
+& l : A
+& r : B
+```
+
+Functions whose codomain is coinductive are defined by copattern matching. The fields of a coinductive value can be accessed with the dot notation, just like for records.
+
+```
+swap (x : A * B) : B * A
+& l => x.r
+& r => x.l
+```
+
+We can also unpack/open the argument if we want a shorter way of referring to its fields.
+
+```
+swap (x : A * B) : B * A :=
+open x in
+& l => r
+& r => l
+```
+
+But things are even more ecomfortable: coinductive values are unpacked for us automatically and we only need to use the dot notation in case of ambiguity.
+
+```
+swap (x : A * B) : B * A
+& l => r
+& r => l
+```
+
+Of course the coinductive type being defined can appear in types of fields, provided that it stands in a strictly positive position. Note that the distinction between parameters and indices we saw for inductive types applies to coinductives too, so we only need to write `Stream` instead of `Stream A`.
+
+```
+codata Stream (A : Type) : Type
 & hd : A
 & tl : Stream
 ```
 
-We could then use copattern matching to define functions:
+Corecursive definitions by copattern matching work essentially the same as those which are not corecursive. Note that, just like for recursive definitions, we must omit the parameters of the definition, which may look weird at first and require some getting used to.
 
 ```
-interleave (l r : Stream a) : Stream a :=
+map (f : A -> B) : (s : Stream A) -> Stream B
+& hd => f s.hd
+& tl => map s.tl
+```
+
+Definitions by copattern matching, just like those by ordinary pattern matching, can make use of nested copatterns that describe the deeper structure of the result.
+
+```
+interleave : (l r : Stream A) -> Stream A
 & hd    => l.hd
-& hd tl => r.hd
+& tl hd => r.hd
 & tl tl => interleave l.tl r.tl
 ```
+
+This definition is equivalent to the following which doesn't use deep copatterns.
+
+```
+interleave : (l r : Stream A) -> Stream A
+& hd => l.hd
+& tl => interleave r l.tl
+```
+
+In case of extremely deep copatterns, the syntax might get heavy due to repetitions of field names. We can deal with that by modularising our copatterns a bit.
+
+```
+interleave : (l r : Stream A) -> Stream A
+& hd => l.hd
+& tl
+  & hd => r.hd
+  & tl => interleave l.tl r.tl
+```
+
+We can also use copattern matching to define functions whose codomain is not coinductive, but only coinductive "at a deeper level". This is easiest to understand with an example.
+
+```
+split : (s : Stream A) : Stream A * Stream A
+& l hd => s.hd
+& r hd => s.tl.hd
+& l tl => (split s.tl.tl).l
+& r tl => (split s.tl.tl).r
+```
+
+Last but not least, we can combine copattern matching with pattern matching. Below we define a function `streamize (x : A) -> List A -> Stream A` that turns a list into a stream - once we run out of list elements, the rest of the stream is all `x`s. In this definition, our copatterns match the output (of type `Stream A`), whereas the patterns match the input (of type `List A`).
+
+```
+streamize (x : A) : List A -> Stream A
+& hd | []       => x
+& tl | []       => streamize []
+& hd | Cons h _ => h
+& tl | Cons _ t => streamize t
+```
+
+We should interpret this definition as follows:
+- the head of the output stream is `x` when the input is `[]`
+- the tail of the output stream is `streamize []` when ethe input is `[]`
+- the head of the output stream is `h` when the input is `Cons h _`
+- the tail of the output stream is `streamize t` when hte input is `Cons _ t`
+
+The grouping of the copatterns and patterns doesn't matter much (besides aesthetics). The definition below, in which the second and third clauses are swapped, is computationally equal to the previous one.
+
+```
+streamize (x : A) : List A -> Stream A
+& hd | []       => x
+& hd | Cons h _ => h
+& tl | []       => streamize []
+& tl | Cons _ t => streamize t
+```
+
+In case we feel the syntax is getting too heavy, we can combine our copatterns and patterns in a way similar to what we did for nested copatterns. The function below is computationally equal to the above ones.
+
+```
+streamize (x : A) : List A -> Stream A
+& hd
+  | []       => x
+  | Cons h t => h
+& tl
+  | []       => streamize []
+  | Cons _ t => streamize t
+```
+
+But we cannot mix the order of patterns and copatterns, because the order decides whether the function is recursive or corecursive. If we start with pattern matching, the function is recursive. If we start with copattern matching, the function is corecursive. For example, the function below, which starts with patterns, is supposed to be recursive, but because of this it is illegal: `streamize []` is not a valid recursive call.
+
+```
+streamize (x : A) : List A -> Stream A
+| []
+  & hd => x
+  & tl => streamize []
+| Cons h t
+  & hd => h
+  & tl => streamize t
+```
+
+Papers:
+- 
+
+**Status: xd**
+
+TODO:
+- Maybe if we start with patterns, then the definition should still be interpreted as legal corecursive definition?
+- Overlapping and Order-Independent Copatterns.
+
+### Syntax sugar for single-field coinductive types
 
 So far so good, but what about coinductive lists, conatural numbers and other single-field coinductives? We shall have a syntax sugar for that! Example:
 
@@ -907,10 +979,11 @@ CoCons (h : a) (t : CoList a) : CoList a :=
 
 See [this file](Coinduction/Conat.ttw) for more details on this notation.
 
-Papers:
-- TOOD
+### Mixed coinductive-inductive definitions
 
-**Status: basic coinductives are standard (even though rare), the rest is speculation.**
+TODO!
+
+**Status: basic (negative) coinductive types are now standard (even though somewhat rare), the rest is speculation.**
 
 ## [Empty](Rewriting/Empty.ttw) and [Unit](Rewriting/Unit.ttw) <a id="empty-and-unit"></a> [↩](#types)
 
