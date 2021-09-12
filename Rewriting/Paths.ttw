@@ -1,8 +1,8 @@
 // Some type-level computational properties of Paths.
 
 Path-Prod (x y : A * B) : (x = y) = (outl x = outl y * outr x = outr y) := refl
-Path-outl {x y : A * B} (p : x = y) : outl x = outl y := outl p
-Path-outr {x y : A * B) (p : x = y) : outr x = outr y := outr p
+Path-outl #(x y : A * B) (p : x = y) : outl x = outl y := outl p
+Path-outr #(x y : A * B) (p : x = y) : outr x = outr y := outr p
 
 // TODO: stating this property requires extensible records, which are experimental.
 // `x removing a` is somewhat experimental too.
@@ -11,7 +11,7 @@ Path-Rec (A : Type) (R : RType) (x y : (a : A & R)) :
   (x = y) = (a : x.a = y.a & x removing a = y removing a) := refl
 
 Path-Fun (f g : (x : A) -> B x) : (f = g) = ((x : A) -> f x = g x) := refl
-Path-app {f g : (x : A) -> B x} (p : f = g) (x : A) : f x = g x := p x
+Path-app #(f g : (x : A) -> B x) (p : f = g) (x : A) : f x = g x := p x
 
 Path-Empty (e1 e2 : Empty) : (e1 = e2) = Unit := refl
 
@@ -21,15 +21,15 @@ Path-Unit (u1 u2 : Unit) : (u1 = u2) = Unit := refl
 Path-Type (A B : Type) : (A = B) = Equiv A B := refl
 
 // Not sure about this one, but maybe.
-Path-Path {x y : A} (p q : x = y) : (p = q) = (path i j => p i = q j)
+Path-Path #(x y : A) (p q : x = y) : (p = q) = (path i j => p i = q j)
 
 // The rest.
 Path-Nabla (x y : ∇ α : A. B α) : (x = y) = ν α. x @ α = y @ α := refl
-Path-concr {x y : ∇ α : A. B α} (p : x = y) (α : Name A) : x @ α = y @ α := p @ α
+Path-concr #(x y : ∇ α : A. B α) (p : x = y) (α : Name A) : x @ α = y @ α := p @ α
 
 Path-Ref (x y : {a : A | P a}) : (x = y) = (x ={A} y) := refl
 
-Path-Sub {A : Type} (X Y : Sub A) : (X ={Sub A} Y) = (X ={Type} Y) := refl
+Path-Sub #(A : Type) (X Y : Sub A) : (X ={Sub A} Y) = (X ={Type} Y) := refl
 
 
 // Inductives are a bit more problematic. Usually it's easy to prove a characterization

@@ -168,6 +168,13 @@ self-comp (h : Nat -> Nat) : Nat -> Nat :=
 Functions can be applied not only positionally, but also by naming the argument. With such application, the order of the arguments doesn't matter anymore. This is also useful when we need to explicitly provide an implicit argument.
 
 ```
+self-comp' (h : Nat -> Nat) : Nat -> Nat :=
+  comp {C, A, B => Nat, f, g => h}
+```
+
+To reiterate: the order of arguments doesn't matter. As a bonus, we can set many arguments to the same value very easily - this should be very useful easpecially for type arguments.
+
+```
 complex-application
   (f : (x1 : A) (x2 : B) (x3 : C) (x4 : D) (x5 : E -> E') (x6 : F) (x7 : G -> G') -> X) : X :=
   f $
@@ -185,6 +192,59 @@ Last but not least, there is special syntax for applying functions which have a 
 
 TODO:
 - Figure out the precise workings of "all functions take just one argument which is a big record".
+
+## [Path types and the rest of the cubical stuff](Paths) <a id="paths"></a> [↩](#types)
+
+We take Cubical Type Theory and the homotopical style of doing mathematics for granted. The revolution has already occurred!
+
+Main paper:
+- [Cubical Type Theory: a constructive interpretation of the univalence axiom](https://arxiv.org/pdf/1611.02108.pdf)
+
+Less papers and slides:
+- [Higher Inductive Types and Internal Parametricity for Cubical Type Theory]()
+
+**Status: there are some papers which describe Cubical Type Theory in great detail and there are prototype implementations based on these papers.**
+
+TODO:
+- Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
+
+## [Empty](Rewriting/Empty.ttw) and [Unit](Rewriting/Unit.ttw) <a id="empty-and-unit"></a> [↩](#types)
+
+`Empty` and `Unit` are a little special in that all their terms are computationally equal, i.e. they are strict propositions, and they also enjoy special computational properties:
+- `Empty + A = A`
+- `A + Empty = A`
+- `Empty * A = Empty`
+- `A * Empty = Empty`
+- `Unit * A = A`
+- `A * Unit = A`
+- generalizations of the above to records
+- corresponding properties at the term level
+- similar properties for other type formers
+
+Relevant papers:
+- [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
+
+**Status: the universe of strict propositions is implemented in Agda and Coq. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's Prop, but I think this shouldn't be a problem.**
+
+## [Types that Compute](Rewriting)
+
+Of course we don't want to confine ourselves to just built-in computational equalities for `Empty` and `Unit` - we want to be able to define custom types with custom equalities of this kind. One way to do this is with rewrite rules.
+
+But we also want to benefit from [Types that Compute](#types-that-compute) when it comes to paths, i.e. we want path characterizations like "paths between pairs are pairs of paths" to hold by computation, without needing to prove anything. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (section 2.6) for how to accomplish something like this for Agda's usual (i.e. inductive) equality. If I read the paper correctly, it's also possible for Path types. See [here](Rewriting/Paths.ttw) for some details.
+
+Book:
+- [Term Rewriting And All That](https://www21.in.tum.de/~nipkow/TRaAT/)
+
+Papers:
+- [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf)
+- [The Taming of the Rew: A Type Theory with Computational Assumptions](https://hal.archives-ouvertes.fr/hal-02901011v2/document)
+- [The Multiverse: Logical Modularity for Proof Assistants](https://arxiv.org/pdf/2108.10259.pdf)
+
+**Status: somewhat wild speculations.**
+
+TODO:
+- Find how these types will be declared.
+- Make sure that it all makes sense.
 
 ## Basic Inductive Types <a id="inductives"></a> [↩](#types)
 
@@ -301,6 +361,14 @@ filter (p : A -> Bool) : List A -> List A
 | h :: t with p h
   | tt => h :: filter t
   | ff => filter t
+```
+
+The above use of a `with`-clause is equivalent to the following `if-then-else`.
+
+```
+filter (p : A -> Bool) : List A -> List A
+| [] => []
+| h :: t => if p h then h :: filter t else filter t
 ```
 
 **Status: inductive types and pattern matching are standard, with Agda probably being the closest implementation to what has been described so far.**
@@ -890,7 +958,7 @@ split : (s : Stream A) -> Stream A * Stream A
 & r tl => (split s.tl.tl).r
 ```
 
-Last but not least, we can combine copattern matching with pattern matching. Below we define a function `streamize (x : A) : List A -> Stream A` that turns a list into a stream - once we run out of list elements, the rest of the stream is all `x`s. In this definition, our copatterns match the output (of type `Stream A`), whereas the patterns match the input (of type `List A`).
+We can combine copattern matching with pattern matching. Below we define a function `streamize (x : A) : List A -> Stream A` that turns a list into a stream - once we run out of list elements, the rest of the stream is all `x`s. In this definition, our copatterns match the output (of type `Stream A`), whereas the patterns match the input (of type `List A`).
 
 ```
 streamize (x : A) : List A -> Stream A
@@ -938,6 +1006,24 @@ streamize (x : A) : List A -> Stream A
 | Cons h t
   & hd => h
   & tl => streamize t
+```
+
+Last but not least, definitions by copattern matching can use `with`-clauses to perform pattern matching on intermediate expressions.
+
+```
+findAndReplace (p : A -> Bool) (x : A) : (s : Stream A) -> Stream A
+& hd with p s.hd
+  | tt => x
+  | ff => s.hd
+& tl => findAndReplace s.tl
+```
+
+The above use of a `with`-clause if equivalent to the following use of an `if-then-else` expression.
+
+```
+findAndReplace (p : A -> Bool) (x : A) : (s : Stream A) -> Stream A
+& hd => if p s.hd then x else s.hd
+& tl => findAndReplace s.tl
 ```
 
 Papers:
@@ -1022,7 +1108,7 @@ app : (l1 l2 : CoList A) -> CoList A
 
 See [the file dealing with conatural numbers](Coinduction/Conat.ttw) for more details on this notation.
 
-**Status: Highly experimental. No papers or prototype implementations. However, it looks pretty reasonable.**
+**Status: somewhat experimental. There are no papers nor a prototype implementation. However, it looks pretty reasonable and I have some Coq code [here](Coinduction/Code/Vec.v) that shows an example manual desugaring.**
 
 TODO:
 - Check the details.
@@ -1030,21 +1116,41 @@ TODO:
 
 ## Coiductive families
 
-As has been said, contrary to inductive families, coinductive families enjoy no special syntax sugar and must be declared manually.
+The syntax for coinductive families is somewhat similar to that for inductive families - parameters always stay the same and we must omit them, whereas indices change and we must write them explicitly. Contrary to inductive families, we must also name the indices, because that's the only way to refer to them.
+
+As an example, we define a predicate which asserts that the elements of the stream `s` appear in increasing order, where the order relation is represented by the parameter `R`.
+
+```
+codata Linked (R : A -> A -> Prop) : (s : Stream A) -> Prop
+& link  : R s.hd s.tl.hd
+& links : Linked s.tl
+```
+
+It's not hard to define the stream of natural numbers starting from `n` and prove that it is `Linked` by `<=`, the standard order on naturals (not defined in the listing). As long as we don't have any fields which are equality proofs, coinductive families are probably easier to use than inductive families.
+
+```
+nats (n : Nat) : Stream Nat
+& hd => n
+& tl => nats (s n)
+
+Linked-nats : (n : nat) -> Linked (<=) (nats n)
+& link  => le-n-sn // easy lemma
+& links => Linked-nats (s n)
+```
+
+The syntax sugar for "positive" coinductive types also works for "positive" coinductive families. Below we define the type of conatural numbers, which are like the natural numbers, but possibly infinite. Then we define the family of "covectors", which are like vectors but possibly infinite and they are indexed by conaturals instead of naturals.
 
 ```
 codata Conat : Type
 | z
 | s (pred : Conat)
-```
 
-```
 codata CoVec (A : Type) : Conat -> Type
 | CoNil  : CoVec z
 | CoCons : (hd : A, #c : Conat, tl : CoVec c) -> CoVec (s c)
 ```
 
-Translation:
+The whole things desugars as follows.
 
 ```
 data ConatX (X : Type) : Type
@@ -1066,53 +1172,9 @@ data CoVecF (F : Conat -> Type) (A : Type) : Conat -> Type
 
 codata CoVec (A : Type) (c : Conat) : Type
 & out : CoVecF (CoVec A) A c
-
-add : (n m : Conat) -> Conat
-| z   , _    & out => out m
-| _   , z    & out => out n
-| s n', _    & out => sX (add n' m)
-| _   , s m' & out => sX (add n m')
 ```
 
-When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of this family with that index.
-```
-head : (#n : Nat) (v : Vec (s n)) -> A
-| .n', Cons h n' t => h
-```
-
-We call these _forced patterns, contrary to [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns) which calls them _inaccessible patterns_.
-
-Papers:
-- none
-
-**Status: TODO**
-
-## [Empty](Rewriting/Empty.ttw) and [Unit](Rewriting/Unit.ttw) <a id="empty-and-unit"></a> [↩](#types)
-
-`Empty` and `Unit` are a little special in that all their terms are computationally equal, i.e. they are strict propositions, and they also enjoy special computational properties:
-- `Empty + A = A`
-- `A + Empty = A`
-- `Empty * A = Empty`
-- `A * Empty = Empty`
-- `Unit * A = A`
-- `A * Unit = A`
-- generalizations of the above to records
-- corresponding properties at the term level
-- similar properties for other type formers
-
-Relevant papers:
-- [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
-- [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf)
-
-**Status: the universe of strict propositions is implemented in Agda and Coq. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's Prop, but I think this shouldn't be a problem.**
-
-## [Types that Compute](Rewriting)
-
-Of course we don't want to confine ourselves to just built-in computational equalities for `Empty` and `Unit` - we want to be able to define custom types with custom equalities of this kind. One way to do this is with rewrite rules. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) for more on rewrite rules.
-
-TODO:
-- Find how these types will be declared.
-- Make sure that it all makes sense
+**Status: coinductive families are standard, even if people don't always realize this (they look nothing like inductive families). **
 
 ## [Universes](Universes/Universes.md) <a id="universes"></a> [↩](#types)
 
@@ -1180,15 +1242,6 @@ The subtyping judgement shall be proof-relevant, i.e. it should explicitly speci
 There's a question of what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <= B` then `Name A <= Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. Similarly, I think that `∇` could be contravariant just like function types, but I'm not sure.
 
 **Status: universe cumulativity is semi-standard, as some proof assistant don't have it. Coercions have been implemented in Coq for a long time. Subtyping of anything else in type theory is mostly wild speculations.**
-
-## [Path types and the rest of the cubical stuff](Paths) <a id="paths"></a> [↩](#types)
-
-We take Cubical Type Theory and the homotopical style of doing mathematics for granted. The revolution has already occurred!
-
-But we also want to benefit from [Types that Compute](#types-that-compute) when it comes to paths, i.e. we want path characterizations like "paths between pairs are pairs of paths" to hold by computation, without needing to prove anything. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (section 2.6) for how to accomplish something like this for Agda's usual (i.e. inductive) equality. If I read the paper correctly, it's also possible for Path types. See [here](Rewriting/Paths.ttw) for some details.
-
-TODO:
-- Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
 
 ## Refinement types <a id="refinements"></a> [↩](#types)
 

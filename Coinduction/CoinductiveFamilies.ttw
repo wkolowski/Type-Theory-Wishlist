@@ -1,0 +1,4 @@
+vapp : (v1 : CoVec A c1) (v2 : CoVec A c2) -> CoVec A (add c1 c2)
+| CoNil     , _     => v2
+| CoCons h t, _     => CoCons h (vapp t v2)
+| _         , CoNil => v1
