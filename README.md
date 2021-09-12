@@ -405,7 +405,7 @@ For inductive families, we need to explicitly write the constructor's return typ
 
 ```
 data Vec (A : Type) : Nat -> Type
-| Nil  : Vec 0
+| Nil  : Vec z
 | Cons : (hd : A, #n : Nat, tl : Vec n) -> Vec (s n)
 ```
 
@@ -578,7 +578,7 @@ data Term : Type
 | Lam (t : ∇ α : Term. Term)
 ```
 
-Representing lambda terms is easy enough. A term is either a variable which is just a name for a term wrapped in the constructor `Var`, application of one term to another, represented with `App`, or `Lam`bda abstraction, which is modeled as a term that binds a name.
+Representing lambda terms is easy enough. A term is either a variable which is just a name for a term wrapped in the constructor `Var`, an application of one term to another, represented with `App`, or a `Lam`bda abstraction, represented as a term that binds a name.
 
 ```
 I : Term := Lam (ν α. Var α)
@@ -776,10 +776,14 @@ Papers:
 
 Tangentially related:
 - [Higher inductive-recursive univalence and type-directed definitions](https://homotopytypetheory.org/2014/06/08/hiru-tdd/) - see for a definition of universe with type-directed equality like the one presented above, but using higher-inductive types instead of constructor that compute
-- [Simulating Induction-Recursion for Partial Algorithms](https://members.loria.fr/DLarchey/files/papers/TYPES_2018_paper_19.pdf) - how to define complicated recursive functions without resorting to induction-recursion
-- [Fully Generic Programming Over Closed Universes of Inductive-Recursive Types](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=4656&context=open_access_etds) - generic programming with universes
+- [Simulating Induction-Recursion for Partial Algorithms](https://members.loria.fr/DLarchey/files/papers/TYPES_2018_paper_19.pdf) - how to define complicated recursive functions without resorting to induction-recursion)
 - [A polymorphic representation of induction-recursion](https://www.researchgate.net/publication/244448805_A_polymorphic_representation_of_induction-recursion) ([slides](http://www.cs.ru.nl/dtp11/slides/capretta.pdf))
 - [A Formalisation of a Dependently Typed Language as an Inductive-Recursive Family](https://www.cse.chalmers.se/~nad/publications/danielsson-types2006.pdf)
+
+Generic programming using (inductive-recursive) universes:
+- [Fully Generic Programming Over Closed Universes of Inductive-Recursive Types](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=4656&context=open_access_etds) - generic programming with universes
+- [Generic functional programming](https://gitlab.inria.fr/fpottier/mpri-2.4-public/blob/8485cc50346803d661e1ea4c5b8e485ccad18f66/agda/04-generic/Desc.lagda.rst)
+
 
 **Status: induction-recursion is implemented in Agda and in Idris 1 (or at least this is what Wiki claims), and there was an experimental branch of Coq that implemented it a long time ago. In general, however, it is not mainstream. Implementation should not be problematic.**
 
@@ -879,7 +883,7 @@ interleave : (l r : Stream A) -> Stream A
 We can also use copattern matching to define functions whose codomain is not coinductive, but only coinductive "at a deeper level". This is easiest to understand with an example.
 
 ```
-split : (s : Stream A) : Stream A * Stream A
+split : (s : Stream A) -> Stream A * Stream A
 & l hd => s.hd
 & r hd => s.tl.hd
 & l tl => (split s.tl.tl).l
@@ -1024,6 +1028,65 @@ TODO:
 - Check the details.
 - Does it work for dependent coinductive types?
 
+## Coiductive families
+
+As has been said, contrary to inductive families, coinductive families enjoy no special syntax sugar and must be declared manually.
+
+```
+codata Conat : Type
+| z
+| s (pred : Conat)
+```
+
+```
+codata CoVec (A : Type) : Conat -> Type
+| CoNil  : CoVec z
+| CoCons : (hd : A, #c : Conat, tl : CoVec c) -> CoVec (s c)
+```
+
+Translation:
+
+```
+data ConatX (X : Type) : Type
+| zX
+| sX (x : X)
+
+codata Conat : Type
+& out : ConatX Conat
+
+z : Conat
+& out => zX
+
+s (n : Conat) : Conat
+& out => sX n
+
+data CoVecF (F : Conat -> Type) (A : Type) : Conat -> Type
+| CoNilF : CoVecX z
+| CoConsF (h : A, #c : Conat, t : F c) : CoVecF (s c)
+
+codata CoVec (A : Type) (c : Conat) : Type
+& out : CoVecF (CoVec A) A c
+
+add : (n m : Conat) -> Conat
+| z   , _    & out => out m
+| _   , z    & out => out n
+| s n', _    & out => sX (add n' m)
+| _   , s m' & out => sX (add n m')
+```
+
+When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of this family with that index.
+```
+head : (#n : Nat) (v : Vec (s n)) -> A
+| .n', Cons h n' t => h
+```
+
+We call these _forced patterns, contrary to [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns) which calls them _inaccessible patterns_.
+
+Papers:
+- none
+
+**Status: TODO**
+
 ## [Empty](Rewriting/Empty.ttw) and [Unit](Rewriting/Unit.ttw) <a id="empty-and-unit"></a> [↩](#types)
 
 `Empty` and `Unit` are a little special in that all their terms are computationally equal, i.e. they are strict propositions, and they also enjoy special computational properties:
@@ -1063,6 +1126,7 @@ Some reading on universes:
 - [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
 - [Generalized Universe Hierarchies and First-Class Universe Levels](https://arxiv.org/pdf/2103.00223.pdf)
 - [Notes on Universes in Type Theory](http://www.cs.rhul.ac.uk/home/zhaohui/universes.pdf)
+- [Algebraic Type Theory and Universe Hierarchies](https://arxiv.org/pdf/1902.08848.pdf)
 
 TODO:
 - Write some code dealing with universes.
@@ -1095,8 +1159,8 @@ To be able to profit from subtype universes, we need to have subtyping. Since we
 The subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`. It should also be possible to declare custom coercions.
 
 
-| Name              | Rule             | Coercion     | Elimination      |
-| ----------------- | ---------------- | ---------------- | ---------------- |
+| Name              | Rule             | Coercion         |
+| ----------------- | ---------------- | ---------------- |
 | Universes         | if `i <= j` <br> then `Type h i <= Type h j` | lift |
 | Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | `c` magically working on subtypes |
 | Record types      | [complicated](Records/TurboRecords.ttw) |
@@ -1106,7 +1170,7 @@ The subtyping judgement shall be proof-relevant, i.e. it should explicitly speci
 | Coinductives      | not sure |
 | `Empty`           | `Empty <= A`     | `abort` |
 | `Unit`            | `A <= Unit`      | `fun _ => unit` |
-| Refinements       | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` <br> and `{x : A \| P} <= A` | identity |
+| Refinements       | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` <br> also `{x : A \| P} <= A` | identity |
 | Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
 | Nabla type        | if `c : A <= B` <br> then `∇ α : N. A <= ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
 | Name              | no subtyping | none |
@@ -1166,7 +1230,7 @@ Examples:
 8. `{f : bool -> nat ^^^ f _ = 42}` - type of definitionally strongly constant functions that always returns `42`.
 9. Maybe we need intersection and union types for this?
 
-### Quantiative Type Theory
+### Quantitative Type Theory
 
 ### Algebraic Effects
 
