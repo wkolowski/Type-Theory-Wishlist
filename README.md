@@ -200,8 +200,18 @@ We take Cubical Type Theory and the homotopical style of doing mathematics for g
 Main paper:
 - [Cubical Type Theory: a constructive interpretation of the univalence axiom](https://arxiv.org/pdf/1611.02108.pdf)
 
-Less papers and slides:
-- [Higher Inductive Types and Internal Parametricity for Cubical Type Theory]()
+Lesser papers:
+- [Towards a cubical type theory without an interval](https://akaposi.github.io/towards_a_cubical_tt_without_interval.pdf)
+- [Canonicity for Cubical Type Theory](https://link.springer.com/article/10.1007/s10817-018-9469-1)
+- [MODELS OF HOMOTOPY TYPE THEORY WITH AN INTERVAL TYPE](https://arxiv.org/pdf/2004.14195.pdf)
+- [Normalization for Cubical Type Theory](https://www.jonmsterling.com/pdfs/cubical-norm.pdf)
+
+Slides:
+- [Objective Metatheory of (Cubical) Type Theory](http://www.jonmsterling.com/pdfs/proposal-slides.pdf)
+- [Unifying Cubical Models of Homotopy Type Theory](https://www.uwo.ca/math/faculty/kapulkin/seminars/hottestfiles/Mortberg-2019-10-23-HoTTEST.pdf)
+
+Prototypes:
+- [cubicaltt](https://github.com/mortberg/cubicaltt)
 
 **Status: there are some papers which describe Cubical Type Theory in great detail and there are prototype implementations based on these papers.**
 
@@ -210,37 +220,188 @@ TODO:
 
 ## [Empty](Rewriting/Empty.ttw) and [Unit](Rewriting/Unit.ttw) <a id="empty-and-unit"></a> [↩](#types)
 
-`Empty` and `Unit` are a little special in that all their terms are computationally equal, i.e. they are strict propositions, and they also enjoy special computational properties:
-- `Empty + A = A`
-- `A + Empty = A`
-- `Empty * A = Empty`
-- `A * Empty = Empty`
-- `Unit * A = A`
-- `A * Unit = A`
-- generalizations of the above to records
-- corresponding properties at the term level
-- similar properties for other type formers
+There's the `Empty` type which has no terms in the closed context. `Empty` is a strict proposition, i.e. all its terms are equal.
+
+```
+// The `Empty` type is built-in.
+
+// We will use `abort` as the eliminator.
+abort : Empty -> A
+
+// Maybe `abort` should be a coercion, but I'm not sure yet.
+abort-coercion (e : Empty) : A := e
+
+// `Empty` is a strict proposition.
+StrictProp-Empty (e1 e2 : Empty) : e1 = e2 := refl
+
+// `Empty` lives in the lowest predicative universe and at h-level 1
+// (i.e. in the universe of strict propositions).
+> :check Empty
+> Empty : Type (h = 1, p = 0)
+```
+
+There's also the `Unit` type, whose sole term is `unit`. `Unit` is a strict proposition, i.e. all its terms are equal.
+
+```
+// The `Unit` type is built-in.
+
+// Its only term is called `unit`.
+unit : Unit
+
+// `Unit` is a strict proposition.
+StrictProp-Unit (u1 u2 : Unit) : u1 = u2 := refl
+
+// `Unit` lives in the lowest predicative universe and at h-level 0
+// (i.e. in the universe of contractible types).
+> :check Unit
+> Unit : Type (h = 0, p = 0)
+```
 
 Relevant papers:
 - [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
 
 **Status: the universe of strict propositions is implemented in Agda and Coq. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's Prop, but I think this shouldn't be a problem.**
 
-## [Types that Compute](Rewriting)
+TODO:
+- Remove forward references to universes.
+
+## [Type-level rewriting](Rewriting) <a id="type-level-rewriting"></a>
+
+We have made `Empty` and `Unit` into strict propositions to make our lives easier - nobody likes having to pattern match on `u : Unit` just to learn that it's equal to `unit` (what a surprise!), just as nobody likes having to infer that two proofs of `Empty` are equal from contradiction.
+
+But since we are greedy type-theoretic bastards, we would like to have more computational equalities than that. So, `Empty` enjoys some special computational properties at the type-level and also the corresponding properties at the term level.
+
+```
+Sum-Empty-l : Empty + A = A := refl
+Sum-Empty-l-inl (e : Empty) : (inl e : Empty + A) = (abort e : A) := refl
+Sum-Empty-l-inr (a : A) : (inr a : Empty + A) = a := refl
+
+Sum-Empty-r : A + Empty = A := refl
+Sum-Empty-r-inl (a : A) : (inl a : A + Empty) = a := refl
+Sum-Empty-r-inr (e : Empty) : (inr e : A + Empty) = (abort e : A) := refl
+```
+
+
+
+```
+Prod-Empty-l : Empty * A = Empty := refl
+Prod-Empty-l' (e : Empty) (a : A) : (e, a) = e := refl
+Prod-Empty-l'' (x : Empty * A) : x = x.outl := refl
+
+Prod-Empty-r : A * Empty = Empty := refl
+Prod-Empty-r' (e : Empty) (a : A) : (a, e) = e := refl
+Prod-Empty-r'' (x : A * Empty) : x = x.outr := refl
+```
+
+```
+// These properties generalize to records.
+// TODO: stating this property requires extensible records, which are experimental.
+Record-Empty (R : RType) : (e : Empty & R) = Empty := refl
+
+// These are not the only special computational properties of `Empty` - there's more:
+Fun-Empty : Empty -> A = Unit := refl
+Fun-Empty' (f : Empty -> A) : f = unit := refl
+
+Path-Empty : (Empty = Empty) = Unit := refl
+
+Nabla-Empty : (∇ α : A. Empty) = Empty := refl
+
+Sub-Empty : Sub Empty = Unit := refl
+Sub-Empty' (X : Sub Empty) (x : X) : x = unit := refl
+
+Ref-Empty (P : Empty -> Prop) : {e : Empty | P e} = Empty := refl
+```
+
+```
+// `Unit` enjoys some special computational properties at the type level to
+// make our lives easier.
+Prod-Unit-l : Unit * A = A := refl
+Prod-Unit-l' (u : Unit) (a : A) : (u, a) = a := refl
+
+Prod-Unit-r : A * Unit = A := refl
+Prod-Unit-r' (a : A) (u : Unit) : (a, u) = a := refl
+
+// These properties generalize to records.
+// TODO: stating this property requires extensible records, which are experimental.
+Record-Unit-r (R : RType) : (u : Unit & R) = R := refl
+
+// These are not the only special computational properties of `Unit` - there's more:
+Fun-Unit-Dom : Unit -> A = A := refl
+Fun-Unit-Dom' (f : Unit -> A) : f = f unit := refl
+
+Fun-Unit-Cod : A -> Unit = Unit := refl
+Fun-Unit-Cod' (f : A -> Unit) : f = unit := refl
+
+Path-Unit : (Unit = Unit) = Unit := refl
+
+Nabla-Unit : (∇ α : A. Unit) = Unit := refl
+
+//Sub-Unit : Sub Unit = Bool := refl
+
+Ref-Unit (P : Unit -> Prop) : {u : Unit | P u} = Unit := refl
+```
+
+```
+// Some type-level computational properties of Paths.
+
+Path-Prod (x y : A * B) : (x = y) = (outl x = outl y * outr x = outr y) := refl
+Path-outl #(x y : A * B) (p : x = y) : outl x = outl y := outl p
+Path-outr #(x y : A * B) (p : x = y) : outr x = outr y := outr p
+
+// TODO: stating this property requires extensible records, which are experimental.
+// `x removing a` is somewhat experimental too.
+// The story for coinductives is probably similar.
+Path-Rec (A : Type) (R : RType) (x y : (a : A & R)) :
+  (x = y) = (a : x.a = y.a & x removing a = y removing a) := refl
+
+Path-Fun (f g : (x : A) -> B x) : (f = g) = ((x : A) -> f x = g x) := refl
+Path-app #(f g : (x : A) -> B x) (p : f = g) (x : A) : f x = g x := p x
+
+Path-Empty (e1 e2 : Empty) : (e1 = e2) = Unit := refl
+
+Path-Unit (u1 u2 : Unit) : (u1 = u2) = Unit := refl
+
+// Also known as The Univalence Principle :)
+Path-Type (A B : Type) : (A = B) = Equiv A B := refl
+
+// Not sure about this one, but maybe.
+Path-Path #(x y : A) (p q : x = y) : (p = q) = (path i j => p i = q j)
+
+// The rest.
+Path-Nabla (x y : ∇ α : A. B α) : (x = y) = ν α. x @ α = y @ α := refl
+Path-concr #(x y : ∇ α : A. B α) (p : x = y) (α : Name A) : x @ α = y @ α := p @ α
+
+Path-Ref (x y : {a : A | P a}) : (x = y) = (x ={A} y) := refl
+
+Path-Sub #(A : Type) (X Y : Sub A) : (X ={Sub A} Y) = (X ={Type} Y) := refl
+
+
+// Inductives are a bit more problematic. Usually it's easy to prove a characterization
+// of paths using the encode-decode method, but stating how this will work in general is
+// troublesome.
+Path-Sum (x y : A + B) :
+  (x = y) =
+  match x, y with
+  | inl a1, inl a2 => a1 = a2
+  | inr b1, inr b2 => b1 = b2
+  | _     , _      => Empty
+  := refl
+
+Path-inl (x y : A) : (inl x = inl y) = (x = y) := refl
+Path-inr (x y : B) : (inr x = inr y) = (x = y) := refl
+```
 
 Of course we don't want to confine ourselves to just built-in computational equalities for `Empty` and `Unit` - we want to be able to define custom types with custom equalities of this kind. One way to do this is with rewrite rules.
-
-But we also want to benefit from [Types that Compute](#types-that-compute) when it comes to paths, i.e. we want path characterizations like "paths between pairs are pairs of paths" to hold by computation, without needing to prove anything. See [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (section 2.6) for how to accomplish something like this for Agda's usual (i.e. inductive) equality. If I read the paper correctly, it's also possible for Path types. See [here](Rewriting/Paths.ttw) for some details.
 
 Book:
 - [Term Rewriting And All That](https://www21.in.tum.de/~nipkow/TRaAT/)
 
 Papers:
-- [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf)
+- [Type Theory Unchained: Extending Agda with User-Defined Rewrite Rules](https://drops.dagstuhl.de/opus/volltexte/2020/13066/pdf/LIPIcs-TYPES-2019-2.pdf) (see section 2.6 for how to get rewriting rules for ordinary equality - if I read the paper correctly, it's also possible for Path types)
 - [The Taming of the Rew: A Type Theory with Computational Assumptions](https://hal.archives-ouvertes.fr/hal-02901011v2/document)
 - [The Multiverse: Logical Modularity for Proof Assistants](https://arxiv.org/pdf/2108.10259.pdf)
 
-**Status: somewhat wild speculations.**
+**Status: wild speculations.**
 
 TODO:
 - Find how these types will be declared.
@@ -483,7 +644,7 @@ head : (#n : Nat) (v : Vec (s n)) -> A
 | .n', Cons h n' t => h
 ```
 
-We call these _forced patterns, contrary to [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns) which calls them _inaccessible patterns_.
+We call these _forced patterns_, contrary to [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns) which calls them _inaccessible patterns_.
 
 Papers:
 - [A Syntax for Mutual Inductive Families](https://drops.dagstuhl.de/opus/volltexte/2020/12345/pdf/LIPIcs-FSCD-2020-23.pdf)
@@ -632,6 +793,7 @@ Papers:
 - [Impredicative Encodings of (Higher) Inductive Types](https://arxiv.org/pdf/1802.02820.pdf)
 - [On Higher Inductive Types in Cubical Type Theory](https://arxiv.org/pdf/1802.01170.pdf)
 - [Mutual and Higher Inductive Types in Homotopy Type Theory](https://paolocapriotti.com/assets/away-day-2014/mhit.pdf)
+- [Higher Inductive Types and Internal Parametricity for Cubical Type Theory](https://kilthub.cmu.edu/articles/thesis/Higher_Inductive_Types_and_Internal_Parametricity_for_Cubical_Type_Theory/14555691)
 
 **Status: prototype implementations include [cubicaltt](https://github.com/mortberg/cubicaltt), [Cubical Agda](https://agda.readthedocs.io/en/v2.6.0/language/cubical.html), [Arend](https://arend-lang.github.io/) and some other minor languages. No general syntax for HITs is known. Various papers describe subclasses of HITs or HITs combined with induction-induction or something like that. Probably it's very easy to get the most basic and useful HITs, but very hard to get all of them right.**
 
@@ -733,6 +895,7 @@ Papers:
 - [A categorical semantics for inductive-inductive definitions](https://www.cs.nott.ac.uk/~psztxa/publ/catind2.pdf)
 - [For Finitary Induction-Induction, Induction is Enough](http://real.mtak.hu/112922/1/paper.pdf)
 - [A Finite Axiomatisation of Inductive-Inductive Definitions](https://www.degruyter.com/document/doi/10.1515/9783110324921.259/html)
+- [Constructing Inductive-Inductive Types in Cubical Type Theory](https://link.springer.com/chapter/10.1007%2F978-3-030-17127-8_17)
 
 Not papers:
 - [Inductive-Inductive Definitions](https://pdfs.semanticscholar.org/5f17/7aaa7559aa8530e64bf59fbb02567a3b16da.pdf) (slides with some examples)
@@ -1114,7 +1277,7 @@ TODO:
 - Check the details.
 - Does it work for dependent coinductive types?
 
-## Coiductive families
+## Coinductive families
 
 The syntax for coinductive families is somewhat similar to that for inductive families - parameters always stay the same and we must omit them, whereas indices change and we must write them explicitly. Contrary to inductive families, we must also name the indices, because that's the only way to refer to them.
 
@@ -1174,6 +1337,9 @@ codata CoVec (A : Type) (c : Conat) : Type
 & out : CoVecF (CoVec A) A c
 ```
 
+Papers:
+- [Elaborating dependent (co)pattern matching](https://dl.acm.org/doi/10.1145/3236770)
+
 **Status: coinductive families are standard, even if people don't always realize this (they look nothing like inductive families). **
 
 ## [Universes](Universes/Universes.md) <a id="universes"></a> [↩](#types)
@@ -1220,7 +1386,6 @@ To be able to profit from subtype universes, we need to have subtyping. Since we
 
 The subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`. It should also be possible to declare custom coercions.
 
-
 | Name              | Rule             | Coercion         |
 | ----------------- | ---------------- | ---------------- |
 | Universes         | if `i <= j` <br> then `Type h i <= Type h j` | lift |
@@ -1252,13 +1417,24 @@ F* also has some additional nice features related to refinement types that make 
 - Projections which project constructor arguments out of a term (given that the term was really made using that constructor): `Cons?.hd : l : list 'a{Cons? l} -> 'a`, `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
 - Note that the above are written in F* syntax and require refinement types to get anywhere.
 
-## Singleton types
-
-
-
 ## Primitive types and arrays <a id="primitives"></a> [↩](#types)
 
-Primitive constants are used to include in type theory various types known from more mainstream languages, like ints, floats, arrays, etc.
+Primitive constants are used to include in type theory various types known from more mainstream languages, like `int`s, `float`s, `array`s, etc.
+
+Papers:
+- idunno
+
+**Status: implemented in Coq.*
+
+TODO:
+- How does it work at the level of formal rules?
+
+## Modern (i.e. futuristic) tooling
+
+[The Unison Language](https://www.unisonweb.org/) has a very futuristic tooling and some good ideas, including:
+- codebases - Unison code is literraly stored as an AST in a nice database managed with a dedicated tool
+- everything can be referred to by its hash and names are just metadata, so its easy to rename stuff and perform other similar magic like caching tests
+- Unison has typed documentation which prevents it from going out of sync with the code
 
 ## Nice features that are not part of the language for now
 
@@ -1287,12 +1463,7 @@ Examples:
 
 ### Algebraic Effects
 
-## Modern (i.e. futuristic) tooling
-
-[The Unison Language](https://www.unisonweb.org/) has a very futuristic tooling and some good ideas, including:
-- codebases - Unison code is literraly stored as an AST in a nice database managed with a dedicated tool
-- everything can be referred to by its hash and names are just metadata, so its easy to rename stuff and perform other similar magic like caching tests
-- Unison has typed documentation which prevents it from going out of sync with the code
+### Singleton types
 
 ## Things to investigate
 
