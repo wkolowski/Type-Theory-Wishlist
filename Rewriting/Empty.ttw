@@ -1,0 +1,5 @@
+
+// `Empty` lives in the lowest predicative universe and at h-level 1
+// (i.e. in the universe of strict propositions).
+> :check Empty
+> Empty : Type (h = 1, p = 0)

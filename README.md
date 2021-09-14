@@ -193,9 +193,112 @@ Last but not least, there is special syntax for applying functions which have a 
 TODO:
 - Figure out the precise workings of "all functions take just one argument which is a big record".
 
-## [Path types and the rest of the cubical stuff](Paths) <a id="paths"></a> [↩](#types)
+## `Empty` and `Unit` <a id="empty-and-unit"></a> [↩](#types)
+
+There's the built-in `Empty` type which has no terms in the empty context. It's eliminator is called `abort`.
+
+```
+abort : Empty -> A
+```
+
+`abort` is a coercion, so we don't need to write it explicitly.
+
+```
+abort-coercion (e : Empty) : A := e
+```
+
+`Empty` is a strict proposition, i.e. all its proofs are computationally equal.
+
+```
+StrictProp-Empty (e1 e2 : Empty) : e1 = e2 := refl
+```
+
+There's also the built-in `Unit` type. Its sole term is called `unit`.
+
+```
+unit : Unit
+```
+
+There's no need for an elimination principle for `Unit`, because, just like `Empty`, it is a strict proposition, i.e. all terms of type `Unit` are computationally equal.
+
+```
+StrictProp-Unit (u1 u2 : Unit) : u1 = u2 := refl
+```
+
+Relevant papers:
+- [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
+
+**Status: `Empty` and `Unit` are standard everywhere, but barely anywhere are they strict propositions. Coq and Agda have implemented universes of strict propositions (impredicative and predicative) based on the above paper. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. Overall, this look very doable.**
+
+## [Path types and the rest of Cubical Type Theory](Paths) <a id="paths"></a> [↩](#types)
 
 We take Cubical Type Theory and the homotopical style of doing mathematics for granted. The revolution has already occurred!
+
+In practice, this means that we have a type `I` which represents the interval. In fact `I` is only a pretype, i.e. it cannot be the codomain of a function, only the domain. There are two constants `i0 : I` and `i1 : I` which represent the beginning and the end of the inerval. There are also operations: unary `~` and binary `∧`, `∨` which together with `i0` and `i1` make `I` into a free de Morgan algebra (or something like that - I'm writing from memory). All the laws are computational equalities (the list is taken from [Agda's documentation page](https://agda.readthedocs.io/en/v2.6.0/language/cubical.html)).
+
+```
+i0 ∨ i    ≡ i
+i  ∨ i1   ≡ i1
+i  ∨ j    ≡ j ∨ i
+i0 ∧ i    ≡ i0
+i1 ∧ i    ≡ i
+i  ∧ j    ≡ j ∧ i
+~ (~ i)   ≡ i
+i0        ≡ ~ i1
+~ (i ∨ j) ≡ ~ i ∧ ~ j
+~ (i ∧ j) ≡ ~ i ∨ ~ j
+```
+
+The (homogenous) path type is written `x = y`, with the type `A` optionally appearing in braces the middle: `x ={A} y`. We should think that a path `p : x = y` is a function `f : I -> A` such that `f i0` computes to `x` and `f i1` computes to `y`.
+
+There's also the heterogenous path type `x == y` (more explicitly written `x ={i.A} y`), in which `A : I -> Type` is a "line of types", i.e. a family of types that depends on an interval variable. In this case, we think that a heterogenous path `p : x == y` is a dependent function `f : (i : I) -> A i` such that `f i0` computes to `x` and `f i1` computes to `y`.
+
+To introduce a path `x = y` we use a lambda-like binding construct `path i => e`, where `e[i => i0]` must be computationally equal to `x` and `e[i => i1]` must be computationally equal to `y`.
+
+```
+refl (x : A) : x = x :=
+  path i => x
+```
+
+To eliminate a path, we apply it like an ordinary function.
+
+```
+sym #(x y : A) (p : x = y) : y = x :=
+  path i => p (~ i)
+```
+
+With cubical path types, we can easily prove that paths between functions are homotopies.
+
+```
+funExt #(f g : A -> B) (p : (x : A) -> f x = g x) : f = g :=
+  path i => fun x : A => p x i
+```
+
+The syntax may get somewhat heavy when we mix paths and functions frequently, so we have a shorthand (which is even shorter than the original `fun`!).
+
+```
+funExt #(f g : A -> B) (p : (x : A) -> f x = g x) : f = g :=
+  \i x => p x i
+```
+
+But sometimes even that is too long. In such cases we may want to use `ap`.
+
+```
+ap (f : A -> B) #(x y : A) (p : x = y) : f x = f y :=
+  path i => f (p i)
+```
+
+Our paths enjoy some nice computational equalities.
+
+```
+sym-sym #(x y : A) (p : x = y) : sym (sym p) = p := refl
+
+ap-id #(x y : A) (p : x = y) : ap (fun x => x) p = p := refl
+
+ap-ap #(A B C : Type) #(x y : A) (f : A -> B) (g : B -> C) (p : x = y)
+  : ap g (ap f p) = ap (f >> g) p := refl
+```
+There's more to discuss, like transport, partial elements, generalized composition and so on, but we'll leave the discussion of Cubical Type Theory at this point. In case of doubt, refer to [Cubical Agda's documentation page](https://agda.readthedocs.io/en/v2.6.2/language/cubical.html)
 
 Main paper:
 - [Cubical Type Theory: a constructive interpretation of the univalence axiom](https://arxiv.org/pdf/1611.02108.pdf)
@@ -218,54 +321,9 @@ Prototypes:
 TODO:
 - Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
 
-## [Empty](Rewriting/Empty.ttw) and [Unit](Rewriting/Unit.ttw) <a id="empty-and-unit"></a> [↩](#types)
-
-There's the `Empty` type which has no terms in the closed context. `Empty` is a strict proposition, i.e. all its terms are equal.
-
-```
-// The `Empty` type is built-in.
-
-// We will use `abort` as the eliminator.
-abort : Empty -> A
-
-// Maybe `abort` should be a coercion, but I'm not sure yet.
-abort-coercion (e : Empty) : A := e
-
-// `Empty` is a strict proposition.
-StrictProp-Empty (e1 e2 : Empty) : e1 = e2 := refl
-
-// `Empty` lives in the lowest predicative universe and at h-level 1
-// (i.e. in the universe of strict propositions).
-> :check Empty
-> Empty : Type (h = 1, p = 0)
-```
-
-There's also the `Unit` type, whose sole term is `unit`. `Unit` is a strict proposition, i.e. all its terms are equal.
-
-```
-// The `Unit` type is built-in.
-
-// Its only term is called `unit`.
-unit : Unit
-
-// `Unit` is a strict proposition.
-StrictProp-Unit (u1 u2 : Unit) : u1 = u2 := refl
-
-// `Unit` lives in the lowest predicative universe and at h-level 0
-// (i.e. in the universe of contractible types).
-> :check Unit
-> Unit : Type (h = 0, p = 0)
-```
-
-Relevant papers:
-- [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
-
-**Status: the universe of strict propositions is implemented in Agda and Coq. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's Prop, but I think this shouldn't be a problem.**
-
-TODO:
-- Remove forward references to universes.
-
 ## [Type-level rewriting](Rewriting) <a id="type-level-rewriting"></a>
+
+The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's Prop, but I think this shouldn't be a problem.
 
 We have made `Empty` and `Unit` into strict propositions to make our lives easier - nobody likes having to pattern match on `u : Unit` just to learn that it's equal to `unit` (what a surprise!), just as nobody likes having to infer that two proofs of `Empty` are equal from contradiction.
 
