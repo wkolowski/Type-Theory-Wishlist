@@ -1169,7 +1169,18 @@ interleave : (l r : Stream A) -> Stream A
   & tl => interleave l.tl r.tl
 ```
 
-We can also use copattern matching to define functions whose codomain is not coinductive, but only coinductive "at a deeper level". This is easiest to understand with an example.
+There's also an underscore copattern `_`, which is somewhat dual to the catch-all pattern `_` - we can use it for prototyping/prototypical inheritance, i.e. something like "take definitions of all the fields that I didn't mention so far from the right-hand side".
+
+We can also use copattern matching to define functions whose codomain is not coinductive, but only built up from coinductive types. This is easiest to understand with an example.
+
+```
+split : (s : Stream A) -> Stream A * Stream A
+& l hd => s.hd
+& r hd => s.tl.hd
+& _ tl => split s.tl.tl
+```
+
+In pattern matching, `_` ignores a part of the argument we are matching. In copattern matching, `_` can be interpreted as syntax sugar which desugars by transforming both the left-hand side and the right-hand side of a clause by inserting all fields that we omitted.
 
 ```
 split : (s : Stream A) -> Stream A * Stream A
@@ -1302,7 +1313,7 @@ To desugar this definition, we need to add the single-field copattern at the top
 
 ```
 app : (l1 l2 : CoList A) -> CoList A
-& Out
+& Out with l1.Out, l2.Out
   | CoNilX     , _ => l2.Out
   | CoConsX h t, _ => CoConsX h (app t l2)
 ```
@@ -1399,6 +1410,32 @@ Papers:
 - [Elaborating dependent (co)pattern matching](https://dl.acm.org/doi/10.1145/3236770)
 
 **Status: coinductive families are standard, even if people don't always realize this (they look nothing like inductive families). **
+
+## Coinduction-recursion?
+
+```
+codata BHeap (R : A -> A -> Prop) : Type
+| E
+| N (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
+
+and OK (R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop
+| E => Unit
+| N => R v h.v
+```
+
+## Coinduction-coinduction, coinduction-induction?
+
+Let's try to define a type of infinite binary heaps.
+
+```
+codata BHeap (R : A -> A -> Prop) : Type
+| E
+| N (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
+
+and OK (R : A -> A -> Prop) (v : A) : BHeap R -> Prop
+| OK-E : OK E
+| OK-N : (x : A) (l r : BHeap R) -> R v x -> OK (N x l r)
+```
 
 ## [Universes](Universes/Universes.md) <a id="universes"></a> [↩](#types)
 
