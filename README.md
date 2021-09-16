@@ -1411,32 +1411,6 @@ Papers:
 
 **Status: coinductive families are standard, even if people don't always realize this (they look nothing like inductive families). **
 
-## Coinduction-recursion?
-
-```
-codata BHeap (R : A -> A -> Prop) : Type
-| E
-| N (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
-
-and OK (R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop
-| E => Unit
-| N => R v h.v
-```
-
-## Coinduction-coinduction, coinduction-induction?
-
-Let's try to define a type of infinite binary heaps.
-
-```
-codata BHeap (R : A -> A -> Prop) : Type
-| E
-| N (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
-
-and OK (R : A -> A -> Prop) (v : A) : BHeap R -> Prop
-| OK-E : OK E
-| OK-N : (x : A) (l r : BHeap R) -> R v x -> OK (N x l r)
-```
-
 ## [Universes](Universes/Universes.md) <a id="universes"></a> [↩](#types)
 
 We want to have a multidimensional hierarchy of universes stratified both by the usual predicative level and by homotopy level, similar to the [Arend language](https://arend-lang.github.io/about/arend-features#universe-levels). The predicative levels are basicaly naturals, whereas the homotopy levels are natural numbers extended with infinity (for untruncated types). In fact, there will be (at least) two type hierarchies: the strict one and the non-strict one.
