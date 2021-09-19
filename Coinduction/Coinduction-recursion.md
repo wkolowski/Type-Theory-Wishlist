@@ -74,7 +74,7 @@ From this example it is obvious that there really isn't any coinduction-coinduct
 
 # Coinduction-induction?
 
-STREAM PROCESSORS!
+The classical example of a mixed coinductive-inductive type is the type of stream processors `SP A B`. It is a more concrete (even though still higher-order) representation of functions of type `Stream A -> Stream B`. The main purpose of it is to define stream processing functions which might not be accepted by the productivity checker.
 
 ```
 mutual
@@ -87,13 +87,25 @@ mutual
   | Get (g : A -> GetSP A B)
 ```
 
+The implementation is somewhat mysterious, so let's go over it in detail.
+
+The type `SP A B` is the type of stream processors. It is defined coinductively (using our "positive" coinductive syntax sugar), because it is supposed to represent the "output part" of a stream processing function. Since the output is a stream, and streams are coinductive, `SP A B` is also coinductive.
+
+It has two constructors, `Put` and `Get`. `Put` should be interpreted as the function outputting a single element of the output stream (`hd : B`) and then there's the rest of the stream processors (`tl : SP A B`). `Get` is used when the function needs to see what's in the input stream before deciding on the output. Its argument `gsp` is of type `A -> GetSP A B`, which should be interpreted as "peek at the first element of the input stream and then maybe at some more, until you decide on the output".
+
+The type `GetSP A B` is the "input part" of our stream processing. Since our stream processing function is supposed to be productive, it can only look up a finite prefix of the input stream before deciding on the output, so `GetSP A B` is an inductive type.
+
+It has two constructors named `Put` and `Get`. `Put` should be interpreted as the function having checked enough inputs to produce an output (`hd : B`), and thus so we return to the output mode (`tl : SP A B`). `Get` should be interpreted as the function still having to see more elements of the input stream.
+
+Ok, that's more or less it when it comes to the type itself. But since the type of stream processors was supposed to represent functions in the first place, let's see how to interpret `SP A B` as a function `Stream A -> Stream B`.
+
 ```
 toStream : (f : SP A B) (s : Stream A) -> Stream B
 & hd
   | Put => f.hd
   | Get => head (f.gsp s.hd) s.tl
 & tl
-  | Put => toStream f.tl s             // s.tl?
+  | Put => toStream f.tl s
   | Get => tail (f.gsp s.hd) s.tl
 
 and
@@ -103,11 +115,11 @@ head : (g : GetSP A B) (s : Stream A) -> B
 
 and
 tail : (g : GetSP A B) (s : Stream A) -> Stream B
-| Put => g.tl
+| Put => toStream g.tl s
 | Get => tail (g.g s.hd) s.tl
 ```
 
-We have to interpret the definitions below as corecursive for `toStream` and recursive for `toStream'`.
+Out first attempt consists of three mutually defined functions. The main function is `toStream`, defined corecursively, and the helper functions are `head` and `tail`, defined recursively. `toStream` works like this. The `hd` of the stream is extracted from the stream processor `f : SP A B` if it is a `Put` and otherwise we use the helper function `head` to compute it by feeding the input stream to `f.gsp`. As for the `tl`, we corecursively compute it from the tail of the stream processors if it is `Put` and in case it's `Get`, we use the helper function `tail` which computes it by feeding the input stream `s` to `f.gsp`.
 
 ```
 toStream : (f : SP A B) (s : Stream A) -> Stream B
@@ -120,7 +132,7 @@ and
 toStream' : (g : GetSP A B) (s : Stream A) -> Stream B
 | Put
   & hd => g.hd
-  & tl => g.tl
+  & tl => toStream g.tl s
 | Get => toStream' (g.g s.hd) s.tl
 ```
 
