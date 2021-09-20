@@ -1,4 +1,6 @@
-# Coinduction-recursion? Not really.
+## Advanced Coinductive Types
+
+### Coinduction-Recursion? Not really.
 
 Let's try to use induction-recursion syntax together with the `codata` keyword and see what happens. For exploration purposes, we will try to define a type of infinite binary heaps.
 
@@ -36,7 +38,7 @@ The limits of "positive" coinduction-recursion seem to be pretty clear: we can m
 
 To sum up: there's no coinduction-recursion, but we can mutually define types coinductively and functions by pattern matching.
 
-# Coinduction-coinduction? Not really.
+### Coinduction-Coinduction? Not really.
 
 What about "coinduction-coinduction" or something like that? Is it possible? Let's find out by defining infinite binary heaps again, but using only induction-induction syntax.
 
@@ -72,7 +74,7 @@ Again, the desugaring looks pretty easy to grasp. `BHeapX` and `OKX` are defined
 
 From this example it is obvious that there really isn't any coinduction-coinduction going on - it depicts only coinduction-induction, and the "induction" part isn't really that much inductive, as its only one layer deep. But contrary to what was the case for "coinduction-recursion", I don't see why the inductive part of a coinductive-inductive definition couldn't be truly inductive. Maybe we should look for a better example. Also, coinduction-coinduction still seems possible, at least when both types are "positive" coinductives.
 
-# Coinduction-induction?
+### Coinduction-Induction? Somewhat.
 
 The classical example of a mixed coinductive-inductive type is the type of stream processors `SP A B`. It is a more concrete (even though still higher-order) representation of functions of type `Stream A -> Stream B`. The main purpose of it is to define stream processing functions which might not be accepted by the productivity checker.
 
@@ -119,14 +121,16 @@ tail : (g : GetSP A B) (s : Stream A) -> Stream B
 | Get => tail (g.g s.hd) s.tl
 ```
 
-Out first attempt consists of three mutually defined functions. The main function is `toStream`, defined corecursively, and the helper functions are `head` and `tail`, defined recursively. `toStream` works like this. The `hd` of the stream is extracted from the stream processor `f : SP A B` if it is a `Put` and otherwise we use the helper function `head` to compute it by feeding the input stream to `f.gsp`. As for the `tl`, we corecursively compute it from the tail of the stream processors if it is `Put` and in case it's `Get`, we use the helper function `tail` which computes it by feeding the input stream `s` to `f.gsp`.
+Out first attempt consists of three mutually defined functions. The main function is `toStream`, defined corecursively, and the helper functions are `head` and `tail`, defined recursively. `toStream` works as follows. The `hd` of the result stream is extracted from the stream processor `f : SP A B` if it is a `Put` and otherwise we use the helper function `head` to compute it by feeding the input stream to `f.gsp`. As for the `tl`, we corecursively compute it from the tail of the stream processor if it is `Put` and in case it's `Get`, we use the helper function `tail` which computes it by feeding the input stream `s` to `f.gsp`.
+
+We might be a little dissatisfied with our first attempt, however, because it looks somewhat redundant. Namely, the recursion scheme of `head` and `tail` are very similar, so maybe they could be merged?
 
 ```
 toStream : (f : SP A B) (s : Stream A) -> Stream B
 | Put
   & hd => f.hd
   & tl => toStream f.tl s
-| Get => toStream' f.g s
+| Get => toStream' (f.g s.hd) s.tl
 
 and
 toStream' : (g : GetSP A B) (s : Stream A) -> Stream B
@@ -136,4 +140,34 @@ toStream' : (g : GetSP A B) (s : Stream A) -> Stream B
 | Get => toStream' (g.g s.hd) s.tl
 ```
 
-# Truly "positive" coinduction-coinduction?
+The second attempt results in a much more compact definition. `toStream` is still corecursive, but we use pattern matching at the top level to make the definition shorter. In the `Put` case, we unpack the head of the stream from the argument and compute the tail corecursively, just as in the first definition. In the `Get` case, we use `toStream'`, which computes the result stream recursively from `g : GetSP A B` and `s : Stream A`. In the `Put` case, it behaves the same as `toStream`, whereas in the `Get` case it recursively feeds the input stream `s` into `g`. As we can see, we managed to cut down the redundancy.
+
+But we may still be somewhat dissatisfied, because `toStream` and `toStream'` are defined by mutual corecursion-recursion, which is a suspicious principle. Can we untie them so that we first define `toStream'` by recursion and only then `toStream` by corecursion? Let's try.
+
+```
+whnf : (g : GetSP A B) (s : Stream A) -> (hd : B, tl : SP A B, s : Stream A)
+| Put => (g.hd, g.tl, s)
+| Get => whnf (g.g s.hd) s.tl
+
+toStream : (f : SP A B) (s : Stream A) -> Stream B
+| Put
+  & hd => f.hd
+  & tl => toStream f.tl s
+| Get =>
+  let x := whnf (f.g s.hd) s.tl in
+    & hd => x.hd
+    & tl => toStream x.tl x.s
+```
+
+As we see, it is possible to avoid mutual corecursion-recursion. We attain this by getting rid of `toStream'` and instead defining a function called `whnf`, whose role is to feed an input stream `s` into `g : GetSP A B` in order to compute whatever is necessary for the `Get` case in `toStream`, i.e. the head of the stream, the rest of the stream processor and the remaining input stream. Our definition didn't get any shorter in the process, however. Also note that we can use `let` together with copatterns pretty seamlessly.
+
+Papers:
+- There are quite a few papers on mixing coinduction with induction, but most of them are written in the old deprecated Agda coinduction, so they aren't that much useful.
+
+TODO:
+- Currently using pattern matching means that the function is recursive, so the second definition of `toStream` is not legal. Maybe some annotation for whether a function is recursive or corecursive?
+- Does `let` and copattern matching play out together as nicely as in the last example?
+
+# Untangleable coinduction-induction?
+
+# Untangleable coinduction-coinduction?

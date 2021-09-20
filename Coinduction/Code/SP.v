@@ -5,7 +5,7 @@ Inductive SPXY (X Y A B : Type) : Type :=
     | GetX : (A -> Y) -> SPXY X Y A B.
 
 Inductive GetSPX (X A B : Type) : Type :=
-    | GPutX : B -> SPXY X (GetSPX X A B) A B -> GetSPX X A B
+    | GPutX : B -> X -> GetSPX X A B
     | GGetX : (A -> GetSPX X A B) -> GetSPX X A B.
 
 Arguments PutX {X Y A B} _ _.
@@ -34,7 +34,7 @@ end.
 
 Fixpoint tail {A B : Type} (g : GetSP A B) (s : Stream A) : SP A B * Stream A :=
 match g with
-    | GPutX h t => ({| Out := t |}, s)
+    | GPutX h t => (t, s)
     | GGetX g'  => tail (g' (hd s)) (tl s)
 end.
 
@@ -56,7 +56,7 @@ CoFixpoint toStream {A B : Type} (f : SP A B) (s : Stream A) : Stream B :=
 
 Fixpoint aux {A B : Type} (g : GetSP A B) (s : Stream A) : B * SP A B * Stream A :=
 match g with
-    | GPutX h t => (h, {| Out := t |}, s)
+    | GPutX h t => (h, t, s)
     | GGetX g'  => aux (g' (hd s)) (tl s)
 end.
 
@@ -73,3 +73,5 @@ match Out f with
             tl := toStream f' s';
         |}
 end.
+
+(** Some proofs. *)
