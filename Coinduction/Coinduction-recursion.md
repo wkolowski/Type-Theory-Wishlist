@@ -161,6 +161,12 @@ toStream : (f : SP A B) (s : Stream A) -> Stream B
 
 As we see, it is possible to avoid mutual corecursion-recursion. We attain this by getting rid of `toStream'` and instead defining a function called `whnf`, whose role is to feed an input stream `s` into `g : GetSP A B` in order to compute whatever is necessary for the `Get` case in `toStream`, i.e. the head of the stream, the rest of the stream processor and the remaining input stream. Our definition didn't get any shorter in the process, however. Also note that we can use `let` together with copatterns pretty seamlessly.
 
+The last thing we should probably want to know is how does this desugar.
+
+```
+
+```
+
 Papers:
 - There are quite a few papers on mixing coinduction with induction, but most of them are written in the old deprecated Agda coinduction, so they aren't that much useful.
 

@@ -461,10 +461,12 @@ fib : Nat -> Nat
 
 We make a distinction between **parameters**, which are bound to the left of the main colon, and **indices**, which are bound to the right of the main colon. The difference is that parameters always stay the same, so that we don't need to write them explicitly. Indices can change, so we must write them explicitly.
 
+In the definition of the type of `List`s below, this manifests in that we write `tl : List` for the tail of the list instead of `tl : List A` as we would if `A` were an index. Also note that we allow constructor names to by symbols, including infix symbols, just like in Agda.
+
 ```
 data List (A : Type) : Type
-| Nil
-| Cons (hd : A) (tl : List)
+| []
+| _::_ (hd : A) (tl : List)
 ```
 
 This distinction applies both to inductive and recursive definitions. It looks a bit weird at first, as that's not what people are used to, but hey, you are going to appreciate it when the definitions get more complicated!
@@ -487,8 +489,8 @@ For functions that are not commutative, like list append, we get a bit more head
 
 ```
 app : (l1 l2 : List A) -> List A :=
-| Nil     , _ => l2
-| Cons h t, _ => Cons h (app t l2)
+| []    , _ => l2
+| h :: t, _ => h :: app t l2
 ```
 
 In case we need to match something else besides the arguments, we can use a `with`-clause.
@@ -1119,26 +1121,26 @@ We can combine copattern matching with pattern matching. Below we define a funct
 
 ```
 streamize (x : A) : List A -> Stream A
-& hd | []       => x
-& tl | []       => streamize []
-& hd | Cons h _ => h
-& tl | Cons _ t => streamize t
+& hd | []     => x
+& tl | []     => streamize []
+& hd | h :: _ => h
+& tl | _ :: t => streamize t
 ```
 
 We should interpret this definition as follows:
 - the head of the output stream is `x` when the input is `[]`
 - the tail of the output stream is `streamize []` when the input is `[]`
-- the head of the output stream is `h` when the input is `Cons h _`
-- the tail of the output stream is `streamize t` when the input is `Cons _ t`
+- the head of the output stream is `h` when the input is `h :: _`
+- the tail of the output stream is `streamize t` when the input is `_ :: t`
 
 The grouping of the copatterns and patterns doesn't matter much (besides aesthetics). The definition below, in which the second and third clauses are swapped, is computationally equal to the previous one.
 
 ```
 streamize (x : A) : List A -> Stream A
-& hd | []       => x
-& hd | Cons h _ => h
-& tl | []       => streamize []
-& tl | Cons _ t => streamize t
+& hd | []     => x
+& hd | h :: _ => h
+& tl | []     => streamize []
+& tl | _ :: t => streamize t
 ```
 
 In case we feel the syntax is getting too heavy, we can combine our copatterns and patterns in a way similar to what we did for nested copatterns. The function below is computationally equal to the above ones.
@@ -1146,11 +1148,11 @@ In case we feel the syntax is getting too heavy, we can combine our copatterns a
 ```
 streamize (x : A) : List A -> Stream A
 & hd
-  | []       => x
-  | Cons h t => h
+  | []     => x
+  | h :: t => h
 & tl
-  | []       => streamize []
-  | Cons _ t => streamize t
+  | []     => streamize []
+  | _ :: t => streamize t
 ```
 
 But we cannot mix the order of patterns and copatterns, because the order decides whether the function is recursive or corecursive. If we start with pattern matching, the function is recursive. If we start with copattern matching, the function is corecursive. For example, the function below, which starts with patterns, is supposed to be recursive, but because of this it is illegal: `streamize []` is not a valid recursive call.
@@ -1160,7 +1162,7 @@ streamize (x : A) : List A -> Stream A
 | []
   & hd => x
   & tl => streamize []
-| Cons h t
+| h :: t
   & hd => h
   & tl => streamize t
 ```
@@ -1200,7 +1202,7 @@ TODO:
 - Overlapping and Order-Independent Copatterns.
 - Another possibility for handling coinductives is for them to be just (co)recursive records, but this depends on how cool and foreign records will be.
 
-## "Positive Coinductive Types" <a id="positive-coinductive-types"></a> [↩](#toc)
+## "Positive" Coinductive Types <a id="positive-coinductive-types"></a> [↩](#toc)
 
 We have special syntax for coinductive types that have only a single field, like coinductive lists, conatural numbers and so on.
 
@@ -1528,6 +1530,7 @@ The subtyping judgement shall be proof-relevant, i.e. it should explicitly speci
 | Coinductives      | not sure |
 | `Empty`           | `Empty <= A`     | `abort` |
 | `Unit`            | `A <= Unit`      | `fun _ => unit` |
+| `Bool`            | `Bool <= Prop`   | `fun b : Bool => b = tt` |
 | Refinements       | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` <br> also `{x : A \| P} <= A` | identity |
 | Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
 | Nabla type        | if `c : A <= B` <br> then `∇ α : N. A <= ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
@@ -1538,6 +1541,9 @@ The subtyping judgement shall be proof-relevant, i.e. it should explicitly speci
 There's a question of what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <= B` then `Name A <= Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. Similarly, I think that `∇` could be contravariant just like function types, but I'm not sure.
 
 **Status: universe cumulativity is semi-standard, as some proof assistant don't have it. Coercions have been implemented in Coq for a long time. Subtyping of anything else in type theory is mostly wild speculations.**
+
+TODO:
+- Remove forward reference to Subtype Universes.
 
 ## Subtype Universes <a id="subtype-universes"></a> [↩](#toc)
 
@@ -1570,6 +1576,28 @@ F* also has some additional nice features related to refinement types that make 
 - Note that the above are written in F* syntax and require refinement types to get anywhere.
 
 ## Primitive types and arrays <a id="primitives"></a> [↩](#toc)
+
+We have a variety of primitive integer types:
+- `i8`, `i16`, `i32`, `i64` - types of 8-, 16-, 32- and 64-bit integers, respectively
+- `u8`, `u16`, `u32`, `u64` - types of 8-, 16-, 32- and 64-bit unsigned integers, respectively
+
+We may write integer literals (both signed and unsigned) in many bases:
+- Decimal: `98_222`
+- Hexadecimal: `0xff`
+- Octal: `0o77`
+- Binary: `0b1111_0000`
+- Byte (u8 only): `b'A'`
+
+The types `f32` and `f64` represent 32- and 64-bit floating point numbers, respectively. We support scientific notation literals:
+- Ordinary: `3.14159`
+- Scientific: `1e-7`
+
+The type of characters is named `Char`. It represent UTF-8 encoded characters. We may also want to have other char types, like `Ascii` and `UTF-16`. Alternatively, `Char` is more abstract and the encoding is just its property. Anyway, character literals are enclosed between apostraphes: `'c'`.
+
+Strings are NOT lists of characters and they are not called "strings" so that our solution doesn't sound too familiar to people who know strings from other languages. There's the type `Text` which represents, well, texts, i.e. sequences of characters.
+
+The type `Array A n` represents arrays whose entries are of type `A` and whose length is `n : Nat`.
+
 
 Primitive constants are used to include in type theory various types known from more mainstream languages, like `int`s, `float`s, `array`s, etc.
 

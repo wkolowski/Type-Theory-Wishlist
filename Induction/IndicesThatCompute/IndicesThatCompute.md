@@ -13,13 +13,13 @@ The first definition is a predicate defined as an inductive family. It effective
 Pros:
 - we can pattern match on it
 - induction principle (in a Coq-like language)
-- irrelevance - as we will see later, thanks to `Prop`, any two `e1, e2 : Even n` can be proven equal using just `refl`exivity
+- irrelevance - as we will see later, thanks to `Prop`, any `e1, e2 : Even n` can be proven equal using just `refl`exivity
 
 Cons:
 - quadratic proof size if there is no sharing of the implicit `n`s between constructors
 - need to implement the decision procedure manually
 - hard to prove that 1 is not even - we need a tactic like Coq's `inversion`, or some boilerplate, or very well-implemented dependent patern matching
-- no uniqueness principle - if the codomain weren't `Prop`, we would need to prove manually that all `e1, e2 : Even n` are equal
+- no uniqueness principle - if the codomain wasn't `Prop`, we would need to prove manually that all `e1, e2 : Even n` are equal
 
 ```
 Even : Nat -> Prop
@@ -32,7 +32,7 @@ The second definition is recursive. It says that zero is even, one is not even, 
 
 Pros:
 - constant proof size
-- very easy to prove that 1 is not even (`Even (s z)` computes to `Empty`), so the proof of `Even 1 -> Empty` is the identity function
+- very easy to prove that 1 is not even - `Even (s z)` computes to `Empty`, so the proof of `Even 1 -> Empty` is the identity function
 - irrelevance
 - uniqueness principle - even if the codomain wasn't `Prop`, all `e : Even n` compute to the same type when `n` is known
 
