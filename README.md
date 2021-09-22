@@ -1578,36 +1578,101 @@ F* also has some additional nice features related to refinement types that make 
 ## Primitive types and arrays <a id="primitives"></a> [↩](#toc)
 
 We have a variety of primitive integer types:
-- `i8`, `i16`, `i32`, `i64` - types of 8-, 16-, 32- and 64-bit integers, respectively
+- `i8`, `i16`, `i32`, `i64` - types of 8-, 16-, 32- and 64-bit signed integers, respectively
 - `u8`, `u16`, `u32`, `u64` - types of 8-, 16-, 32- and 64-bit unsigned integers, respectively
 
-We may write integer literals (both signed and unsigned) in many bases:
-- Decimal: `98_222`
-- Hexadecimal: `0xff`
-- Octal: `0o77`
-- Binary: `0b1111_0000`
-- Byte (u8 only): `b'A'`
+We may write integer literals (both signed and unsigned) in many bases, with an underscore `_` as an optional separator used for digit grouping. To disambiguate between types when using a literal, we need a type annotation.
 
-The types `f32` and `f64` represent 32- and 64-bit floating point numbers, respectively. We support scientific notation literals:
-- Ordinary: `3.14159`
-- Scientific: `1e-7`
+```
+dec : i64 := 98_222
+hex : i32 := 0xdeadbeef
+oct : i16 := 0o77
+bin : i8  := 0b1111_0000
+```
 
-The type of characters is named `Char`. It represent UTF-8 encoded characters. We may also want to have other char types, like `Ascii` and `UTF-16`. Alternatively, `Char` is more abstract and the encoding is just its property. Anyway, character literals are enclosed between apostraphes: `'c'`.
+There are implicit coercions between integer types provided that they do not lose information. Stated explicitly, this means there are coercions:
+- from `i8` to `i16`, from `i16` to `i32`, from `i32` to `i64`
+- from `u8` to `u16`, from `u16` to `u32`, from `u32` to `u64`
+- from `u8` to `i16`, from `u16` to `i32` and from `u32` to `i64`
 
-Strings are NOT lists of characters and they are not called "strings" so that our solution doesn't sound too familiar to people who know strings from other languages. There's the type `Text` which represents, well, texts, i.e. sequences of characters.
+```
+// Ok, `u16` values range from `0` to `65535`, which certainly fits in an `i64`.
+f (u : u16) : i64 := u
 
-The type `Array A n` represents arrays whose entries are of type `A` and whose length is `n : Nat`.
+// Failure - there are values of type `u8`, like `255`, that don't fit into an `i8`, which ranges from `-128` to `127`.
+% Fail
+g (u : u8) : i8 := u
+```
 
+We support all the obvious arithmetical operators, including addition, subtraction, multiplication, exponentiation and division. We should also support bit-wise operations, but we're not going to see any examples.
 
-Primitive constants are used to include in type theory various types known from more mainstream languages, like `int`s, `float`s, `array`s, etc.
+The semantics of these operations is as usual, i.e. if the result is bigger than the maximum value for the given type, it overflows and gets cut down. For example, `255 + 1 ={u8} 0`. Division by zero is, as always, problematic... don't use it.
+
+```
+arith-example : i64 :=
+  12 + (34 * 45) - 6 ^ (16 / 3)
+```
+
+The types `f32` and `f64` represent 32- and 64-bit floating point numbers, respectively, with an implicit coercion from `f32` to `f64`. We support both ordinary floating point literals and scientific notation literals and all the arithmetic operations with usual semantics.
+
+```
+almost-pi : f32 := 3.14159
+
+big-scientific-num : f64 := 1.2345678e-9
+
+float-expr : f64 :=
+  almost-pi * 2 + big-scientific-num ^ (2 - almost-pi / 1.2e3)
+```
+
+`Char` is the type of characters. It represents UTF-8 encoded characters. Character literals are enclosed between apostraphes. We may use the usual representation of special characters (backslash followed with a letter) and quote backslashes and other special characters with an additional backslash. We support all the conventional operations on characters, including conversion to its code point, but we won't show them here.
+
+```
+char : Char := 'a'
+
+newline : Char := '\n'
+
+backslash : Char := '\\'
+```
+
+Strings are NOT lists of characters and they are not called "strings" so that they don't sound too familiar to people who know them from other languages. Instead there's the type `Text` which represents, well, texts, i.e. sequences of characters. Text literals are enclosed in quotes. Rules for special characters and quoting are the same as for `Char`.
+
+```
+some-text : Text := "This is a text literal."
+
+multiline-text : Text := "This\ntext\nis\nmultiline."
+
+quote : Text := "\"To be or not to be, that is the question.\""
+```
+
+The type `Array A n` represents arrays whose entries are of type `A` and whose length is `n : Nat`. Array literals are enclosed between `[` and `]` and separated with commas. More complicated array initializers live in the `Array` module. Array indexing syntax is similar to most C-like languages, i.e. `A[i]`. Note that `i : Fin n`, i.e. the index must be statically known to not be out of bounds.
+
+```
+arr : Array Char 5 := ['a', 'r', 'r', 'a', 'y']
+
+arr-0 : arr[0] = 'a' := refl
+
+all-zeros : Array i8 1000 := Array.repeat (elem => 0, n => 1000)
+
+fib-arr : Array Nat 25 := Array.new (fun i => fib i)
+```
+
+We would really like to have C-like performance for base types, but this is just a wish in our Type Theory Wishlist!
 
 Papers:
 - idunno
 
-**Status: implemented in Coq.*
+Not papers:
+- The workings of primitive types are borrowed from [Rust](https://doc.rust-lang.org/book/ch03-02-data-types.html)
+
+**Status: implemented in Coq.**
 
 TODO:
 - How does it work at the level of formal rules?
+- Decide the details of the char type.
+- Decide the details of division by zero.
+- We may also want to have other char types, like `Ascii` and `UTF-16`.
+- Alternatively, `Char` could be made more abstract and the encoding is just its property.
+- Maybe disambiguate array literal syntax from syntax sugar for lists?
 
 ## Tooling <a id="tooling"></a> [↩](#toc)
 
