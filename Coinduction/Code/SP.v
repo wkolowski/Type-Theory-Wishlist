@@ -152,3 +152,55 @@ Proof.
         rewrite tail_aux, toStream'_eq. cbn. destruct (aux (gsp (hd s)) (tl s)), p; cbn. apply CH.
     }
 Qed.
+
+(** Composition of stream processors. *)
+Print SPXY.
+
+(* Fixpoint whnf {A B : Type} (g : GetSP B C) (i : SP A B) : C * (SP B C * SP A B) :=
+match g with
+    | In (PutX h t) => (h, (t, i))
+    | In (GetX g')  => whnf (g' (hd s)) (tl s)
+end.
+ *)
+
+Definition comp {X Y A B C : Type} (f : SPXY X Y A B) (g : SPXY X Y B C) : SPXY X Y A C.
+Proof.
+  destruct g as [hc tc | g'].
+    refine (PutX hc tc).
+Abort.
+
+Fixpoint compMix {A B C : Type} (f : GetSP A B) (g : SP B C) {struct f} : GetSP A C.
+Proof.
+  destruct g as [[hc tc | g']].
+    refine (In (PutX hc _)).
+Abort.
+
+Fixpoint compI {A B C : Type} (f : GetSP A B) (g : GetSP B C) : GetSP A C.
+Proof.
+  destruct g as [[hc tc | g']].
+    refine (In (PutX hc _)). destruct f as [[hb tb | f']].
+      admit.
+      constructor. apply GetX. intro a. refine (compI _ _ _ (f' a) _). apply (compI _ B _).
+Abort.
+
+CoFixpoint compSP {A B C : Type} (f : SP A B) (g : SP B C) : SP A C.
+Proof.
+  constructor.
+  destruct g as [[hc tc | g']].
+    apply (PutX hc). exact (compSP _ _ _ f tc).
+    destruct f as [[hb tb | f']].
+      apply (compSP A B C).
+        exact tb.
+        admit.
+      apply GetX. intro a.
+Abort.
+(*
+{|
+    Out :=
+    match Out f, Out g with
+        | _       , PutX hc tc => PutX hc (compSP f tc)
+        | PutX h t, GetX g'    => compSP t (Out (g' h))
+        | GetX f' , _          => GetX (fun a => compSP f' g)
+    end
+|}.
+*)
