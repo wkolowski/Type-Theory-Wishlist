@@ -103,7 +103,7 @@ TODO:
 Record types are the central feature of the language and they subsume modules, typeclasses, sigma types, product types, and so on (and this even extends to packaging constructs, like Java's packages or Rust's crates). See below for:
 - [a list of problems with records](Records/ProblemsWithRecords.md) (in Coq, but these problems occur everywhere)
 - [a partial solution of these problems](Records/RecordPlayground.ttw)
-- [a wild and more ambitious idea of how records should be](Records/TurboRecords.ttw)
+- [a wild and more ambitious idea of what records should be](Records/TurboRecords.ttw)
 
 Papers on dependent records in type theory:
 - [Dependent Record Types Revisited](http://www.cs.rhul.ac.uk/home/zhaohui/DRT11.pdf)
@@ -332,7 +332,7 @@ Prototypes:
 TODO:
 - Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
 - Describe these things here.
-- Search for mroe prototypes.
+- Search for more prototypes.
 
 ## `Empty` and `Unit` <a id="empty-and-unit"></a> [↩](#toc)
 
@@ -680,19 +680,19 @@ We can define functions using pattern matching and structural recursion, just li
 
 In the above example we want to compute the absolute value of the argument. For non-negative integers this is easy and we just return the argument, whereas for negative numbers we need to recursively turn predecessors into successors.
 
-See [this file](Induction/ConstructorsThatCompute/Z.ttw) for a more thorough explanation and exploration of the type of integers defined using constructors that compute.
+See [this file](Induction/ConstructorsThatCompute/Z.ttw) for a more thorough explanation and exploration of the type of integers defined using Constructors that Compute.
 
 Papers:
 - None, this idea is brand new invention of mine.
 
-**Status: highly experimental. It looks like if we put reasonable constraints on the kinds of computation rules associated with constructors, there isn't any abvious contradiction, nontermination or anything like that. However, there are no prototypes and no papers, except that some constructors that compute can be simulated using [Self Types](https://github.com/uwu-tech/Kind/blob/master/blog/1-beyond-inductive-datatypes.md).**
+**Status: highly experimental. It looks like if we put reasonable constraints on the kinds of computation rules associated with constructors, there isn't any abvious contradiction, nontermination or anything like that. However, there are no prototypes and no papers, except that some Constructors that Compute can be simulated using [Self Types](https://github.com/uwu-tech/Kind/blob/master/blog/1-beyond-inductive-datatypes.md).**
 
 TODO:
-- Come up with more examples of useful constructors that compute.
+- Come up with more examples of useful Constructors that Compute.
 
 ### [Higher Inductive Types](Induction/HIT) <a id="HIT"></a> [↩](#toc)
 
-Higher Inductive Types are inductive types which can be defined using not only point ("ordinary") constructors, but also path constructors which put additional paths into the type. This has two serious uses: the more practical one is for making all kinds of quotients and quotient-like types (and a lot of these can't be made using constructors that compute, because there is no canonical form of some collection of terms) and the more theoretical one is synthetic homotopy theory.
+Higher Inductive Types are inductive types which can be defined using not only point ("ordinary") constructors, but also path constructors which put additional paths into the type. This has two serious uses: the more practical one is for making all kinds of quotients and quotient-like types (and a lot of these can't be made using Constructors that Compute, because there is no canonical form of some collection of terms) and the more theoretical one is synthetic homotopy theory.
 
 ```
 data Set (A : Type) : Type
@@ -828,7 +828,7 @@ K : Term := λ x. λ y. x
 S : Term := λ x. λ y. λ z. x z (y z)
 ```
 
-Assuming we have a really good coercion system that can coerce `t : Term` into `App t : Term -> term`, our lambda terms can even look like the real lambda terms.
+Assuming we have a really good coercion system that can coerce `t : Term` into `App t : Term -> Term`, our lambda terms can even look like the real lambda terms.
 
 ```
 subst (t : Term) : (s : ∇ α : Term. Term) -> Term
@@ -862,7 +862,7 @@ Induction-induction allows us to simultaneously define two or more types such th
 data Dense (R : A -> A -> Prop) : Type
 | in   (x : A)
 | mid #(x y : Dense) (H : Dense-R R x y)
-| eq  #(x : Dense)   (H : Dense-R R x x) with (i : I)
+| eq  #(x   : Dense) (H : Dense-R R x x) with (i : I)
   | i0 => mid x x H
   | i1 => in x
 
@@ -980,7 +980,7 @@ and El : (u : U) -> Type
 | eq u x y => x = y
 ```
 
-We can combine induction-recursion with constructors that compute to get a more interesting kind of universe - one in which the various type isomorphisms hold by definition. For the boring isomorphisms like `Empty + A = A` this is not very useful (as it's helpful only rarely), but it's extremely useful for the equality type - thanks to constructors that compute we can have `(f = g) = (x : A) -> f x = g x` and `((x1, y1) = (x2, y2)) = (x1 = x2) * (y1 = y2)` and so on.
+We can combine induction-recursion with Constructors that Compute to get a more interesting kind of universe - one in which the various type isomorphisms hold by definition. For the boring isomorphisms like `Empty + A = A` this is not very useful (as it's helpful only rarely), but it's extremely useful for the equality type - thanks to Constructors that Compute we can have `(f = g) = (x : A) -> f x = g x` and `((x1, y1) = (x2, y2)) = (x1 = x2) * (y1 = y2)` and so on.
 
 ```
 data BHeap (R : A -> A -> Prop) : Type
@@ -1020,7 +1020,7 @@ Generic programming using (inductive-recursive) universes:
 
 ## [Basic Coinductive Types](Coinduction) <a id="basic-coinductive-types"></a> [↩](#toc)
 
-Coinductive types are "negative", i.e. they are record-like types which are defined by saying what fields they have. Definitions of coinductive types start with the keyword `codata`. Then, in separate lines starting with `&`, we list field names and their types. Below we define a coinductive product type whose left projection is `l` and right projection is `r`.
+Coinductive types are "negative", i.e. they are record-like types which are defined by specifying what fields they have. Definitions of coinductive types start with the keyword `codata`. Then, in separate lines starting with `&`, we list field names and their types. Below we define a coinductive product type whose left projection is `l` and right projection is `r`.
 
 ```
 codata _*_ (A B : Type) : Type
@@ -1053,7 +1053,7 @@ swap (x : A * B) : B * A
 & r => l
 ```
 
-Of course the coinductive type being defined can appear in types of fields, provided that it stands in a strictly positive position. Note that the distinction between parameters and indices we saw for inductive types applies to coinductives too, so we only need to write `Stream` instead of `Stream A`.
+Of course the coinductive type being defined can appear in types of fields, provided that it stands in a strictly positive position. Note that the distinction between parameters and indices we introduced for inductive types applies to coinductives too, so we only need to write `Stream` instead of `Stream A`.
 
 ```
 codata Stream (A : Type) : Type
@@ -1237,7 +1237,7 @@ app : (l1 l2 : CoList A) -> CoList A
 | CoCons h t, _ => CoCons h (app t l2)
 ```
 
-To desugar this definition, we need to add the single-field copattern at the top level, replace patterns refering to "constructors" of `CoList` with patterns taht refer to constructors of `CoListX`, and turn naked uses of colists (i.e. `l : CoList A`) into uses of their field (i.e. `l.Out : CoListX (CoList A) A`.
+To desugar this definition, we need to add the single-field copattern at the top level, replace patterns refering to "constructors" of `CoList` with patterns taht refer to constructors of `CoListX`, and turn naked uses of colists (i.e. `l : CoList A`) into uses of their field (i.e. `l.Out : CoListX (CoList A) A`).
 
 ```
 app : (l1 l2 : CoList A) -> CoList A
@@ -1272,7 +1272,6 @@ See [the file dealing with conatural numbers](Coinduction/Conat.ttw) for more de
 
 TODO:
 - Check the details.
-- Does it work for dependent coinductive types?
 
 ## Coinductive families <a id="coinductive-families"> [↩](#toc)
 
@@ -1294,7 +1293,7 @@ nats (n : Nat) : Stream Nat
 & tl => nats (s n)
 
 Linked-nats : (n : nat) -> Linked (<=) (nats n)
-& link  => le-n-sn // easy lemma
+& link  => le-n-sn // Easy lemma, we won't prove it.
 & links => Linked-nats (s n)
 ```
 
@@ -1310,7 +1309,7 @@ codata CoVec (A : Type) : Conat -> Type
 | CoCons : (hd : A, #c : Conat, tl : CoVec c) -> CoVec (s c)
 ```
 
-The whole things desugars as follows.
+The whole thing desugars as follows.
 
 ```
 data ConatX (X : Type) : Type
@@ -1327,7 +1326,7 @@ s (n : Conat) : Conat
 & out => sX n
 
 data CoVecF (F : Conat -> Type) (A : Type) : Conat -> Type
-| CoNilF : CoVecX z
+| CoNilF : CoVecF z
 | CoConsF (h : A, #c : Conat, t : F c) : CoVecF (s c)
 
 codata CoVec (A : Type) (c : Conat) : Type
@@ -1337,7 +1336,7 @@ codata CoVec (A : Type) (c : Conat) : Type
 Papers:
 - [Elaborating dependent (co)pattern matching](https://dl.acm.org/doi/10.1145/3236770)
 
-**Status: coinductive families are standard, even if people don't always realize this (they look nothing like inductive families). **
+**Status: coinductive families are standard, even if people don't always realize this (they look nothing like inductive families).**
 
 ## Advanced Coinductive Types <a id="advanced-coinductive-types"></a> [↩](#toc)
 
@@ -1353,9 +1352,9 @@ TODO:
 
 ## [Universes](Universes/Universes.md) <a id="universes"></a> [↩](#toc)
 
-We want to have a multidimensional hierarchy of universes stratified both by the usual predicative level and by homotopy level, similar to the [Arend language](https://arend-lang.github.io/about/arend-features#universe-levels). The predicative levels are basicaly naturals, whereas the homotopy levels are natural numbers extended with infinity (for untruncated types). In fact, there will be (at least) two type hierarchies: the strict one and the non-strict one.
+We want to have a multidimensional hierarchy of universes stratified both by the usual predicative level and by homotopy level, similar to the [Arend language](https://arend-lang.github.io/about/arend-features#universe-levels). The predicative levels are basically naturals, whereas the homotopy levels are natural numbers extended with infinity (for untruncated types). In fact, there will be (at least) two type hierarchies: the strict one and the non-strict one.
 
-In the strict hierarchy, `Type (h = 0)` (abbreviated `SContr`) is the universe of contractible types (whose only member is itself), `Type (h = 1)` (abbreviated `Prop`) is the universe of strict (i.e. definitionally irrelevant) propositions (like Coq's [Prop](https://coq.inria.fr/refman/addendum/sprop.html) or Agda's [Prop](https://agda.readthedocs.io/en/v2.6.0/language/prop.html)), `Type (h = 2)` (abbreviated `Set`) is the universe of strict sets (types for which the type of paths is a strict proposition) and so on, up to `Type (h = oo)`, the universe of strict untruncated types.
+In the strict hierarchy, `Type (h = 0)` (abbreviated `Contr`) is the universe of contractible types (whose only member is itself), `Type (h = 1)` (abbreviated `Prop`) is the universe of strict (i.e. definitionally irrelevant) propositions (like Coq's [Prop](https://coq.inria.fr/refman/addendum/sprop.html) or Agda's [Prop](https://agda.readthedocs.io/en/v2.6.0/language/prop.html)), `Type (h = 2)` (abbreviated `Set`) is the universe of strict sets (types for which the type of paths is a strict proposition) and so on, up to `Type (h = oo)`, the universe of strict untruncated types.
 
 The non-strict hierarchy (written `hType`) is similar. Knowing that a type has a homotopy level `h` should bring benefits which are similar but weaker than these for the strict universes.
 
@@ -1369,6 +1368,8 @@ TODO:
 - Write some code dealing with universes.
 
 ## [Type-level rewriting](Rewriting) <a id="type-level-rewriting"></a> [↩](#toc)
+
+TODO!
 
 The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's Prop, but I think this shouldn't be a problem.
 
@@ -1568,7 +1569,7 @@ TODO:
 
 ## Refinement types <a id="refinements"></a> [↩](#toc)
 
-The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solvers, but that's meh) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
+The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solver, but that's meh...) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
 
 F* also has some additional nice features related to refinement types that make life a lot easier:
 - Discriminators that check which constructor was used to make the given term, e.g. `Nil? : list 'a -> bool`, `Cons? : list 'a -> bool`
@@ -1624,7 +1625,7 @@ float-expr : f64 :=
   almost-pi * 2 + big-scientific-num ^ (2 - almost-pi / 1.2e3)
 ```
 
-`Char` is the type of characters. It represents UTF-8 encoded characters. Character literals are enclosed between apostraphes. We may use the usual representation of special characters (backslash followed with a letter) and quote backslashes and other special characters with an additional backslash. We support all the conventional operations on characters, including conversion to its code point, but we won't show them here.
+`Char` is the type of characters. It represents UTF-8 encoded characters. Character literals are enclosed between apostrophes. We may use the usual representation of special characters (backslash followed with a letter) and quote backslashes and other special characters with an additional backslash. We support all the conventional operations on characters, including conversion to its code point, but we won't show them here.
 
 ```
 char : Char := 'a'
@@ -1659,10 +1660,12 @@ fib-arr : Array Nat 25 := Array.new (fun i => fib i)
 We would really like to have C-like performance for base types, but this is just a wish in our Type Theory Wishlist!
 
 Papers:
-- idunno
+- [https://drops.dagstuhl.de/opus/volltexte/2019/11062/pdf/LIPIcs-ITP-2019-7.pdf](https://drops.dagstuhl.de/opus/volltexte/2019/11062/pdf/LIPIcs-ITP-2019-7.pdf)
+- [Extending Coq with Imperative Features and its Application to SAT Verification](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.721.7071&rep=rep1&type=pdf)
 
 Not papers:
 - The workings of primitive types are borrowed from [Rust](https://doc.rust-lang.org/book/ch03-02-data-types.html)
+- [Primitive objects in Coq](https://coq.inria.fr/refman/language/core/primitive.html)
 
 **Status: implemented in Coq.**
 
