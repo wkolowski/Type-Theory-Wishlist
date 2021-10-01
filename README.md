@@ -14,7 +14,7 @@ When reading on GitHub, you can click in the upepr-left corner, near the file na
 1. [Functions](#functions)
 1. [Paths and the rest of Cubical Type Theory](#paths)
 1. [Empty and Unit](#empty-and-unit)
-1. [Names](#names)
+1. [Names and Nominal Function Type](#names)
 1. [Basic Inductive Types](#basic-inductive-types)
 1. [Pattern matching on steroids](#pattern-matching)
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
@@ -371,17 +371,32 @@ Relevant papers:
 
 **Status: `Empty` and `Unit` are standard everywhere, but barely anywhere are they strict propositions. Coq and Agda have implemented universes of strict propositions (impredicative and predicative) based on the above paper. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. Overall, this look very doable.**
 
-## Names and nominal function type <a id="names"></a> [↩](#toc)
+## Names and Nominal Function Type <a id="names"></a> [↩](#toc)
 
-TODO!
+For every type `A` there is a type `Name A` whose elements can be thought of as "names for elements of `A`". There's also the nominal function type `∇ α : A. B` which expresses the idea of an element of `B` that may use the bound name `α : Name A` for an element of type `A`. The nominal function type `∇ α : A. B` is sometimes also called the nabla type, due to the notation. I don't yet have a good name for this type, but maybe we should use "nominal abstraction type"?
+
+Anyway, terms of the nominal function type `∇ α : A. B` are introduced with a nominal abstraction `ν α : A. b` where `b : B` is a term that may use `α : Name A`. Note that in the nominal abstraction we gave the "type annotation" `α : A`, but this means that `α` is a NAME for an element of type `A`, so in fact `α` is of type `Name A`. We may also omit the annotation and write simply `ν α. b`. Customarily we use lowercase greek letters for names.
+
+What is the intuitive meaning of nominal abstraction? It captures all the key properties of name-binding, namely (these are taken from the CNIC paper):
+- Freshness: The name introduced by nominal abstraction is distinct from any names bound outside the given binding. For example, given the term `ν α. ν β. t` inside the term `t` the names `α` and `β` are distinct.
+- α-equivalence: Terms with name-bindings are equal up to renaming of bound names. For example, `ν α. α` is equal to `ν β. β`.
+- Scoping: A name cannot occur outside a binding for it. For example, `α` is a valid term only under a binding `ν α. ...`. Note that this doesn't mean that we rule out "open terms" - we may consider open terms in some scope when their free variables are bound in an enclosing scope.
+- Typing: Different types of names can be bound. For example, when formalizing System F, names for term and type variables are of distinct type.
+
+Nominal functions can be eliminated using concretion operation: given `t : ∇ α : A. B` and `β : A` which is fresh for `t`, we have `t @ β : B[α := β]` with the computation rule `(ν α. b) @ β ≡ b[α := β]`. We also have the uniqueness rule: given `t : ∇ α : A. B`, we have `t ≡ ν α. t @ α`.
+
+The main use of names and the nominal function type is together with inductive types, to represent name binding in the syntax of programming languages, logics, calculi and so on, where they effectively implement the "Barendregt convention". See the section on [Nominal Inductive Types](#nominal-inductive-types) for more. However, they can also be used with coinductive types and with whatever other feature our language has - I guess that interactions between many of them and nominal features are not yet discovered!
 
 Papers:
-- todo
+- [The Calculus of Nominal Inductive Constructions](https://homepage.divms.uiowa.edu/~astump/papers/cinic-lfmtp09.pdf)
+- [A Dependent Type Theory with Abstractable Names](https://www.sciencedirect.com/science/article/pii/S1571066115000079)
 
-**Status: TODO**
+Note: so far, our nominal features are based on the first of these papers, i.e. the Calculus of Nominal Inductive Constructions. There are some reasons to think that the second paper may present a better system, but so far I haven't been able to decipher it on an intuitive level.
+
+**Status: prototype implemented for CNIC, but long ago (and with Lisp syntax, lol). Prototype implemented for FreshMLTT, but it looks like shit. No proof whether FreshMLTT has decidable typechecking.**
 
 TODO:
-- TODO
+- Find a better name for the nominal function type. Maybe "nominal abstraction type".
 
 ## Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
@@ -789,7 +804,7 @@ Papers:
 
 ### [Nominal Inductive Types](Induction/NominalInductiveTypes/CNIC) <a id="nominal-inductive-types"></a> [↩](#toc)
 
-For every type `A` there is a type `Name A` whose elements can be thought of as "names for elements of `A`". There's also the nominal function type `∇ α : A. B` which expresses the idea of an element of `B` that may use the bound name `α` for an element of type `A`. The main use of names and the nominal function type is in conjunction with inductive types, to represent name binding in the syntax of programming languages, logics, calculi and so on.
+The basics of names and nominal function types are described [here](#names). In this section we only describe how to use nominal features in combination with inductive types to define syntaxes of languages, logics and calculi.
 
 ```
 data Term : Type
@@ -846,13 +861,7 @@ This makes it easy to define `subst`itution of the term `t` for the free variabl
 - `ν α. App (l @ α) (r @ α)` - `s` is an application of `l` to `r`, so we recurse to `subst`itute `t` in `l` and `r`
 - `ν α. Lam (t @ α)` - `s` is a lambda, so we descend under the lambda while making sure not to confuse the variable bound by the lambda with the one we are looking for.
 
-Papers:
-- [The Calculus of Nominal Inductive Constructions](https://homepage.divms.uiowa.edu/~astump/papers/cinic-lfmtp09.pdf)
-- [A Dependent Type Theory with Abstractable Names](https://www.sciencedirect.com/science/article/pii/S1571066115000079)
-
-Note: so far, our nominal inductive types are based on the first of these papers, i.e. the Calculus of Nominal Inductive Constructions. There are some reasons to think that the second paper may present a better system, but so far I haven't been able to decipher it on an intuitive level.
-
-**Status: prototype implemented for CNIC, but long ago (and with Lisp syntax, lol). Prototype implemented for FreshMLTT, but it looks like shit. No proof whether FreshMLTT has decidable typechecking.**
+For papers, TODOs and the status, see the main section on [Names and Nominal Function Type](#names). The [code directory](Induction/NominalInductiveTypes/CNIC) has extensive examples of how to use nominal inductive types in practice, among others to implement cyclic lists. It also proves some basic properties of names and considers the property of being a `Nameless` type, which turns out to be pretty important in practice.
 
 ### [Induction-Induction](Induction/Induction-Induction) <a id="induction-induction"></a> [↩](#toc)
 
