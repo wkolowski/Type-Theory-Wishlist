@@ -9,6 +9,7 @@ When reading on GitHub, you can click in the upepr-left corner, near the file na
 1. [The Guiding Principle of Syntax](#guiding-principle)
 1. [Basic syntax](#basic-syntax)
 1. [Types](#types)
+1. [Primitive types and arrays](#primitives)
 1. [Records](#records)
 1. [Sums](#sums)
 1. [Functions](#functions)
@@ -36,7 +37,6 @@ When reading on GitHub, you can click in the upepr-left corner, near the file na
 1. [Subtyping and coercions](#subtyping)
 1. [Subtype universes](#subtype-universes)
 1. [Refinement types](#refinements)
-1. [Primitive types and arrays](#primitives)
 1. [Tooling](#tooling)
 1. [Missing features](#missing-features)
 
@@ -81,6 +81,8 @@ TODO:
 
 | Name              | Formation        | Introduction     | Elimination      |
 | ----------------- | ---------------- | ---------------- | ---------------- |
+| Primitive types   | `i8`, `f8`, etc. | literals         | primitive ops    |
+| Arrays            | `Array A n`      | literals <br> `fromFun (fun i => e)` | `A[i]`     |
 | Record types      | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
 | Sum types         | not sure         |                  |                  |
 | Function type     | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
@@ -95,8 +97,107 @@ TODO:
 | Non-strict universes | `hType h p`   | `hType h p`      | impossible       |
 | Subtype universes | `Sub A`          | implicit (?)     | implicit (?)     |
 | Refinement types  | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
-| Primitive types   | `i8`, `f8`, etc. | literals         | primitive ops    |
-| Arrays            | `Array A n`      | `fromFun (fun i => e)` | `A[i]`     |
+
+## Primitive types and arrays <a id="primitives"></a> [↩](#toc)
+
+We have a variety of primitive integer types:
+- `i8`, `i16`, `i32`, `i64` - types of 8-, 16-, 32- and 64-bit signed integers, respectively
+- `u8`, `u16`, `u32`, `u64` - types of 8-, 16-, 32- and 64-bit unsigned integers, respectively
+
+We may write integer literals (both signed and unsigned) in many bases, with an underscore `_` as an optional separator used for digit grouping. To disambiguate between types when using a literal, we need a type annotation.
+
+```
+dec : i64 := 98_222
+hex : i32 := 0xdeadbeef
+oct : i16 := 0o77
+bin : i8  := 0b1111_0000
+```
+
+There are implicit coercions between integer types provided that they do not lose information. Stated explicitly, this means there are coercions:
+- from `i8` to `i16`, from `i16` to `i32`, from `i32` to `i64`
+- from `u8` to `u16`, from `u16` to `u32`, from `u32` to `u64`
+- from `u8` to `i16`, from `u16` to `i32` and from `u32` to `i64`
+
+```
+// Ok, `u16` values range from `0` to `65535`, which certainly fits in an `i64`.
+f (u : u16) : i64 := u
+
+// Failure - there are values of type `u8`, like `255`, that don't fit into an `i8`, which ranges from `-128` to `127`.
+% Fail
+g (u : u8) : i8 := u
+```
+
+We support all the obvious arithmetical operators, including addition, subtraction, multiplication, exponentiation and division. We should also support bit-wise operations, but we're not going to see any examples.
+
+The semantics of these operations is as usual, i.e. if the result is bigger than the maximum value for the given type, it overflows and gets cut down. For example, `255 + 1 ={u8} 0`. Division by zero is, as always, problematic... don't use it.
+
+```
+arith-example : i64 :=
+  12 + (34 * 45) - 6 ^ (16 / 3)
+```
+
+The types `f32` and `f64` represent 32- and 64-bit floating point numbers, respectively, with an implicit coercion from `f32` to `f64`. We support both ordinary floating point literals and scientific notation literals and all the arithmetic operations with usual semantics.
+
+```
+almost-pi : f32 := 3.14159
+
+big-scientific-num : f64 := 1.2345678e-9
+
+float-expr : f64 :=
+  almost-pi * 2 + big-scientific-num ^ (2 - almost-pi / 1.2e3)
+```
+
+`Char` is the type of characters. It represents UTF-8 encoded characters. Character literals are enclosed between apostrophes. We may use the usual representation of special characters (backslash followed with a letter) and quote backslashes and other special characters with an additional backslash. We support all the conventional operations on characters, including conversion to its code point, but we won't show them here.
+
+```
+char : Char := 'a'
+
+newline : Char := '\n'
+
+backslash : Char := '\\'
+```
+
+Strings are NOT lists of characters and they are not called "strings" so that they don't sound too familiar to people who know them from other languages. Instead there's the type `Text` which represents, well, texts, i.e. sequences of characters. Text literals are enclosed in quotes. Rules for special characters and quoting are the same as for `Char`.
+
+```
+some-text : Text := "This is a text literal."
+
+multiline-text : Text := "This\ntext\nis\nmultiline."
+
+quote : Text := "\"To be or not to be, that is the question.\""
+```
+
+The type `Array A n` represents arrays whose entries are of type `A` and whose length is `n : Nat`. Array literals are enclosed between `[` and `]` and separated with commas. More complicated array initializers live in the `Array` module. Array indexing syntax is similar to most C-like languages, i.e. `A[i]`. Note that `i : Fin n`, i.e. the index must be statically known to not be out of bounds.
+
+```
+arr : Array Char 5 := ['a', 'r', 'r', 'a', 'y']
+
+arr-0 : arr[0] = 'a' := refl
+
+all-zeros : Array i8 1000 := Array.repeat (elem => 0, n => 1000)
+
+fib-arr : Array Nat 25 := Array.new (fun i => fib i)
+```
+
+We would really like to have C-like performance for base types, but this is just a wish in our Type Theory Wishlist!
+
+Papers:
+- [Primitive Floats in Coq](https://drops.dagstuhl.de/opus/volltexte/2019/11062/pdf/LIPIcs-ITP-2019-7.pdf)
+- [Extending Coq with Imperative Features and its Application to SAT Verification](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.721.7071&rep=rep1&type=pdf)
+
+Not papers:
+- The workings of primitive types are borrowed from [Rust](https://doc.rust-lang.org/book/ch03-02-data-types.html)
+- [Primitive objects in Coq](https://coq.inria.fr/refman/language/core/primitive.html)
+
+**Status: implemented in Coq.**
+
+TODO:
+- How does it work at the level of formal rules?
+- Decide the details of the char type.
+- Decide the details of division by zero.
+- We may also want to have other char types, like `Ascii` and `UTF-16`.
+- Alternatively, `Char` could be made more abstract and the encoding is just its property.
+- Maybe disambiguate array literal syntax from syntax sugar for lists?
 
 ## [Records](Records) <a id="records"></a> [↩](#toc)
 
@@ -217,7 +318,7 @@ Functions can be applied not only positionally, but also by naming the argument.
 
 ```
 self-comp' (h : Nat -> Nat) : Nat -> Nat :=
-  comp {C, A, B => Nat, f, g => h}
+  comp {C, A, B => Nat; f, g => h}
 ```
 
 To reiterate: the order of arguments doesn't matter. As a bonus, we can set many arguments to the same value very easily - this should be very useful easpecially for type arguments.
@@ -245,7 +346,7 @@ TODO:
 
 We take Cubical Type Theory and the homotopical style of doing mathematics for granted. The revolution has already occurred!
 
-In practice, this means that we have a type `I` which represents the interval. In fact `I` is only a pretype, i.e. it cannot be the codomain of a function, only the domain. There are two constants `i0 : I` and `i1 : I` which represent the beginning and the end of the inerval. There are also operations: unary `~` and binary `∧`, `∨` which together with `i0` and `i1` make `I` into a free de Morgan algebra (or something like that - I'm writing from memory). All the laws are computational equalities (the list is taken from [Agda's documentation page](https://agda.readthedocs.io/en/v2.6.0/language/cubical.html)).
+In practice, this means that we have a type `I` which represents the interval. In fact `I` is only a pretype, i.e. it cannot be the codomain of a function, only the domain. There are two constants `i0 : I` and `i1 : I` which represent the beginning and the end of the inerval. There are also operations: unary `~` and binary `∧`, `∨` which together with `i0` and `i1` make `I` into a free de Morgan algebra. All the laws are computational equalities. Here's a list (taken from [Agda's documentation page](https://agda.readthedocs.io/en/v2.6.0/language/cubical.html)):
 
 ```
 i0 ∨ i    ≡ i
@@ -1362,6 +1463,25 @@ There are quite a few flavours of advanced coinductive types:
 - Self-referential types in which some occurrences are inductive and others are coinductive
 - Oh man, this is so hard to systematize.
 
+We'll explore the above in the following subsections. To avoid giving you a headache, we'll start with the status of it all.
+
+Papers:
+- There are quite a few papers on mixing coinduction with induction, but most of them are written in the old deprecated Agda-style coinduction, so they aren't that much useful. We are going to list them, nevertheless (this time in chronological order (oldest first), not in order of relevance):
+- [Continuous Functions on Final Coalgebras](https://core.ac.uk/download/pdf/82531251.pdf)
+- [REPRESENTATIONS OF STREAM PROCESSORS USING NESTED FIXED POINTS](https://arxiv.org/pdf/0905.4813.pdf)
+- [Mixing Induction and Coinduction](https://www.cse.chalmers.se/~nad/publications/danielsson-altenkirch-mixing.pdf)
+- [Subtyping, Declaratively: An Exercise in Mixed Induction and Coinduction](https://www.cse.chalmers.se/~nad/publications/danielsson-altenkirch-subtyping.pdf)
+- [Mixed Inductive-Coinductive Reasoning](https://liacs.leidenuniv.nl/~basoldh/thesis/Thesis.pdf) (PhD thesis from 2016, 340 pages, probably the best place to look for more papers on the topic, also probably contains a good introduction and overview)
+- [THE SIZE-CHANGE PRINCIPLE FOR MIXED INDUCTIVE AND COINDUCTIVE TYPES](https://arxiv.org/pdf/1901.07820.pdf)
+- [Integrating Induction and Coinduction via Closure Operators and Proof Cycles](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7324239/)
+
+**Status: mostly speculation, but based on the solid "positive" coinductive syntax sugar and solid principles. It looks mostly doable.**
+
+TODO:
+- Currently using pattern matching means that the function is recursive, so the second definition of `toStream` is not legal. Maybe some annotation for whether a function is recursive or corecursive?
+- Does `let` and copattern matching play out together as nicely as in the last example?
+- Reconsider the `mutual` keyword for mutual coinductive-inductive definitions.
+
 ### Coinduction-Recursion? Not really.
 
 Let's try to use induction-recursion syntax together with the `codata` keyword and see what happens. For exploration purposes, we will try to define a type of infinite binary heaps.
@@ -1578,18 +1698,6 @@ TODO
 
 TODO
 
-### Summary
-
-Papers:
-- There are quite a few papers on mixing coinduction with induction, but most of them are written in the old deprecated Agda-style coinduction, so they aren't that much useful.
-
-**Status: mostly speculation, but based on the solid "positive" coinductive syntax sugar and solid principles. It looks mostly doable.**
-
-TODO:
-- Currently using pattern matching means that the function is recursive, so the second definition of `toStream` is not legal. Maybe some annotation for whether a function is recursive or corecursive?
-- Does `let` and copattern matching play out together as nicely as in the last example?
-- Reconsider the `mutual` keyword for mutual coinductive-inductive definitions.
-
 ## [Universes](Universes/Universes.md) <a id="universes"></a> [↩](#toc)
 
 We want to have a multidimensional hierarchy of universes stratified both by the usual predicative level and by homotopy level, similar to the [Arend language](https://arend-lang.github.io/about/arend-features#universe-levels). The predicative levels are basically naturals, whereas the homotopy levels are natural numbers extended with infinity (for untruncated types). In fact, there will be (at least) two type hierarchies: the strict one and the non-strict one.
@@ -1756,14 +1864,19 @@ TODO:
 
 ## Subtyping and coercions <a id="subtyping"></a> [↩](#toc)
 
-To be able to profit from subtype universes, we need to have subtyping. Since we already have a subtyping judgement anyway (because of universe cumulativity), let's extend it to all types.
+We want to have subtyping in our type theory, but we want to avoid all the pitfalls associated with subtyping. For this reason, our subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`. It should also be possible to declare custom coercions, as long as they don't break uniqueness.
 
-The subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`. It should also be possible to declare custom coercions.
+
+The matter of subtyping in type theory is most readily encountered when dealing with universes. 
+
+Since we already have a subtyping judgement anyway (because of universe cumulativity), let's extend it to all types.
 
 | Name              | Rule             | Coercion         |
 | ----------------- | ---------------- | ---------------- |
 | Universes         | if `i <= j` <br> then `Type h i <= Type h j` | lift |
-| Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | `c` magically working on subtypes |
+| Strict Universes | if `i <= j` <br> then `hType h i <= hType h j` | lift |
+| Primitive types   | `i8 <= i16 <= i32 <= i64` <br> `u8 <= u16 <= u32 <= u64` <br> `f32 <= f64` <br> `u8 <= i16` <br> `u16 <= i32` <br> `u32 <= i64` | built-in |
+| Arrays            | if `c : A <= A'` <br> and `n' <= n` <br> then `Array A n <= Array A' n'` | `map c` and clip the result to the correct length |
 | Record types      | [complicated](Records/TurboRecords.ttw) |
 | Function type     | if `f : A <= A'` and `g : B <= B'` <br> then `A' -> B <= A -> B'` | `fun h a => a \|> f \|> h \|> g` |
 | Sums              | `inl : A <= A + B` <br> `inr : B <= A + B` | `inl` and `inr` |
@@ -1776,15 +1889,11 @@ The subtyping judgement shall be proof-relevant, i.e. it should explicitly speci
 | Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
 | Nabla type        | if `c : A <= B` <br> then `∇ α : N. A <= ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
 | Name              | no subtyping | none |
-| Primitive types   | `i8 <= i16 <= i32 <= i64` <br> `u8 <= u16 <= u32 <= u64` <br> `f32 <= f64` <br> maybe others, like `u8 <= i16` | built-in |
-| Arrays            | if `c : A <= A'` <br> and `n' <= n` <br> then `Array A n <= Array A' n'` | `map c` and clip the result to the correct length |
+| Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | `c` magically working on subtypes |
 
 There's a question of what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <= B` then `Name A <= Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. Similarly, I think that `∇` could be contravariant just like function types, but I'm not sure.
 
 **Status: universe cumulativity is semi-standard, as some proof assistant don't have it. Coercions have been implemented in Coq for a long time. Subtyping of anything else in type theory is mostly wild speculations.**
-
-TODO:
-- Remove forward reference to Subtype Universes.
 
 ## Subtype Universes <a id="subtype-universes"></a> [↩](#toc)
 
@@ -1815,107 +1924,6 @@ F* also has some additional nice features related to refinement types that make 
 - Discriminators that check which constructor was used to make the given term, e.g. `Nil? : list 'a -> bool`, `Cons? : list 'a -> bool`
 - Projections which project constructor arguments out of a term (given that the term was really made using that constructor): `Cons?.hd : l : list 'a{Cons? l} -> 'a`, `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
 - Note that the above are written in F* syntax and require refinement types to get anywhere.
-
-## Primitive types and arrays <a id="primitives"></a> [↩](#toc)
-
-We have a variety of primitive integer types:
-- `i8`, `i16`, `i32`, `i64` - types of 8-, 16-, 32- and 64-bit signed integers, respectively
-- `u8`, `u16`, `u32`, `u64` - types of 8-, 16-, 32- and 64-bit unsigned integers, respectively
-
-We may write integer literals (both signed and unsigned) in many bases, with an underscore `_` as an optional separator used for digit grouping. To disambiguate between types when using a literal, we need a type annotation.
-
-```
-dec : i64 := 98_222
-hex : i32 := 0xdeadbeef
-oct : i16 := 0o77
-bin : i8  := 0b1111_0000
-```
-
-There are implicit coercions between integer types provided that they do not lose information. Stated explicitly, this means there are coercions:
-- from `i8` to `i16`, from `i16` to `i32`, from `i32` to `i64`
-- from `u8` to `u16`, from `u16` to `u32`, from `u32` to `u64`
-- from `u8` to `i16`, from `u16` to `i32` and from `u32` to `i64`
-
-```
-// Ok, `u16` values range from `0` to `65535`, which certainly fits in an `i64`.
-f (u : u16) : i64 := u
-
-// Failure - there are values of type `u8`, like `255`, that don't fit into an `i8`, which ranges from `-128` to `127`.
-% Fail
-g (u : u8) : i8 := u
-```
-
-We support all the obvious arithmetical operators, including addition, subtraction, multiplication, exponentiation and division. We should also support bit-wise operations, but we're not going to see any examples.
-
-The semantics of these operations is as usual, i.e. if the result is bigger than the maximum value for the given type, it overflows and gets cut down. For example, `255 + 1 ={u8} 0`. Division by zero is, as always, problematic... don't use it.
-
-```
-arith-example : i64 :=
-  12 + (34 * 45) - 6 ^ (16 / 3)
-```
-
-The types `f32` and `f64` represent 32- and 64-bit floating point numbers, respectively, with an implicit coercion from `f32` to `f64`. We support both ordinary floating point literals and scientific notation literals and all the arithmetic operations with usual semantics.
-
-```
-almost-pi : f32 := 3.14159
-
-big-scientific-num : f64 := 1.2345678e-9
-
-float-expr : f64 :=
-  almost-pi * 2 + big-scientific-num ^ (2 - almost-pi / 1.2e3)
-```
-
-`Char` is the type of characters. It represents UTF-8 encoded characters. Character literals are enclosed between apostrophes. We may use the usual representation of special characters (backslash followed with a letter) and quote backslashes and other special characters with an additional backslash. We support all the conventional operations on characters, including conversion to its code point, but we won't show them here.
-
-```
-char : Char := 'a'
-
-newline : Char := '\n'
-
-backslash : Char := '\\'
-```
-
-Strings are NOT lists of characters and they are not called "strings" so that they don't sound too familiar to people who know them from other languages. Instead there's the type `Text` which represents, well, texts, i.e. sequences of characters. Text literals are enclosed in quotes. Rules for special characters and quoting are the same as for `Char`.
-
-```
-some-text : Text := "This is a text literal."
-
-multiline-text : Text := "This\ntext\nis\nmultiline."
-
-quote : Text := "\"To be or not to be, that is the question.\""
-```
-
-The type `Array A n` represents arrays whose entries are of type `A` and whose length is `n : Nat`. Array literals are enclosed between `[` and `]` and separated with commas. More complicated array initializers live in the `Array` module. Array indexing syntax is similar to most C-like languages, i.e. `A[i]`. Note that `i : Fin n`, i.e. the index must be statically known to not be out of bounds.
-
-```
-arr : Array Char 5 := ['a', 'r', 'r', 'a', 'y']
-
-arr-0 : arr[0] = 'a' := refl
-
-all-zeros : Array i8 1000 := Array.repeat (elem => 0, n => 1000)
-
-fib-arr : Array Nat 25 := Array.new (fun i => fib i)
-```
-
-We would really like to have C-like performance for base types, but this is just a wish in our Type Theory Wishlist!
-
-Papers:
-- [https://drops.dagstuhl.de/opus/volltexte/2019/11062/pdf/LIPIcs-ITP-2019-7.pdf](https://drops.dagstuhl.de/opus/volltexte/2019/11062/pdf/LIPIcs-ITP-2019-7.pdf)
-- [Extending Coq with Imperative Features and its Application to SAT Verification](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.721.7071&rep=rep1&type=pdf)
-
-Not papers:
-- The workings of primitive types are borrowed from [Rust](https://doc.rust-lang.org/book/ch03-02-data-types.html)
-- [Primitive objects in Coq](https://coq.inria.fr/refman/language/core/primitive.html)
-
-**Status: implemented in Coq.**
-
-TODO:
-- How does it work at the level of formal rules?
-- Decide the details of the char type.
-- Decide the details of division by zero.
-- We may also want to have other char types, like `Ascii` and `UTF-16`.
-- Alternatively, `Char` could be made more abstract and the encoding is just its property.
-- Maybe disambiguate array literal syntax from syntax sugar for lists?
 
 ## Tooling <a id="tooling"></a> [↩](#toc)
 
