@@ -1,4 +1,0 @@
-// `Unit` lives in the lowest predicative universe and at h-level 0
-// (i.e. in the universe of contractible types).
-> :check Unit
-> Unit : Type (h = 0, p = 0)

@@ -1,16 +1,3 @@
-# Some problems with records found in most languages
-
-Most languages have lots of problems with records:
-0. Besides records we have typeclasses with instance search, modules which are even more second-class than records and sigma types which are just annoying. Additionally, in the metatheory we also have contexts, which are basically just another form of records. Moreover, record definitions are pretty similar to definition of (non-inductive) sums, inductives and coinductives, in the sense that all of these are just a bunch of `name : type` declarations.
-1. Record field names must be globally unique. This is very annoying in Haskell and Coq, but probably easy to solve and not present in other languages.
-2. No definitional uniqueness principle for records in most languages. This is solved in Agda, however.
-3. Hard to prove record equality. This is very annoying in Coq, but probably much easier when we have Cubical Type Theory and path types.
-4. Hard to reuse record types. For example, when we have record types that represent reflexive, symmetric and transitive relations, they aren't very helpful when defining a record type for equivalence relations - if we try to reuse them, we'll get a subpar solution.
-5. Telescopization stemming from lack of inheritance. In an extreme version of the algebraic hierarchy, a group is a monoid with inverse, and a monoid is a pointed semigroup with laws, and a semigroup is an associative magma and so on. Defining a group then requires unwinding all these telescopes, which is unwieldy.
-6. Hard to unbundle records into typeclasses (i.e. turn a `Monoid` into an instance of `Monoid A` for some carrier `A`) and hard to bundle classes into records (i.e. turn an instance of `Monoid A` into a `Monoid` whose carrier is `A`).
-7. This is not directly about records, but it's sometimes hard to do currying of functions that take many arguments. Records could help wiht that, but they don't, because we don't have any notion of "partial application" for records.
-
-
 # A partial solution: First-Class Record Types
 
 The state of records in Coq and generally in almost every possible language is sad, even though it could be better.
@@ -110,7 +97,7 @@ The second problem of Coq records is an extreme degree of telescopization. The p
 
 It's a problem, because with a few such nestings, to define a record we need to write `x := { y := { z := {w := { ...}}}}` and so on, which is very bad. Thanks to enhanced record types we can prevent this by writing simply that the type of groups is simply the union of the type of monoids, the inverse and laws.
 
-![Grupa](records2.jpg)
+![Group](records2.jpg)
 
 The third problem is that it's hard to reuse Coq record types. For example, to define the type of equivalence relations, we need to write something like this:
 
@@ -127,7 +114,7 @@ Record Equiv : Type :=
 
 ![Equiv](records.jpg)
 
-Of course it's a bit boilerplatey if we need to define reflexive, symmetric and transitive relations separately. With enhanced record types, we could simply use an union, writing `Equiv = Refl + Sym + Trans`.
+Of course it's a bit boilerplate-y if we need to define reflexive, symmetric and transitive relations separately. With enhanced record types, we could simply use an union, writing `Equiv = Refl + Sym + Trans`.
 
 The fourth problem is a whole bunch of inconveniences with functions. First and foremost, it's hard to partially apply a function, particularly when it takes a lot of arguments. Let's see a few stages of a function's evolution:
 - `f : A * B * C -> D` - we can perceive `f` as a function of "many variables". The domain is represented with a product. Partial application is hard, because we need to write e.g. `fun p : A * B => f (outl p, outr p, c)`

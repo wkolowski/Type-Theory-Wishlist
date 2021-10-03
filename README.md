@@ -10,18 +10,18 @@ When reading on GitHub, you can click in the upepr-left corner, near the file na
 1. [Basic syntax](#basic-syntax)
 1. [Types](#types)
 1. [Primitive types and arrays](#primitives)
-1. [Records](#records)
-1. [Sums](#sums)
 1. [Functions](#functions)
 1. [Paths and the rest of Cubical Type Theory](#paths)
-1. [Empty and Unit](#empty-and-unit)
 1. [Names and Nominal Function Type](#names)
+1. [Empty and Unit](#empty-and-unit)
+1. [Records (and sums)](#records)
 1. [Basic Inductive Types](#basic-inductive-types)
 1. [Pattern matching on steroids](#pattern-matching)
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
 1. [Inductive Families](#inductive-families)
-1. [Indices that Compute](#indices-that-compute)
+    1. [Standard Inductive Families (TODO)](#standard-inductive-families)
+    1. [Indices that Compute (TODO)](#indices-that-compute)
 1. [Advanced Inductive Types](#advanced-inductive-types)
     1. [Constructors that Compute](#constructors-that-compute)
     1. [Higher Inductive Types](#HIT)
@@ -32,13 +32,13 @@ When reading on GitHub, you can click in the upepr-left corner, near the file na
 1. ["Positive" Coinductive Types](#positive-coinductive-types)
 1. [Coinductive Families](#coinductive-families)
 1. [Advanced Coinductive Types](#advanced-coinductive-types)
-1. [Universes](#universes)
-1. [Type-level rewriting](#type-level-rewriting)
-1. [Refinement types](#refinements)
-1. [Subtyping and coercions](#subtyping)
-1. [Subtype universes](#subtype-universes)
-1. [Tooling](#tooling)
-1. [Missing features](#missing-features)
+1. [Refinement types (TODO)](#refinements)
+1. [Universes (TODO)](#universes)
+1. [Subtyping, coercions and subtype universes (TODO)](#subtyping)
+1. [Singleton Types (TODO)](#singletons)
+1. [Type-level rewriting (TODO)](#type-level-rewriting)
+1. [Tooling (TODO)](#tooling)
+1. [Missing features (TODO)](#missing-features)
 
 ## The Guiding Principle of Syntax <a id="guiding-principle"></a> [↩](#toc)
 
@@ -205,35 +205,6 @@ TODO:
 - Alternatively, `Char` could be made more abstract and the encoding is just its property.
 - Maybe disambiguate array literal syntax from syntax sugar for lists?
 
-## [Records](Records) <a id="records"></a> [↩](#toc)
-
-Record types are the central feature of the language and they subsume modules, typeclasses, sigma types, product types, and so on (and this even extends to packaging constructs, like Java's packages or Rust's crates). See below for:
-- [a list of problems with records](Records/ProblemsWithRecords.md) (in Coq, but these problems occur everywhere)
-- [a partial solution of these problems](Records/RecordPlayground.ttw)
-- [a wild and more ambitious idea of what records should be](Records/TurboRecords.ttw)
-
-Papers on dependent records in type theory:
-- [Dependent Record Types Revisited](http://www.cs.rhul.ac.uk/home/zhaohui/DRT11.pdf)
-- [Typed Operational Semantics for Dependent Record Types](http://www.cs.rhul.ac.uk/home/zhaohui/TYPES09final11-01-01.pdf)
-- [Extension of Martin-Löf's Type Theory with Record Types and Subtyping](https://www.researchgate.net/publication/2683061_Extension_of_Martin-Lof's_Type_Theory_with_Record_Types_and_Subtyping)
-- [Ur: Statically-Typed Metaprogramming with Type-Level Record Computation](http://adam.chlipala.net/papers/UrPLDI10/UrPLDI10.pdf)
-- [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf)
-
-**Status: mostly wild speculation.**
-
-TODO:
-- Finish thinking about records.
-- How to turn typing contexts into record types? This would free us from some duplication at the meta level. But beware! This is not the same idea as "first-class typing contexts" and certainly not the same as "first-class evaluation contexts".
-
-## Sums <a id="sums"></a> [↩](#toc)
-
-As for sum types, we would like to have extensible sum types, akin to OCaml's polymorphic variants. If that's not possible, then sum types are subsumed by inductive types.
-
-Papers:
-- [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf) (this one is also useful for extensible records)
-
-**Status: probably won't happen. The papers promise much, but no good implementations/prototypes, so probably there's something wrong with them.**
-
 ## Functions <a id="functions"></a> [↩](#toc)
 
 Function types work mostly as usual, except that we want to think that all functions (including dependent ones) take just one argument which is a big (dependent) record. This view is distinct from the usual "every function takes one argument, and then maybe returns another function".
@@ -341,12 +312,14 @@ complex-application
     arg6
     x7 => fun y => ...
 ```
+
 Last but not least, there is special syntax for applying functions which have a lot of complex arguments. To apply a function `f` in this way, we write `f $` and then list the arguments below on separate lines. We can supply the arguments positionally in order and also by name, in which case they can appear out of order. This syntax is inspired by Haskell's `$` operator, and may also be used to avoid parenthesis hell when a function takes a lot of other functions as arguments.
 
 **Status: mostly standard, with `@` for explicit arguments and `$` for complex application being new, but very easy to implement.**
 
 TODO:
 - Figure out the precise workings of "all functions take just one argument which is a big record".
+- Describe default and optional arguments and how they relate to record types.
 
 ## [Path types and the rest of Cubical Type Theory](Paths) <a id="paths"></a> [↩](#toc)
 
@@ -444,6 +417,33 @@ TODO:
 - Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
 - Describe these things here.
 
+## Names and Nominal Function Type <a id="names"></a> [↩](#toc)
+
+For every type `A` there is a type `Name A` whose elements can be thought of as "names for elements of `A`". There's also the nominal function type `∇ α : A. B` which expresses the idea of an element of `B` that may use the bound name `α : Name A` for an element of type `A`. The nominal function type `∇ α : A. B` is sometimes also called the nabla type, due to the notation. I don't yet have a good name for this type, but maybe we should use "nominal abstraction type"?
+
+Anyway, terms of the nominal function type `∇ α : A. B` are introduced with a nominal abstraction `ν α : A. b` where `b : B` is a term that may use `α : Name A`. Note that in the nominal abstraction we gave the "type annotation" `α : A`, but this means that `α` is a NAME for an element of type `A`, so in fact `α` is of type `Name A`. We may also omit the annotation and write simply `ν α. b`. Customarily we use lowercase greek letters for names.
+
+What is the intuitive meaning of nominal abstraction? It captures all the key properties of name-binding, namely (these are taken from the CNIC paper):
+- Freshness: The name introduced by nominal abstraction is distinct from any names bound outside the given binding. For example, given the term `ν α. ν β. t` inside the term `t` the names `α` and `β` are distinct.
+- α-equivalence: Terms with name-bindings are equal up to renaming of bound names. For example, `ν α. α` is equal to `ν β. β`.
+- Scoping: A name cannot occur outside a binding for it. For example, `α` is a valid term only under a binding `ν α. ...`. Note that this doesn't mean that we rule out "open terms" - we may consider open terms in some scope when their free variables are bound in an enclosing scope.
+- Typing: Different types of names can be bound. For example, when formalizing System F, names for term and type variables are of distinct type.
+
+Nominal functions can be eliminated using concretion operation: given `t : ∇ α : A. B` and `β : A` which is fresh for `t`, we have `t @ β : B[α := β]` with the computation rule `(ν α. b) @ β ≡ b[α := β]`. We also have the uniqueness rule: given `t : ∇ α : A. B`, we have `t ≡ ν α. t @ α`.
+
+The main use of names and the nominal function type is together with inductive types, to represent name binding in the syntax of programming languages, logics, calculi and so on, where they effectively implement the "Barendregt convention". See the section on [Nominal Inductive Types](#nominal-inductive-types) for more. However, they can also be used with coinductive types and with whatever other feature our language has - I guess that interactions between many of them and nominal features are not yet discovered!
+
+Papers:
+- [The Calculus of Nominal Inductive Constructions](https://homepage.divms.uiowa.edu/~astump/papers/cinic-lfmtp09.pdf)
+- [A Dependent Type Theory with Abstractable Names](https://www.sciencedirect.com/science/article/pii/S1571066115000079)
+
+Note: so far, our nominal features are based on the first of these papers, i.e. the Calculus of Nominal Inductive Constructions. There are some reasons to think that the second paper may present a better system, but so far I haven't been able to decipher it on an intuitive level.
+
+**Status: prototype implemented for CNIC, but long ago (and with Lisp syntax, lol). Prototype implemented for FreshMLTT, but it looks like shit. No proof whether FreshMLTT has decidable typechecking.**
+
+TODO:
+- Find a better name for the nominal function type. Maybe "nominal abstraction type".
+
 ## `Empty` and `Unit` <a id="empty-and-unit"></a> [↩](#toc)
 
 There's the built-in `Empty` type which has no terms in the empty context. It's eliminator is called `abort`.
@@ -481,32 +481,413 @@ Relevant papers:
 
 **Status: `Empty` and `Unit` are standard everywhere, but barely anywhere are they strict propositions. Coq and Agda have implemented universes of strict propositions (impredicative and predicative) based on the above paper. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. Overall, this look very doable.**
 
-## Names and Nominal Function Type <a id="names"></a> [↩](#toc)
+## [Records (and sums)](Records) <a id="records"></a> [↩](#toc)
 
-For every type `A` there is a type `Name A` whose elements can be thought of as "names for elements of `A`". There's also the nominal function type `∇ α : A. B` which expresses the idea of an element of `B` that may use the bound name `α : Name A` for an element of type `A`. The nominal function type `∇ α : A. B` is sometimes also called the nabla type, due to the notation. I don't yet have a good name for this type, but maybe we should use "nominal abstraction type"?
+Record types are the central feature of the language and they subsume modules, typeclasses, sigma types, product types, and so on (and this even extends to packaging constructs, like Java's packages or Rust's crates). See below for:
+- [a list of problems with records](Records/ProblemsWithRecords.md) (in Coq, but these problems occur everywhere)
+- [a partial solution of these problems](Records/RecordPlayground.ttw)
+- [a wild and more ambitious idea of what records should be](Records/TurboRecords.ttw)
 
-Anyway, terms of the nominal function type `∇ α : A. B` are introduced with a nominal abstraction `ν α : A. b` where `b : B` is a term that may use `α : Name A`. Note that in the nominal abstraction we gave the "type annotation" `α : A`, but this means that `α` is a NAME for an element of type `A`, so in fact `α` is of type `Name A`. We may also omit the annotation and write simply `ν α. b`. Customarily we use lowercase greek letters for names.
+### Some problems with records found in Coq (and most other languages)
 
-What is the intuitive meaning of nominal abstraction? It captures all the key properties of name-binding, namely (these are taken from the CNIC paper):
-- Freshness: The name introduced by nominal abstraction is distinct from any names bound outside the given binding. For example, given the term `ν α. ν β. t` inside the term `t` the names `α` and `β` are distinct.
-- α-equivalence: Terms with name-bindings are equal up to renaming of bound names. For example, `ν α. α` is equal to `ν β. β`.
-- Scoping: A name cannot occur outside a binding for it. For example, `α` is a valid term only under a binding `ν α. ...`. Note that this doesn't mean that we rule out "open terms" - we may consider open terms in some scope when their free variables are bound in an enclosing scope.
-- Typing: Different types of names can be bound. For example, when formalizing System F, names for term and type variables are of distinct type.
+Most languages have lots of problems with records:
+1. Besides records we have typeclasses with instance search, modules which are even more second-class than records and sigma types which are just annoying. Additionally, in the metatheory we also have contexts, which are basically just another form of records. Moreover, record definitions are pretty similar to definitions of (non-inductive) sums, inductives and coinductives, in the sense that all of these are just a bunch of `name : type` declarations.
+1. Record field names must be globally unique. This is very annoying in Haskell and Coq, but probably easy to solve and not present in other languages.
+1. No definitional uniqueness principle for records in most languages. This is solved in Agda, however.
+1. Hard to prove record equality. This is very annoying in Coq, but probably much easier when we have Cubical Type Theory and path types.
+1. Hard to reuse record types. For example, when we have record types that represent reflexive, symmetric and transitive relations, they aren't very helpful when defining a record type for equivalence relations - if we try to reuse them, we'll get a subpar solution.
+1. Telescopization stemming from lack of inheritance. In an extreme version of the algebraic hierarchy, a group is a monoid with inverse, and a monoid is a pointed semigroup with laws, and a semigroup is an associative magma and so on. Defining a group then requires unwinding all these telescopes, which is unwieldy.
+1. Hard to unbundle records into typeclasses (i.e. turn a `Monoid` into an instance of `Monoid A` for some carrier `A`) and hard to bundle classes into records (i.e. turn an instance of `Monoid A` into a `Monoid` whose carrier is `A`).
+1. This is not directly about records, but it's sometimes hard to do currying of functions that take many arguments. Records could help wiht that, but they don't, because we don't have any notion of "partial application" for records.
 
-Nominal functions can be eliminated using concretion operation: given `t : ∇ α : A. B` and `β : A` which is fresh for `t`, we have `t @ β : B[α := β]` with the computation rule `(ν α. b) @ β ≡ b[α := β]`. We also have the uniqueness rule: given `t : ∇ α : A. B`, we have `t ≡ ν α. t @ α`.
+### The Solution
 
-The main use of names and the nominal function type is together with inductive types, to represent name binding in the syntax of programming languages, logics, calculi and so on, where they effectively implement the "Barendregt convention". See the section on [Nominal Inductive Types](#nominal-inductive-types) for more. However, they can also be used with coinductive types and with whatever other feature our language has - I guess that interactions between many of them and nominal features are not yet discovered!
+```
+// In this file we will discover how records and record types should behave!
 
-Papers:
-- [The Calculus of Nominal Inductive Constructions](https://homepage.divms.uiowa.edu/~astump/papers/cinic-lfmtp09.pdf)
-- [A Dependent Type Theory with Abstractable Names](https://www.sciencedirect.com/science/article/pii/S1571066115000079)
+// Basic operations on (non-dependent) records.
 
-Note: so far, our nominal features are based on the first of these papers, i.e. the Calculus of Nominal Inductive Constructions. There are some reasons to think that the second paper may present a better system, but so far I haven't been able to decipher it on an intuitive level.
+// Tuple syntax.
 
-**Status: prototype implemented for CNIC, but long ago (and with Lisp syntax, lol). Prototype implemented for FreshMLTT, but it looks like shit. No proof whether FreshMLTT has decidable typechecking.**
+// Record creation syntax - tuple variant.
+point : (x : Nat, y : Nat, z : Nat) :=
+  (0, 42, 111)
+
+// Record creation syntax - named tuple variant.
+point : (x : Nat, y : Nat, z : Nat) :=
+  (x => 0, y => 42, z => 111)
+
+// When we have multiple fields of the same type, we can make it shorter.
+point : (x y z : Nat) :=
+  (x => 0, y => 42, z => 111)
+
+// We can access record fields with dot syntax.
+point-x : Nat := p.x
+
+// We can make a new record using an old one.
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  (x => p.x + n, y => p.y, z => p.z)
+
+// We can use `p` as the prototype to build a new record. Man, is this JavaScript?
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  (x => p.x + n & p)
+
+// When using prototype syntax, we can also use `$=>` to modify a field instead
+// of just setting it. Maybe this will save us some writing for records with
+// long names and field names.
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  (x $=> (+ n) & p)
+
+// Copattern syntax.
+
+// Copatterns are nice for mid-sized definitions.
+point : (x y z : Nat)
+& x => 0
+& y => 42
+& z => 111
+
+// `translateX` in copattern syntax.
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
+& x => p.x + n
+& y => p.y
+& z => p.z
+
+// Copatterns can use prototypes too!
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
+& x => p.x + n
+& p
+
+// Copatterns also allow the modify syntax.
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
+& x $=> (+ n)
+& p
+
+// Module syntax.
+
+// Module syntax is lengthy, but offers lots of freedom.
+point : (x y z : Nat) :=
+module
+
+  x : Nat := 0
+
+  y-aux : Nat := 21
+
+  y : Nat := 2 * y-aux
+
+  z : Nat := 111
+
+  garbage : String := "not a field of the record, the only fields are x, y and z"
+
+end
+
+// Yes, we can use module syntax to define functions!
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+module
+  x : Nat := p.x + n
+  y : Nat := p.y
+  z : Nat := p.z
+end
+
+// Modules can use prototypes too!
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+module
+  x := p.x + n
+
+  inherit p
+end
+
+// Modules with modify syntax (TODO: rethink this).
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+module
+  inherit p
+
+  x : Nat $=> (+ n)
+end
+
+// Record types with manifest fields.
+
+// Our record types can have some fields set in advance, like the following
+// type of points that have `x`, `y` and `z` coordinates, but the `z`
+// coordinate is set to zero.
+p : (x y : Nat, z : Nat := 0) := (x => 1, y => 2)
+
+// We can access `z` even though we didn't explicitly set it.
+p-z : Nat := p.z
+
+// In fact, after setting a field the type of the result "changes".
+translateX (n : Nat) (p : (x y z : Nat)) : (x : Nat := p.x + n, y z : Nat) :=
+  (x => p.x + n & p)
+
+// Operations on record types.
+
+// Joins.
+
+// We can combine multiple record types with the join operator.
+example-join-1 : (outl : A) & (outr : B) = (outl : A, outr : B) := refl
+
+// We can also combine record types dependently.
+example-join-2: (outl : A) & (outr : B outl) = (outl : A, outr : B outl) := refl
+
+// The join operation preserves implicitness of arguments.
+example-join-3 : (#outl : A) & (outr : B outl) = (#outl : A, outr : B outl) := refl
+
+// Renaming.
+
+// Given a record type, we can rename its fields to get another record type.
+example-rename-1 :
+  (x y z : Nat) renaming (x to a) = (a y z : Nat) := refl
+
+// Renaming also works on manifest fields.
+example-rename-2 :
+  (x y : Nat, z : Nat := 0) renaming (z to w) = (x y : Nat, w : Nat := 0) := refl
+
+// Setting a field.
+example-set-1 :
+  (x y z : Nat) setting (z := 0) = (x y : Nat, z : Nat := 0) := refl
+
+// Unsetting a field.
+example-unset-1 :
+  (x y : Nat, z : Nat := 0) unsetting z = (x y z : Nat)
+
+// Removing.
+
+// We can remove a field to get a new record type.
+example-removing :
+  (x y z : Nat) removing z = (x y : Nat)
+    := refl
+
+// General record type prototyping.
+
+// We can combine joins, renaming, setting, unsetting and removing into a
+// single operation. This way we can create a new record type from a given
+// prototype record type.
+example-prototyping :
+  (x y : Nat, z : Nat := 0, n : Nat) with (x to a := 5, y to b, unset z, remove n)
+    =
+  (a : Nat := 5, b z : Nat)
+    := refl
+
+// Record subtyping.
+
+// We have a subtyping relation between records. This does not mean that we have
+// subtyping in our language (yet; see the directory Subtypes/), this is just
+// for illustration purposes.
+
+// Bigger record types are subtypes of smaller record types.
+// (x y z : Nat) <= (x y : Nat)
+
+// But record types with manifest fields are subtypes of record types without
+// fields set.
+// (x y : Nat, z : Nat := 0) <= (x y z : Nat)
+
+// Record types made with a join are subtypes of their arguments.
+// r1 & r2 <= r1
+// r1 & r2 <= r2
+
+// Of course all record types are subtypes of the empty record type.
+// R <= ()
+
+// TODO: how this works with dependent records?
+
+
+
+
+
+
+
+// Let's solve the problems we have.
+
+// Problem 1: globally unique field names.
+
+// Record field names need not be globally unique. In case they clash, we can
+// disambiguate manually.
+Point2D : Type := (x y : Nat)
+Point3D : Type := (x y z : Nat)
+
+// In the REPL:
+> :check x
+> Point2D.x : Point2D -> R
+> Point3D.x : Point3D -> R
+
+// We also have some facilities for dealing with name clashes in other situations.
+
+// Loooooooooong!
+dist1 (p : (x y z : Nat)) : Nat :=
+  sqrt (p.x * p.x + p.y * p.y + p.z * p.z)
+
+// We can use the syntax `open p` to make all field of `p` accessible.
+dist2 (p : (x y z : Nat)) : Nat :=
+  open p in sqrt (x * x + y * y + z * z)
+
+// But we can `open` the record implicitly if there are no naming conflicts.
+dist3 (p : (x y z : Nat)) : Nat :=
+  sqrt (x * x + y * y + z * z)
+
+// And even if there are conflicts, we may still open all records and resolve
+// the name clashes explicitly.
+bogus (p : (x y z : Nat)) (q : (z w : Nat)) : Nat :=
+  x + y + p.z + q.z + w
+
+// Problem 2: no definitional uniqueness principle for records.
+
+// Records do have a definitional uniqueness principle!
+definitional-uniqueness-for-records
+  (r : (a : A, b : B a)) : r = (a => r.a, b => r.b) := refl
+
+// There's also a uniqueness principle for prototypes.
+uniqueness-principle-for-prototypes
+  (r : (a : A, b : B a)) : r = (& r) := refl
+
+// Problem 3: hard to prove record equality.
+
+// This one is probably more a matter of cubical stuff than of records themselves.
+// TODO
+
+// Problem 4: hard to reuse record types.
+
+// First, we can define record types in a copattern(-like) syntax.
+Refl : RType
+  A : Type
+  R : A -> A -> Prop
+  reflexive : (x : A) -> R x x
+
+Sym : RType
+  A : Type
+  R : A -> A -> Prop
+  symmetric : (x y : A) -> R x y -> R y x
+
+Trans : RType
+  A : Type
+  R : A -> A -> Prop
+  transitive : (x y z : A) -> R x y -> R y z -> R x z
+
+// Record types can be joined together. By "join" we mean a kind of non-disjoint
+// union or pushout - fields which have the same names are collapsed into one,
+// and those that have different names remain separate.
+Equiv' : RType := Refl & Sym & Trans
+
+// The above join is equal to the manually encoded record type that represents
+// equivalence relations.
+Equiv' : RType
+  A : Type
+  R : A -> A -> Prop
+  reflexive : (x : A) -> R x x
+  symmetric : (x y : A) -> R x y -> R y x
+  transitive : (x y z : A) -> R x y -> R y z -> R x z
+
+Equiv-is-Refl-Sym-Trans :
+  Equiv = Equiv' := refl
+
+// Problems 5: telescopization stemming from lack of inheritance.
+
+// We can also use record types as prototypes to construct other record types.
+Magma : RType
+  A : Type
+  op : A -> A -> A
+
+// Here a semigroup is a magma extended with associativity.
+Semigroup : RType :=
+  Magma &
+  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+
+Pointed : RType
+  A : Type
+  point : A
+
+// We can also rename fields during the join.
+Monoid : RType :=
+  Semigroup &
+  (Pointed renaming point to id) &
+  idl : (x : A) -> op id x = x
+  idr : (x : A) -> op x id = x
+
+Monoid' : RType
+  A : Type
+  op : A -> A -> A
+  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+  id : A
+  idl : (x : A) -> op id x = x
+  idr : (x : A) -> op x id = x
+
+Monoids-same : Monoid = Monoid' := refl
+
+// Problem 6: hard to unbundle record types into typeclasses.
+
+// We can easily obtain a typeclass by setting a field in the `Monoid` type.
+// For now, we ignore the matter of what a typeclass is.
+MonoidClass (A : Type) : RType :=
+  Monoid setting A to A
+
+// This is the result of the above definition written more explicitly.
+MonoidClass' (A : Type) : RType
+  op : A -> A -> A
+  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+  id : A
+  idl : (x : A) -> op id x = x
+  idr : (x : A) -> op x id = x
+
+MonoidClass-MonoidClass' : MonoidClass = MonoidClass' := refl
+
+// We can also reverse these operations and bundle MonoidClass' to
+// get a record type.
+
+Monoid' : RType :=
+  A : Type
+  & MonoidClass' A
+
+Monoid-Monoid' : Monoid = Monoid' := refl
+
+// Problem 7: currying/uncurrying of functions and the relationship between
+// records and function arguments.
+
+// Since we have implicit record opening and don't use the bound variable
+// `p` at all, maybe we shouldn't need to write it?
+dist4 (x y z : Nat) : Nat :=
+  sqrt (x * x + y * y + z * z)
+
+// The only difference between `dist1`-`dist3` and `dist4` is that the former's
+// arguments collected into a record, while the latter's are not.
+// Let's see in the repl:
+
+> :check dist1
+> dist1 : (p : (x y z : Nat)) -> Nat
+
+> :check dist2
+> dist2 : (p : (x y z : Nat)) -> Nat
+
+> :check dist3
+> dist3 : (p : (x y z : Nat)) -> Nat
+
+> :check dist4
+> dist4 : (x y z : Nat) -> Nat
+
+// We can convert between these two representations (arguments collected into a record
+// and freestanding arguments) using the currying/uncurrying operator &.
+
+> :check &dist1 : (x y z : Nat) -> Nat
+> :check &dist4 : (dist4-args : (x y z : Nat)) -> Nat
+
+// We thus have the obvious equalities.
+dist1-dist4 : dist1 = &dist4 := refl
+dist4-dist1 : &dist1 = dist4 := refl
+```
+
+### Sums
+
+As for sum types, we would like to have extensible sum types, akin to OCaml's polymorphic variants. If that's not possible, then sum types are subsumed by inductive types. In theory, getting records right should be enough to get sums right, as they are dual to records.
+
+Papers on dependent records in type theory:
+- [Dependent Record Types Revisited](http://www.cs.rhul.ac.uk/home/zhaohui/DRT11.pdf)
+- [Typed Operational Semantics for Dependent Record Types](http://www.cs.rhul.ac.uk/home/zhaohui/TYPES09final11-01-01.pdf)
+- [Extension of Martin-Löf's Type Theory with Record Types and Subtyping](https://www.researchgate.net/publication/2683061_Extension_of_Martin-Lof's_Type_Theory_with_Record_Types_and_Subtyping)
+- [Ur: Statically-Typed Metaprogramming with Type-Level Record Computation](http://adam.chlipala.net/papers/UrPLDI10/UrPLDI10.pdf)
+- [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf)
+
+**Status: mostly wild speculations. The papers promise much, but no good implementations/prototypes, so probably there's something wrong with them. Sums probably won't happen.**
 
 TODO:
-- Find a better name for the nominal function type. Maybe "nominal abstraction type".
+- Finish thinking about records.
+- How to turn typing contexts into record types? This would free us from some duplication at the meta level. But beware! This is not the same idea as "first-class typing contexts" and certainly not the same as "first-class evaluation contexts".
 
 ## Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
@@ -639,6 +1020,7 @@ filter (p : A -> Bool) : List A -> List A
 
 TODO:
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments and `@` used for name concretion.
+- Describe the fact that constructor names need not be unique and that every inductive types has its own namespace. The same for coinductives.
 
 ## Pattern matching on steroids <a id="pattern-matching"></a> [↩](#toc)
 
@@ -734,7 +1116,9 @@ Not papers:
 
 **Status: no papers and nowhere implemented, but looks very easy to get right.**
 
-## Inductive families <a id="inductive-families"></a> [↩](#toc)
+## Inductive Families <a id="inductive-families"></a> [↩](#toc)
+
+### Standard Inductive Families <a id="standard-inductive-families"></a> [↩](#toc)
 
 For inductive families, we need to explicitly write the constructor's return type (because it depends on the index), but we still don't need to write the parameters.
 
@@ -758,17 +1142,107 @@ Papers:
 
 **Status: inductive families are standard in proof assistants and dependently-typed languages. Dependent pattern matching is semi-standard, as some languages (notably Coq) have problems with supporting it properly so it's hard to use, while some others (Idris 2 and formerly Agda) have implementations of it that entail Uniqueness of Identity Proofs, which is incompatible with Univalence. The closest implementation of what's described here is probably Agda (with the flag `--without-K`).**
 
-## Indices that Compute <a id="indices-that-compute"></a> [↩](#toc)
+### [Indices that Compute](Induction/IndicesThatCompute) <a id="indices-that-compute"></a> [↩](#toc)
 
-TODO
+We use the name "Indices that Compute" for a suite of ideas centered around an alternative syntax for inductive families and the idea that it would be good to "merge" recursive and inductive definitions of type families. To make this more precise, consider the two below definitions of what it means for a natural number to be even.
+
+```
+data Even : Nat -> Prop
+| Even-z  : Even z
+| Even-ss (#n : Nat, e : Even n) : Even (s (s n))
+```
+
+The first definition is a predicate defined as an inductive family. It effectively says that `z` (zero) is even and that if `n` is even, then `s (s n)` (2 + n) is also even. What are the pros and cons of this definition?
+
+Pros:
+- we can pattern match on it
+- induction principle (in a Coq-like language)
+- irrelevance - as we will see later, thanks to `Prop`, any `e1, e2 : Even n` can be proven equal using just `refl`exivity
+
+Cons:
+- quadratic proof size if there is no sharing of the implicit `n`s between constructors
+- need to implement the decision procedure manually
+- hard to prove that 1 is not even - we need a tactic like Coq's `inversion`, or some boilerplate, or very well-implemented dependent patern matching
+- no uniqueness principle - if the codomain wasn't `Prop`, we would need to prove manually that all `e1, e2 : Even n` are equal
+
+```
+Even : Nat -> Prop
+| z       => Unit
+| s z     => Empty
+| s (s n) => Even n
+```
+
+The second definition is recursive. It says that zero is even, one is not even, and that 2 + n is even when n is. What are the pros and cons of this definition?
+
+Pros:
+- constant proof size
+- very easy to prove that 1 is not even - `Even (s z)` computes to `Empty`, so the proof of `Even 1 -> Empty` is the identity function
+- irrelevance
+- uniqueness principle - even if the codomain wasn't `Prop`, all `e : Even n` compute to the same type when `n` is known
+
+Cons:
+- can't pattern match on the proof, only on the argument
+- need to implement the decision procedure manually
+- no induction principle (again, if we're hanging in Coq's vicinity)
+- non-standard shape of recursion (i.e. different from what appears in `Nat`'s definition)
+
+The idea behind the name "Indices that Compute" is to merge both of these definitiosn into one, better.
+
+```
+data EVEN : Nat -> Prop
+| z       => EVEN-z : EVEN z
+| s (s n) => EVEN-ss (e : EVEN n) : EVEN (s (s n))
+```
+
+This definition is similar to the second definition of `Even` in that it is a definition by pattern matching on the index `n`. However, the pattern matching is not exhaustive, because we omitted the case for `s z`. This means that `EVEN (s z)` will compute to `Empty`. The definition is also similar to the first definition of `Even` in that it provides two constructors, one for proving that `z` is even and the other for proving that `s (s n)` is even if `n` is.
+
+Pros:
+- constant proof size
+- easy to prove that 1 is not even
+- it computes
+- induction principle
+
+Cons:
+- need to manually implement decision procedure
+
+Q: Can we do anything nice with this?
+
+A: in such a banal case as parity of naturals probably not, but in more complicated ones I think so! Example: matching a regular expression against a string. This can't be easily implemented by recursion, so induction is needed. But even though we use induction, it would be nice if some cases of the definition could compute/simplify to help us a bit.
+
+There's also an alternative way for easy predicates like "being an even number", namely: just implement the decision procedure and declare `(= true)` as a coercion. With special computation rules `Empty`, `Unit` and `=`, this should be more than enough.
+
+```
+even : Nat -> Bool
+| z       => tt
+| s z     => ff
+| s (s n) => even n
+
+Bool-to-Prop : Bool -> Prop
+| tt => Unit
+| ff => Empty
+```
+
+Pros:
+- constant proof size
+- it is its own decision procedure
+- easy to prove that 1 is not even
+- to sum up: it computes
+
+Cons:
+- nonstandard shape of recursion
+
+Note: induction principles may be problematic in Coq or other languages where pattern matching is equivalent to eliminators, but after some thinking, using an induction principle of a type or function (functional induction) in a proof just amounts to copying that type's constructors/functions cases and pasting them in the proof.
 
 Papers:
-- TODO
+- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf)
+- [Slides for the above](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)
+- [A simpler encoding of indexed types](https://dl.acm.org/doi/10.1145/3471875.3472991)
 
-**Status: TODO**
+**Status: very wild speculations.**
 
 TODO:
-- TODO
+- Think about this more.
+- Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
 
 ## [Advanced Inductive Types](Induction) <a id="advanced-inductive-types"></a> [↩](#toc)
 
@@ -1704,6 +2178,29 @@ TODO
 
 TODO
 
+## Refinement types <a id="refinements"></a> [↩](#toc)
+
+The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solver, but that's meh...) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
+
+F* also has some additional nice features related to refinement types that make life a lot easier:
+- Discriminators that check which constructor was used to make the given term, e.g.:
+  - `Nil? : list 'a -> bool`
+  - `Cons? : list 'a -> bool`
+- Projections which project constructor arguments out of a term (given that the term was really made using that constructor):
+  - `Cons?.hd : l : list 'a{Cons? l} -> 'a`
+  - `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
+- Note that the above are written in F* syntax and require refinement types to get anywhere.
+
+Papers:
+- TODO
+
+**Status: implemented in F\*, works pretty well there.**
+
+TODO:
+- Hunt for papers.
+- Figure out relation between refinement types and dependent records with fields in `Prop`.
+- Figure out relationship between refinement types and inductive/coinductive types.
+
 ## [Universes](Universes/Universes.md) <a id="universes"></a> [↩](#toc)
 
 We want to have a multidimensional hierarchy of universes stratified both by the usual predicative level and by homotopy level, similar to the [Arend language](https://arend-lang.github.io/about/arend-features#universe-levels). The predicative levels are basically naturals, whereas the homotopy levels are natural numbers extended with infinity (for untruncated types). In fact, there will be (at least) two type hierarchies: the strict one and the non-strict one.
@@ -1711,6 +2208,202 @@ We want to have a multidimensional hierarchy of universes stratified both by the
 In the strict hierarchy, `Type (h = 0)` (abbreviated `Contr`) is the universe of contractible types (whose only member is itself), `Type (h = 1)` (abbreviated `Prop`) is the universe of strict (i.e. definitionally irrelevant) propositions (like Coq's [Prop](https://coq.inria.fr/refman/addendum/sprop.html) or Agda's [Prop](https://agda.readthedocs.io/en/v2.6.0/language/prop.html)), `Type (h = 2)` (abbreviated `Set`) is the universe of strict sets (types for which the type of paths is a strict proposition) and so on, up to `Type (h = oo)`, the universe of strict untruncated types.
 
 The non-strict hierarchy (written `hType`) is similar. Knowing that a type has a homotopy level `h` should bring benefits which are similar but weaker than these for the strict universes.
+
+### Idea
+
+We want our universes to keep track of types' homotopy levels. This could:
+- Give us more computational equalities by explicitly marking types as "strict propositions" (no computational content, i.e. all terms computationally equal), "strict sets" (paths are strict propositions) and so on. We call universes that are capable of this **strict universes**.
+- Free us from boilerplate stemming from having to pass around proofs of being a proposition (`isProp`), a set (`isSet`) and so on and having to use them where appropriate. We call universes that are capable of this **non-strict** universes.
+
+### Syntax
+
+We denote the strict universes by `Type h p`. We can be more explicit by writing `Type (h = h', p = p')`. We allow "typical ambiguity", i.e. when the level is not written, it will be inferred and solved by the universe checker. We can be more explicit and ambiguous at once, for example writing `Type (h = h')` - the homotopy level is explicit, but the predicative level will be inferred. We abbreviate `Type (h = 0)` with `Contr`, `Type (h = 1)` with `Prop`, `Type (h = 2)` with `Set` and `Type (h = 3)` with `Grpd`.
+
+Non-strict universes follow the same conventions, except that they are called `hType` and the abbreviations for the various h-levels are `hContr`, `hProp`, `hSet` and `hGrpd`, respectively.
+
+We use Russell style universes because they are easier to read and write.
+
+### Levels
+
+The predicative levels are natural numbers and the homotopy levels are natural numbers extended with infinity (written `oo`). Whether levels stay at the metatheoretical level (nice pun, no?) or become first-class (by turning into the types `Nat` for p-levels and `hlvl` for h-levels) remains to be seen. In case we want it, we have `plvl : Set` (with `plvl` definitionally equal to `Nat`), `hlvl : Set` and we also need a universe `TYPE` which contains all universes `Type h p` and `hType h p` for all `h : hlvl` and all `p : plvl`.
+
+Operations on levels include `pred` and `max`, which definitionally satisfy (or are defined as, in case levels are first-class) the following equations:
+
+```
+pred : hlvl -> hlvl
+| 0     => 0
+| l + 1 => l
+| oo    => oo
+```
+
+```
+max : (l1 l2 : hlvl) -> hlvl
+| 0     , l2     => l2
+| l1 + 1, l2     => max l1 l2 + 1
+| oo    , l2     => oo
+| l1    , 0      => l1
+| l1    , l2 + 1 => max l1 l2 + 1
+| l1    , oo     => oo
+```
+
+Some additional equations that should hold definitionally are `max l l = l` (idempotence) and `max l1 l2 = max l2 l1`.
+
+The go-to paper for these considerations is [Generalized Universe Hierarchies and First-Class Universe Levels](https://arxiv.org/pdf/2103.00223.pdf).
+
+### Basic mechanics of strict universes
+
+The base case of our strict universe hierarchy is h-level 1, i.e. the universe of strict propositions. It's implementation is described in [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document).
+
+```
+// All proof of a strict proposition are computationally equal.
+isProp-from-Prop (#A : Prop) (x y : A) : x = y := refl
+```
+
+We then extend the hierarchy upwards. This is done with the formation rule for equality type/`Path` type, which says that if `A : Type h p` and `x y : A`, then `x = y : Type (pred h) p` (and similarly for `hType`; from now we will omit `hType` and concern ourselves only with `Type`).
+
+But beware: for this to work, `=` can't be an inductive family (because if it were, it would get placed in the wrong universe). Instead, it must be built-in. So we either need to have a separate inductive-like equality or a `Path` type with the appropriate formation rules.
+
+How this works in practice:
+
+```
+// `A : Set`, so `x = y : Prop` and so trivially `p = q`.
+isSet-from-Set (#A : Set) #(x y : A) (p q : x = y) : p = q := refl
+```
+
+```
+// Analogously for strict groupoids.
+isGrpd-from-Grpd (#A : Grpd) #(x y : A) #(p q : x = y) (r s : p = q)
+  : r = s := refl
+```
+
+At last, we need to return back to the zeroth level of the hierarchy and set up the universe `Contr` (unless we consider this universe silly and want to drop it). The formation rule is `Contr : Contr` and it becomes fully functional when we allow cumulativity between `Contr` and `Prop`, i.e. `A : Contr` implies `A : Prop`.
+
+### Basic mechanics of non-strict universes
+
+The typing rules for non-strict universes are analogous to those for strict universes, but the benefits are somewhat different - they amount to not needing to handle some cases when defining function by patterns matching whose domain is known to be of some h-level.
+
+This is because to define a function into an `n`-type, we only need to handle constructors of dimension less than or equal to `n - 1`. For example, when the codomain is a set, we only need to consider point constructors (obviously) and path constructors (so that we don't disconnect points which were connected), but not 2-dimensional path constructors (as all 2-paths in a set are contractible).
+
+These benefits multiply enormously when matching two or more values. For example, proving a property of two elements of a [free group defined like this](../Induction/HIT/FG.ttw) requires only 9 cases instead of 49.
+
+### Formation rules
+
+| Name             | Rule             |
+| ---------------- | ---------------- |
+| Strict universes | `Type h p : Type (h + 1) (p + 1)` |
+| Non-strict universes | `hType h p : hType (h + 1) (p + 1)` |
+| Path type     | if `A : Type h p` <br> and `x y : A` <br> then `x = y : Type (pred h) p` |
+| Function type | if `A : Type h1 p1` <br> and `B x : Type h2 p2` (for all `x : A`) <br> then `(x : A) -> B x : Type h2 (max p1 p2)`  |
+| Empty type    | `Empty : Prop`  |
+| Unit type     | `Unit : Contr`  |
+| Record types  | if `A_i : Type h_i p_i` <br> then `(a_i : A_i) : Type (max h_i) (max p_i)` |
+| Name type     | if `A : Type h p` <br> then `Name A : Type 2 p` |
+| Nabla type    | if `B α : Type h p` <br> then `∇ α : A. B α : Type h p` |
+| Subtypes      | if `A : Type h p` <br> then `Sub A : Type (max 2 (h + 1)) p` |
+| Refinements   | if `A : Type h p` <br> and `P : A -> Prop` <br> then `{x : A \| P x} : Type h p` |
+| Inductives    | see below           |
+| Coinductives  | see below           |
+
+Function types inherit their h-levels from their codomains. `Empty` is a strict proposition and `Unit` is contractible. Records are placed in the `max`imal universe of their (h and p)-levels. Names have decidable equality, so it only makes sense for `Name A` to be a strict set. Nabla types are similar to functions in that they inherit their h-level from the codomain. Refinement types stay at the same level as they carry just a proof of a strict proposition.
+
+A more interesting case is that of subuniverses. For `Empty` the type `Sub Empty` is contractible, but for non-empty types it always has at least two elements (`Empty` and the type itself), so it's always at least a set. This is why the first argument of `max` is `2` in the typing rule.
+
+Moreover, `Sub Bool` has `Bool` as an element, and there are precisely two paths `Bool = Bool`, so `Sub Bool` is not a set, but a groupoid. This suggests that `Sub` behaves similarly to universes, i.e. raises the h-level by one. This is why the second argument of `max` in the typing rule is `h + 1`.
+
+Last but not least, inductive types. It is easy to determine the h-level of constructor arguments (since they are records; note that we need to ignore the inductive arguments), but for the whole type some heuristics are needed. If there are at least two constructors, the h-level is at least 2 (i.e. the type is a strict set). It may well be that the constructor's arguments are disjoint (like `P` and `~ P`), but in general this is undecidable, so we don't care. If constructors are disjoint (i.e. we're not dealing with a higher inductive type) then the h-level will be maximum of 2 and the constructors' h-levels. If we're dealing with a HIT, things become infinitely more complicated and we may just as well say that the h-level of the whole type is `oo`.
+
+Coinductive types can be handled similarly to records, but we need to ignore the h-level of coinductive fields when taking the `max`imum.
+
+### Truncation
+
+If the h-level of a type cannot be determined, we can **truncate** the type, i.e. force it into the desired level. We can also truncate the type when the h-level is inferred to be greater than what we want.
+
+This feature allows us to define the operation known under many names: propositional truncation/propositional reflection/Squash type/etc. Importantly, we can do this even if we don't have [Higher Inductive Types](../Induction/HIT).
+
+```
+// Propositional truncation.
+%Truncated
+data Squash (A : Type) : hProp
+| sq (x : A)
+```
+
+```
+// Strict truncation.
+%Truncated
+data ||_|| (A : Type) : Prop
+| |_| (x : A)
+```
+
+```
+// Also pretty useful one: strict set truncation.
+%Truncated
+data SetSquash (A : Type) : Set
+| in (x : A)
+```
+
+The price we must pay for non-strict truncation is that we can eliminate truncated types `A : Type h p` only when constructing elements of types `B : Type h' p'` with `h' <= h`, i.e. of the same or lower h-level.
+
+### Restrictions on elimination of strict propositions
+
+In Coq and Agda there's a restriction on elimination of strict propositions so as to avoid "spilling" the strictness into the outside world, which could result in nontermination, undecidability of type checking and falling into extensional type theory.
+
+This restrction says that inductive strict propositions can be eliminated into ordinary `Type`s if they satisfy some simple critera, which in practice amount to saying that all strict propositions which can be eliminated are built from `Empty`, `Unit` and recursive functions which return either `Empty` or `Unit`. For us, this means that `Empty` and `Unit` can be eliminated into anything at all and that other strict propositions can be eliminated only into other strict propositions.
+
+### Cumulativity
+
+We cannot have cumulativity between strict propositions and larger universes in order to obey the restrictions on elimination. For now this means there's cumulativity between `Contr` and `Prop`, then a GIANT WALL, and then cumulativity starts again from strict sets upwards. So we have `Type 0 p <= Type h p'` for `h = 0` or `h = 1` and `p <= p'`, then a GIANT WALL, and then `Type (2 + h) p <= Type (2 + h') p'` for `h <= h'` and `p <= p'`. Similar rules hold for `hType`.
+
+Additionally we have `Type (2 + h) p <= hType (2 + h) p`, i.e. we may go from a strict universe to a non-strict one if we are at or above the set level, but not the other way around...
+
+### Restriction on elimination of other strict inductive types
+
+What are the restrictions on elimination of strict inductive types at or above the strict set level?
+
+At higher h-levels the criterion for strict propositions generalizes to the criterion that `Type h p` can be eliminated only into `Type h' p'` where `h' <= h`. For example, we can eliminate strict sets into strict sets and strict propositions (and `SContr`), but not into strict grupoids or non-strict types.
+
+But is this really the case? This would mean that we can't define a type family whose domain are the strict natural numbers. Yuck!
+
+```
+data SNat : Set
+| z
+| s (pred : SNat)
+
+// Why would this be evil?
+even : SNat -> Type
+| z       => Unit
+| s z     => Empty
+| s (s n) => even n
+
+data Even : SNat -> Type
+| Ez  : Even z
+| Ess (#n : SNat) (e : Even n) : Even (s (s n))
+
+// This definition looks quite illegal: `n = m : Prop` but `P m : Type`.
+transport (#P : SNat -> Type) #(n m : SNat) (x : P n) : n = m -> P m
+| refl => x
+
+Zero-not-Succ (#n : SNat) (p : z = s n) : Empty :=
+let
+  P : SNat -> hType
+  | z => Unit
+  | _ => Empty
+
+  x : P z := unit
+in
+  transport P x p
+
+One-not-even : Even (s z) -> Empty :=
+let
+  P : SNat -> hType
+  | 
+in
+```
+
+So maybe we are free to eliminate strict sets into any type whatsoever and the restrictions only apply to strict propositions? I have no idea.
+
+### Summary
+
+I have no idea what I'm doing. If something is not described here, it defaults to how it works in [Arend](https://arend-lang.github.io/about/arend-features#universe-levels)
 
 Some reading on universes:
 - [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
@@ -1720,6 +2413,90 @@ Some reading on universes:
 
 TODO:
 - Write some code dealing with universes.
+- Maybe merge strict and non-strict universes these into one, i.e. `Type s h p`, with `s` being the strict (homotopy) level, `h` the (non-strict) homotopy level and `p` the predicative level? Of course we will then have `h <= s`.
+
+## Subtyping, coercions and subtype universes <a id="subtyping"></a> [↩](#toc)
+
+We want to have subtyping in our type theory, but we want to avoid all the pitfalls associated with subtyping. For this reason, our subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`. It should also be possible to declare custom coercions, as long as they don't break uniqueness.
+
+We summarize the rules that govern subtyping in the table below.
+
+
+| Name              | Rule             | Coercion         |
+| ----------------- | ---------------- | ---------------- |
+| Strict Universes  | if `i <= j` <br> and `h <= h'` <br> then `Type h i <= Type h' j` | lift |
+| Non-strict Universes | if `i <= j` <br> and `h <= h'` <br> then `hType h i <= hType h' j` | lift |
+| Primitive signed integers | `i8 <= i16 <= i32 <= i64` | built-in: copy the bits and pad the result with zeros |
+| Primitive unsigned integers | `u8 <= u16 <= u32 <= u64` | built-in: copy the bits and pad the result with zeros |
+| Primitive floats | `f32 <= f64` | built-in |
+| Coercions between signed and unsigned integers | `u8 <= i16` <br> `u16 <= i32` <br> `u32 <= i64` | built-in |
+| Char              | `Char <= Text` | make single character text |
+| Arrays            | if `c : A <= A'` <br> and `n' <= n` <br> then `Array A n <= Array A' n'` | `map c` and clip the result to the correct length |
+| Width-subtyping for record types | `(a : A, r) <= r` | TODO |
+| Depth-subtyping for record types | if `c : A <= A'` <br> then `(a : A, r) <= (a : A', r)` | `fun x => (a => c x.a, r => x.r)` |
+| Advanced subtyping for records | [complicated](Records/TurboRecords.ttw) | TODO |
+| Sums              | `inl : A <= A + B` <br> `inr : B <= A + B` | TODO: uniqueness problems |
+| Function type     | if `f : A <= A'` <br> and `g : B <= B'` <br> then `A' -> B <= A -> B'` | `fun h => f >> h >> g` |
+| Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
+| Name              | no subtyping | none |
+| Nominal function type | if `c : A <= B` <br> then `∇ α : N. A <= ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
+| Inductives        | not sure |
+| Coinductives      | not sure |
+| `Empty`           | `Empty <= A`     | `abort` |
+| `Unit`            | `A <= Unit`      | `fun _ => unit` |
+| `Bool`            | `Bool <= Prop`   | `fun b : Bool => b = tt` <br> `fun b : Bool => if b then Unit else Empty` |
+| Width-subtyping for refinement types | `{x : A \| P} <= A` | identity |
+| Depth-subtyping for refinement types | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` | identity |
+| Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | built-in <br> `c` magically works on subtypes |
+
+Comments:
+
+Our universes are cumulative, i.e. we can lift types from a lower universe to a higher one. They are also cumulative with respect to the homotopy level.
+
+Primitive types have very predictable subtyping - we only allow coercions that don't lose informatiomn, i.e. they are injective.
+
+We allow subtyping for arrays, both through the element type and through length, i.e. longer array types are subtypes of shorter array types.
+
+The matter for records is complicated. The basic principles from other languages are present, i.e. we have width subtyping (bigger record types are subtypes of smaller record types) and depth-subtyping (record types with fields that are subtypes are subtypes of record types with fields that are supertypes). For advanced records that behave like functions, however, it is less clear what the subtyping rules should be like.
+
+Subtyping for functions is standard: contravariant in the domain and covariant in the codomain. This transfers to function-like types, i.e. path types and nominal function types, which are covariant in their codomains, but invariant in their domains (as the interval/name types don't have subtypes).
+
+There's a question of what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <= B` then `Name A <= Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. If `Name` was covariant, then I think (but I'm not sure) that `∇` could be contravariant in its domain, just like the function type.
+
+It's not clear what the rules should be for inductive and coinductive types. However, we have some subtyping for `Empty`, `Unit` and `Bool`. First, `Empty` is a subtype of any type because given `e : Empty` we can just `abort` it. Second, any type is a subtype of `Unit`, because we can just erase it and return `unit`. Third, `Bool` is a subtype of `Prop` so that we can easily go from the world of decidable propositions to the world of all propositions.
+
+For refinement types, we allow making the refinement less precise (depth subtyping) or dropping it altogether (depth subtyping).
+
+Finally, we shall reify the subtyping judgement into a type. The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
+
+```
+translateX (n : Nat) (r : Sub (x : Nat)) : R :=
+  (x $=> (+ n) & r)
+```
+
+Here we translate the `x`-coordinate by `n` in any record that has a field named `x`, while making sure to return a record of the same type without truncating it.
+
+Papers:
+- [Subtype Universes](http://www.cs.rhul.ac.uk/home/zhaohui/Subtype%20Universes.pdf)
+- [Luo's thesis](http://www.cs.rhul.ac.uk/home/zhaohui/ECS-LFCS-90-118.pdf) (see here for [a book version of the thesis](https://global.oup.com/academic/product/computation-and-reasoning-9780198538356?cc=gb&lang=en&)) describes the type theory on which the above paper is based. It's called ECC and is a particular presentation of the Calculus of Constructions extended with coercive subtyping, described in
+- [Coercive subtyping: Theory and implementation](https://hal.archives-ouvertes.fr/hal-01130574/document)
+
+**Status: Coercions have been implemented in Coq for a long time. Universe cumulativity is semi-standard, as some proof assistant don't have it. Implicit coercions between primitive types are standard. Subtyping for records is standard in the languages that have "structural" record types. Subtyping of anything else in type theory is mostly wild speculations.**
+
+TODO:
+- Find out how subtype universes interact with records.
+
+## Singleton Types <a id="singletons"></a> [↩](#toc)
+
+TODO
+
+Papers:
+- TODO
+
+**Status: TODO**
+
+TODO:
+- TODO
 
 ## [Type-level rewriting](Rewriting) <a id="type-level-rewriting"></a> [↩](#toc)
 
@@ -1730,6 +2507,13 @@ The additional computational properties can be realized using rewrite rules, who
 We have made `Empty` and `Unit` into strict propositions to make our lives easier - nobody likes having to pattern match on `u : Unit` just to learn that it's equal to `unit` (what a surprise!), just as nobody likes having to infer that two proofs of `Empty` are equal from contradiction.
 
 But since we are greedy type-theoretic bastards, we would like to have more computational equalities than that. So, `Empty` enjoys some special computational properties at the type-level and also the corresponding properties at the term level.
+
+```
+// `Empty` lives in the lowest predicative universe and at h-level 1
+// (i.e. in the universe of strict propositions).
+> :check Empty
+> Empty : Type (h = 1, p = 0)
+```
 
 ```
 Sum-Empty-l : Empty + A = A := refl
@@ -1770,6 +2554,13 @@ Sub-Empty : Sub Empty = Unit := refl
 Sub-Empty' (X : Sub Empty) (x : X) : x = unit := refl
 
 Ref-Empty (P : Empty -> Prop) : {e : Empty | P e} = Empty := refl
+```
+
+```
+// `Unit` lives in the lowest predicative universe and at h-level 0
+// (i.e. in the universe of contractible types).
+> :check Unit
+> Unit : Type (h = 0, p = 0)
 ```
 
 ```
@@ -1821,7 +2612,7 @@ Path-Empty (e1 e2 : Empty) : (e1 = e2) = Unit := refl
 
 Path-Unit (u1 u2 : Unit) : (u1 = u2) = Unit := refl
 
-// Also known as The Univalence Principle :)
+// Also known as the Univalence Principle :)
 Path-Type (A B : Type) : (A = B) = Equiv A B := refl
 
 // Not sure about this one, but maybe.
@@ -1868,86 +2659,6 @@ TODO:
 - Find how these types will be declared.
 - Make sure that it all makes sense.
 
-## Refinement types <a id="refinements"></a> [↩](#toc)
-
-The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solver, but that's meh...) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
-
-F* also has some additional nice features related to refinement types that make life a lot easier:
-- Discriminators that check which constructor was used to make the given term, e.g. `Nil? : list 'a -> bool`, `Cons? : list 'a -> bool`
-- Projections which project constructor arguments out of a term (given that the term was really made using that constructor): `Cons?.hd : l : list 'a{Cons? l} -> 'a`, `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
-- Note that the above are written in F* syntax and require refinement types to get anywhere.
-
-## Subtyping, coercions and subtype universes <a id="subtyping"></a> [↩](#toc)
-
-We want to have subtyping in our type theory, but we want to avoid all the pitfalls associated with subtyping. For this reason, our subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`. It should also be possible to declare custom coercions, as long as they don't break uniqueness.
-
-We summarize the rules that govern subtyping in the table below.
-
-
-| Name              | Rule             | Coercion         |
-| ----------------- | ---------------- | ---------------- |
-| Strict Universes  | if `i <= j` <br> and `h <= h'` <br> then `Type h i <= Type h' j` | lift |
-| Non-strict Universes | if `i <= j` <br> and `h <= h'` <br> then `hType h i <= hType h' j` | lift |
-| Primitive signed integers | `i8 <= i16 <= i32 <= i64` | built-in: copy the bits and pad the result with zeros |
-| Primitive unsigned integers | `u8 <= u16 <= u32 <= u64` | built-in: copy the bits and pad the result with zeros |
-| Primitive floats | `f32 <= f64` | built-in |
-| Coercions between signed and unsigned integers | `u8 <= i16` <br> `u16 <= i32` <br> `u32 <= i64` | built-in |
-| Char              | `Char <= Text` | make single character text |
-| Arrays            | if `c : A <= A'` <br> and `n' <= n` <br> then `Array A n <= Array A' n'` | `map c` and clip the result to the correct length |
-| Width-subtyping for record types | `(a : A, r) <= r` | TODO |
-| Depth-subtyping for record types | if `c : A <= A'` <br> then `(a : A, r) <= (a : A', r)` | `fun x => (a => c x.a, r => x.r)` |
-| Advanced subtyping for records | [complicated](Records/TurboRecords.ttw) | TODO |
-| Sums              | `inl : A <= A + B` <br> `inr : B <= A + B` | TODO: uniqueness problems |
-| Function type     | if `f : A <= A'` <br> and `g : B <= B'` <br> then `A' -> B <= A -> B'` | `fun h => f >> h >> g` |
-| Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
-| Name              | no subtyping | none |
-| Nominal function type | if `c : A <= B` <br> then `∇ α : N. A <= ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
-| Inductives        | not sure |
-| Coinductives      | not sure |
-| `Empty`           | `Empty <= A`     | `abort` |
-| `Unit`            | `A <= Unit`      | `fun _ => unit` |
-| `Bool`            | `Bool <= Prop`   | `fun b : Bool => b = tt` <br> `fun b : Bool => if b then Unit else Empty` |
-| Width-subtyping for refinement types | `{x : A \| P} <= A` | identity |
-| Depth-subtyping for refinement types | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` | identity |
-| Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | built-in <br> `c` magically works on subtypes |
-
-Comments:
-
-Our universes are cumulative, i.e. we can lift types from a lower universe to a higher one. They are also cumulative with respect to the homotopy level.
-
-Primitive types have very predictable subtyping - we only allow coercions that don't lose informatiomn, i.e. they are injective.
-
-We allow subtyping for arrays, both through the element type and through length, i.e. longer array types are subtypes of shorter array types.
-
-The matter for records is complicated. The basic principles from other languages are present, i.e. we have width subtyping (bigger record types are subtypes of smaller record types) and depth-subtyping (record types with fields that are subtypes are subtypes of record types with fields that are supertypes). For advanced records that behave like functions, however, it is less clear what the subtyping rules should be like.
-
-Subtyping for functions is standard: contravariant in the domain and covariant in the codomain. This transfers to function-like types, i.e. path types and nominal function types, which are covariant in their codomains, but invariant in their domains (as the interval/name types don't have subtypes).
-
-There's a question of what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <= B` then `Name A <= Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. If `Name` was covariant, then I think (but I'm not sure) that `∇` could be contravariant in its domain, just like the function type.
-
-It's not clear what the rules should be for inductive and coinductive types. However, we have some subtyping for `Empty`, `Unit` and `Bool`. First, `Empty` is subtype of any type because given `e : Empty` we can just `abort` it. Second, any type is a subtype of `Unit`, because we can just erase it and return `unit`. Third, `Bool` is a subtype of `Prop` so that we can easily go from the world of decidable propositions to the world of all propositions.
-
-For refinement types, we allow making the refinement less precise (depth subtyping) or dropping it altogether (depth subtyping).
-
-Finally, we shall reify the subtyping judgement into a type. The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
-
-```
-translateX (n : Nat) (r : Sub (x : Nat)) : R :=
-  (x $=> (+ n) & r)
-```
-
-Here we translate the `x`-coordinate by `n` in any record that has a field named `x`, while making sure to return a record of the same type without truncating it.
-
-Papers:
-- [Subtype Universes](http://www.cs.rhul.ac.uk/home/zhaohui/Subtype%20Universes.pdf)
-- [Luo's thesis](http://www.cs.rhul.ac.uk/home/zhaohui/ECS-LFCS-90-118.pdf) (see here for [a book version of the thesis](https://global.oup.com/academic/product/computation-and-reasoning-9780198538356?cc=gb&lang=en&)) describes the type theory on which the above paper is based. It's called ECC and is a particular presentation of the Calculus of Constructions extended with coercive subtyping, described in
-- [Coercive subtyping: Theory and implementation](https://hal.archives-ouvertes.fr/hal-01130574/document)
-
-**Status: Coercions have been implemented in Coq for a long time. Universe cumulativity is semi-standard, as some proof assistant don't have it. Implicit coercions between primitive types are standard. Subtyping for records is standard in the languages that have "structural" record types. Subtyping of anything else in type theory is mostly wild speculations.**
-
-TODO:
-- Find out how subtype universes interact with records.
-
 ## Tooling <a id="tooling"></a> [↩](#toc)
 
 [The Unison Language](https://www.unisonweb.org/) has a very futuristic tooling and some good ideas, including:
@@ -1981,8 +2692,6 @@ Examples:
 ### Quantitative Type Theory
 
 ### Algebraic Effects
-
-### Singleton types
 
 ## Things to investigate
 
