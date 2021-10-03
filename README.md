@@ -34,9 +34,9 @@ When reading on GitHub, you can click in the upepr-left corner, near the file na
 1. [Advanced Coinductive Types](#advanced-coinductive-types)
 1. [Universes](#universes)
 1. [Type-level rewriting](#type-level-rewriting)
+1. [Refinement types](#refinements)
 1. [Subtyping and coercions](#subtyping)
 1. [Subtype universes](#subtype-universes)
-1. [Refinement types](#refinements)
 1. [Tooling](#tooling)
 1. [Missing features](#missing-features)
 
@@ -81,8 +81,8 @@ TODO:
 
 | Name              | Formation        | Introduction     | Elimination      |
 | ----------------- | ---------------- | ---------------- | ---------------- |
-| Primitive types   | `i8`, `f8`, etc. | literals         | primitive ops    |
-| Arrays            | `Array A n`      | literals <br> `fromFun (fun i => e)` | `A[i]`     |
+| Primitive types   | `i8`, `i16`, `i32`, `i64` <br> `u8`, `u16`, `u32`, `u64` <br> `f32`, `f64` <br> `Char` <br> `Text` | literals         | primitive ops    |
+| Arrays            | `Array A n`      | literals <br> library functions | `A[i]`     |
 | Record types      | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
 | Sum types         | not sure         |                  |                  |
 | Function type     | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
@@ -120,11 +120,14 @@ There are implicit coercions between integer types provided that they do not los
 
 ```
 // Ok, `u16` values range from `0` to `65535`, which certainly fits in an `i64`.
-f (u : u16) : i64 := u
+x : i64 := 123 : u16
 
-// Failure - there are values of type `u8`, like `255`, that don't fit into an `i8`, which ranges from `-128` to `127`.
+// Failure - there are values of type `u8`, like `255`, that don't fit into an `i8`, which ranges from `-128` to `127`. It doesn't matter that the particular value we use, i.e. `5`, is a valid value of type `i8`.
 % Fail
-g (u : u8) : i8 := u
+y : i8 := 5 : u8
+
+// To transform a value of type `u8` into a value of type `i8`, we have to use an explicit coercion. `coerce-rounding-down` casts `u8`s into `i8`s, rounding values out of range like `255` down to `127`.
+z : i8 := coerce-rounding-down (5 : u8)
 ```
 
 We support all the obvious arithmetical operators, including addition, subtraction, multiplication, exponentiation and division. We should also support bit-wise operations, but we're not going to see any examples.
@@ -172,11 +175,14 @@ The type `Array A n` represents arrays whose entries are of type `A` and whose l
 ```
 arr : Array Char 5 := ['a', 'r', 'r', 'a', 'y']
 
-arr-0 : arr[0] = 'a' := refl
+an-a : Char := arr[0]
 
-all-zeros : Array i8 1000 := Array.repeat (elem => 0, n => 1000)
+// Initialize an array with 1000 zeros.
+all-zeros : Array i8 1000 := Array.repeat 0 1000
 
-fib-arr : Array Nat 25 := Array.new (fun i => fib i)
+// Initialize an array with the first 25 fibonacci numbers (assuming `fib` is a
+// function that computes them).
+fib-arr : Array Nat 25 := Array.fromFun fib
 ```
 
 We would really like to have C-like performance for base types, but this is just a wish in our Type Theory Wishlist!
@@ -1862,42 +1868,68 @@ TODO:
 - Find how these types will be declared.
 - Make sure that it all makes sense.
 
-## Subtyping and coercions <a id="subtyping"></a> [↩](#toc)
+## Refinement types <a id="refinements"></a> [↩](#toc)
+
+The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solver, but that's meh...) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
+
+F* also has some additional nice features related to refinement types that make life a lot easier:
+- Discriminators that check which constructor was used to make the given term, e.g. `Nil? : list 'a -> bool`, `Cons? : list 'a -> bool`
+- Projections which project constructor arguments out of a term (given that the term was really made using that constructor): `Cons?.hd : l : list 'a{Cons? l} -> 'a`, `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
+- Note that the above are written in F* syntax and require refinement types to get anywhere.
+
+## Subtyping, coercions and subtype universes <a id="subtyping"></a> [↩](#toc)
 
 We want to have subtyping in our type theory, but we want to avoid all the pitfalls associated with subtyping. For this reason, our subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`. It should also be possible to declare custom coercions, as long as they don't break uniqueness.
 
+We summarize the rules that govern subtyping in the table below.
 
-The matter of subtyping in type theory is most readily encountered when dealing with universes. 
-
-Since we already have a subtyping judgement anyway (because of universe cumulativity), let's extend it to all types.
 
 | Name              | Rule             | Coercion         |
 | ----------------- | ---------------- | ---------------- |
-| Universes         | if `i <= j` <br> then `Type h i <= Type h j` | lift |
-| Strict Universes | if `i <= j` <br> then `hType h i <= hType h j` | lift |
-| Primitive types   | `i8 <= i16 <= i32 <= i64` <br> `u8 <= u16 <= u32 <= u64` <br> `f32 <= f64` <br> `u8 <= i16` <br> `u16 <= i32` <br> `u32 <= i64` | built-in |
+| Strict Universes  | if `i <= j` <br> and `h <= h'` <br> then `Type h i <= Type h' j` | lift |
+| Non-strict Universes | if `i <= j` <br> and `h <= h'` <br> then `hType h i <= hType h' j` | lift |
+| Primitive signed integers | `i8 <= i16 <= i32 <= i64` | built-in: copy the bits and pad the result with zeros |
+| Primitive unsigned integers | `u8 <= u16 <= u32 <= u64` | built-in: copy the bits and pad the result with zeros |
+| Primitive floats | `f32 <= f64` | built-in |
+| Coercions between signed and unsigned integers | `u8 <= i16` <br> `u16 <= i32` <br> `u32 <= i64` | built-in |
+| Char              | `Char <= Text` | make single character text |
 | Arrays            | if `c : A <= A'` <br> and `n' <= n` <br> then `Array A n <= Array A' n'` | `map c` and clip the result to the correct length |
-| Record types      | [complicated](Records/TurboRecords.ttw) |
-| Function type     | if `f : A <= A'` and `g : B <= B'` <br> then `A' -> B <= A -> B'` | `fun h a => a \|> f \|> h \|> g` |
-| Sums              | `inl : A <= A + B` <br> `inr : B <= A + B` | `inl` and `inr` |
+| Width-subtyping for record types | `(a : A, r) <= r` | TODO |
+| Depth-subtyping for record types | if `c : A <= A'` <br> then `(a : A, r) <= (a : A', r)` | `fun x => (a => c x.a, r => x.r)` |
+| Advanced subtyping for records | [complicated](Records/TurboRecords.ttw) | TODO |
+| Sums              | `inl : A <= A + B` <br> `inr : B <= A + B` | TODO: uniqueness problems |
+| Function type     | if `f : A <= A'` <br> and `g : B <= B'` <br> then `A' -> B <= A -> B'` | `fun h => f >> h >> g` |
+| Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
+| Name              | no subtyping | none |
+| Nominal function type | if `c : A <= B` <br> then `∇ α : N. A <= ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
 | Inductives        | not sure |
 | Coinductives      | not sure |
 | `Empty`           | `Empty <= A`     | `abort` |
 | `Unit`            | `A <= Unit`      | `fun _ => unit` |
-| `Bool`            | `Bool <= Prop`   | `fun b : Bool => b = tt` |
-| Refinements       | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` <br> also `{x : A \| P} <= A` | identity |
-| Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
-| Nabla type        | if `c : A <= B` <br> then `∇ α : N. A <= ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
-| Name              | no subtyping | none |
-| Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | `c` magically working on subtypes |
+| `Bool`            | `Bool <= Prop`   | `fun b : Bool => b = tt` <br> `fun b : Bool => if b then Unit else Empty` |
+| Width-subtyping for refinement types | `{x : A \| P} <= A` | identity |
+| Depth-subtyping for refinement types | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` | identity |
+| Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | built-in <br> `c` magically works on subtypes |
 
-There's a question of what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <= B` then `Name A <= Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. Similarly, I think that `∇` could be contravariant just like function types, but I'm not sure.
+Comments:
 
-**Status: universe cumulativity is semi-standard, as some proof assistant don't have it. Coercions have been implemented in Coq for a long time. Subtyping of anything else in type theory is mostly wild speculations.**
+Our universes are cumulative, i.e. we can lift types from a lower universe to a higher one. They are also cumulative with respect to the homotopy level.
 
-## Subtype Universes <a id="subtype-universes"></a> [↩](#toc)
+Primitive types have very predictable subtyping - we only allow coercions that don't lose informatiomn, i.e. they are injective.
 
-The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
+We allow subtyping for arrays, both through the element type and through length, i.e. longer array types are subtypes of shorter array types.
+
+The matter for records is complicated. The basic principles from other languages are present, i.e. we have width subtyping (bigger record types are subtypes of smaller record types) and depth-subtyping (record types with fields that are subtypes are subtypes of record types with fields that are supertypes). For advanced records that behave like functions, however, it is less clear what the subtyping rules should be like.
+
+Subtyping for functions is standard: contravariant in the domain and covariant in the codomain. This transfers to function-like types, i.e. path types and nominal function types, which are covariant in their codomains, but invariant in their domains (as the interval/name types don't have subtypes).
+
+There's a question of what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <= B` then `Name A <= Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. If `Name` was covariant, then I think (but I'm not sure) that `∇` could be contravariant in its domain, just like the function type.
+
+It's not clear what the rules should be for inductive and coinductive types. However, we have some subtyping for `Empty`, `Unit` and `Bool`. First, `Empty` is subtype of any type because given `e : Empty` we can just `abort` it. Second, any type is a subtype of `Unit`, because we can just erase it and return `unit`. Third, `Bool` is a subtype of `Prop` so that we can easily go from the world of decidable propositions to the world of all propositions.
+
+For refinement types, we allow making the refinement less precise (depth subtyping) or dropping it altogether (depth subtyping).
+
+Finally, we shall reify the subtyping judgement into a type. The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
 
 ```
 translateX (n : Nat) (r : Sub (x : Nat)) : R :=
@@ -1911,19 +1943,10 @@ Papers:
 - [Luo's thesis](http://www.cs.rhul.ac.uk/home/zhaohui/ECS-LFCS-90-118.pdf) (see here for [a book version of the thesis](https://global.oup.com/academic/product/computation-and-reasoning-9780198538356?cc=gb&lang=en&)) describes the type theory on which the above paper is based. It's called ECC and is a particular presentation of the Calculus of Constructions extended with coercive subtyping, described in
 - [Coercive subtyping: Theory and implementation](https://hal.archives-ouvertes.fr/hal-01130574/document)
 
-**Status: the paper looks good, but there is no prototype implementation and it is not clear how useful subtype universes are.**
+**Status: Coercions have been implemented in Coq for a long time. Universe cumulativity is semi-standard, as some proof assistant don't have it. Implicit coercions between primitive types are standard. Subtyping for records is standard in the languages that have "structural" record types. Subtyping of anything else in type theory is mostly wild speculations.**
 
 TODO:
 - Find out how subtype universes interact with records.
-
-## Refinement types <a id="refinements"></a> [↩](#toc)
-
-The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solver, but that's meh...) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
-
-F* also has some additional nice features related to refinement types that make life a lot easier:
-- Discriminators that check which constructor was used to make the given term, e.g. `Nil? : list 'a -> bool`, `Cons? : list 'a -> bool`
-- Projections which project constructor arguments out of a term (given that the term was really made using that constructor): `Cons?.hd : l : list 'a{Cons? l} -> 'a`, `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
-- Note that the above are written in F* syntax and require refinement types to get anywhere.
 
 ## Tooling <a id="tooling"></a> [↩](#toc)
 
