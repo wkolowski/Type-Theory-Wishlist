@@ -479,19 +479,15 @@ StrictProp-Unit (u1 u2 : Unit) : u1 = u2 := refl
 Relevant papers:
 - [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
 
-**Status: `Empty` and `Unit` are standard everywhere, but barely anywhere are they strict propositions. Coq and Agda have implemented universes of strict propositions (impredicative and predicative) based on the above paper. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. Overall, this look very doable.**
+**Status: `Empty` and `Unit` are standard everywhere, but barely anywhere are they strict propositions. Coq and Agda have implemented universes of strict propositions (impredicative and predicative) based on the above paper. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. Overall, this looks very doable.**
 
 ## [Records (and sums)](Records) <a id="records"></a> [↩](#toc)
 
-Record types are the central feature of the language and they subsume modules, typeclasses, sigma types, product types, and so on (and this even extends to packaging constructs, like Java's packages or Rust's crates). See below for:
-- [a list of problems with records](Records/ProblemsWithRecords.md) (in Coq, but these problems occur everywhere)
-- [a partial solution of these problems](Records/RecordPlayground.ttw)
-- [a wild and more ambitious idea of what records should be](Records/TurboRecords.ttw)
+Record types are the central feature of the language and they subsume modules, typeclasses, sigma types, product types, and so on. This even extends to packaging constructs - our records are supposed to be "on the same level" as Java's packages or Rust's crates. Let's start our journey into the land of records with some motivation, by describing what we want to achieve.
 
 ### Some problems with records found in Coq (and most other languages)
 
-Most languages have lots of problems with records:
-1. Besides records we have typeclasses with instance search, modules which are even more second-class than records and sigma types which are just annoying. Additionally, in the metatheory we also have contexts, which are basically just another form of records. Moreover, record definitions are pretty similar to definitions of (non-inductive) sums, inductives and coinductives, in the sense that all of these are just a bunch of `name : type` declarations.
+1. Besides records we have typeclasses with instance search, modules which are even more second-class than records, and sigma types which are just annoying. Additionally, in the metatheory we also have contexts, which are basically just another form of records. Moreover, record definitions are pretty similar to definitions of (non-inductive) sums, inductives and coinductives, in the sense that all of these are just a bunch of `name : type` declarations.
 1. Record field names must be globally unique. This is very annoying in Haskell and Coq, but probably easy to solve and not present in other languages.
 1. No definitional uniqueness principle for records in most languages. This is solved in Agda, however.
 1. Hard to prove record equality. This is very annoying in Coq, but probably much easier when we have Cubical Type Theory and path types.
@@ -500,71 +496,101 @@ Most languages have lots of problems with records:
 1. Hard to unbundle records into typeclasses (i.e. turn a `Monoid` into an instance of `Monoid A` for some carrier `A`) and hard to bundle classes into records (i.e. turn an instance of `Monoid A` into a `Monoid` whose carrier is `A`).
 1. This is not directly about records, but it's sometimes hard to do currying of functions that take many arguments. Records could help wiht that, but they don't, because we don't have any notion of "partial application" for records.
 
-### The Solution
+### How records work
+
+We have three distinct but equivalent syntaxes for records, called the tuple syntax, the copattern syntax and the module syntax. They can be also called the short, medium and long syntaxes, respectively. The tuple syntax is the most compact and best suited for passing data around. The copattern syntax is of medium size and best suited to defining functions operating on records. The module syntax is the most verbose and best suited to, well... tasks that have to do with modularity.
+
+### Tuple syntax
+
+In the tuple syntax, we use parentheses for both record types and records themselves.
 
 ```
-// In this file we will discover how records and record types should behave!
-
-// Basic operations on (non-dependent) records.
-
-// Tuple syntax.
-
-// Record creation syntax - tuple variant.
 point : (x : Nat, y : Nat, z : Nat) :=
   (0, 42, 111)
+```
 
-// Record creation syntax - named tuple variant.
+Tuples are inherently named - when creating them we may freely use field names.
+
+```
 point : (x : Nat, y : Nat, z : Nat) :=
   (x => 0, y => 42, z => 111)
+```
 
-// When we have multiple fields of the same type, we can make it shorter.
+We can put field names of the same type next to each other without repeating the type.
+
+```
 point : (x y z : Nat) :=
   (x => 0, y => 42, z => 111)
+```
 
-// We can access record fields with dot syntax.
-point-x : Nat := p.x
+We can access record fields with dot syntax.
 
-// We can make a new record using an old one.
+```
+point-x : Nat := point.x
+```
+
+An example function on records that translates a 3D point in the x-dimension.
+
+```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
   (x => p.x + n, y => p.y, z => p.z)
+```
 
-// We can use `p` as the prototype to build a new record. Man, is this JavaScript?
+There's the record update syntax, which we will call prototyping. When we define a record using the prototype `p`, all fields of the new record that are not explicitly given will be the same as in `p`.
+
+```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
   (x => p.x + n & p)
+```
 
-// When using prototype syntax, we can also use `$=>` to modify a field instead
-// of just setting it. Maybe this will save us some writing for records with
-// long names and field names.
+When using prototyping, we can also use `$=>` to modify a field instead of just setting it. Maybe this will save us some writing for records with long names and field names.
+
+```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
   (x $=> (+ n) & p)
+```
 
-// Copattern syntax.
+### Copattern syntax
 
-// Copatterns are nice for mid-sized definitions.
+
+In copattern syntax, we put each field definition in a separate line that starts with an `&`.
+```
 point : (x y z : Nat)
 & x => 0
 & y => 42
 & z => 111
+```
 
-// `translateX` in copattern syntax.
+This is how `translateX` looks in copattern syntax.
+
+```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
 & x => p.x + n
 & y => p.y
 & z => p.z
+```
 
-// Copatterns can use prototypes too!
+Copatterns can use prototypes too!
+
+```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
 & x => p.x + n
 & p
+```
 
-// Copatterns also allow the modify syntax.
+Copatterns also allow the modify syntax.
+
+```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
 & x $=> (+ n)
 & p
+```
 
-// Module syntax.
+### Module syntax
 
-// Module syntax is lengthy, but offers lots of freedom.
+The module syntax is lengthy, but offers lots of freedom.
+
+```
 point : (x y z : Nat) :=
 module
 
@@ -576,131 +602,182 @@ module
 
   z : Nat := 111
 
-  garbage : String := "not a field of the record, the only fields are x, y and z"
+  garbage : String := "not a field - the only fields are x, y and z"
 
 end
+```
 
-// Yes, we can use module syntax to define functions!
+Yes, we can use module syntax to define functions!
+
+```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
 module
   x : Nat := p.x + n
   y : Nat := p.y
   z : Nat := p.z
 end
+```
 
-// Modules can use prototypes too!
+Modules can use prototypes too!
+
+```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
 module
   x := p.x + n
 
   inherit p
 end
+```
 
-// Modules with modify syntax (TODO: rethink this).
+Modules with modify syntax.
+
+```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
 module
   inherit p
 
   x : Nat $=> (+ n)
 end
+```
 
-// Record types with manifest fields.
+### Record types with manifest fields.
 
-// Our record types can have some fields set in advance, like the following
-// type of points that have `x`, `y` and `z` coordinates, but the `z`
-// coordinate is set to zero.
+Our record types can have some fields set in advance, like the following type of points that have `x`, `y` and `z` coordinates, but the `z` coordinate is set to zero.
+
+```
 p : (x y : Nat, z : Nat := 0) := (x => 1, y => 2)
+```
 
-// We can access `z` even though we didn't explicitly set it.
+We can access `z` even though we didn't explicitly set it.
+
+```
 p-z : Nat := p.z
+```
 
-// In fact, after setting a field the type of the result "changes".
+In fact, after setting a field, the type of the result reflects this.
+
+```
 translateX (n : Nat) (p : (x y z : Nat)) : (x : Nat := p.x + n, y z : Nat) :=
   (x => p.x + n & p)
+```
 
-// Operations on record types.
+Because we already wrote it at the type level, we may omit it at the term level.
 
-// Joins.
+```
+translateX (n : Nat) (p : (x y z : Nat)) : (x : Nat := p.x + n, y z : Nat) :=
+  (& p)
+```
 
-// We can combine multiple record types with the join operator.
+### Operations on record types.
+
+We can combine multiple record types with the join operator.
+
+```
 example-join-1 : (outl : A) & (outr : B) = (outl : A, outr : B) := refl
+```
 
-// We can also combine record types dependently.
+We can also combine record types dependently.
+
+```
 example-join-2: (outl : A) & (outr : B outl) = (outl : A, outr : B outl) := refl
+```
 
-// The join operation preserves implicitness of arguments.
+The join operation preserves implicitness of arguments.
+
+```
 example-join-3 : (#outl : A) & (outr : B outl) = (#outl : A, outr : B outl) := refl
+```
 
-// Renaming.
+#### Renaming.
 
-// Given a record type, we can rename its fields to get another record type.
+Given a record type, we can rename its fields to get another record type.
+
+```
 example-rename-1 :
   (x y z : Nat) renaming (x to a) = (a y z : Nat) := refl
+```
 
-// Renaming also works on manifest fields.
+Renaming also works on manifest fields.
+
+```
 example-rename-2 :
   (x y : Nat, z : Nat := 0) renaming (z to w) = (x y : Nat, w : Nat := 0) := refl
+```
 
-// Setting a field.
+Setting a field.
+
+```
 example-set-1 :
   (x y z : Nat) setting (z := 0) = (x y : Nat, z : Nat := 0) := refl
+```
 
-// Unsetting a field.
+Unsetting a field.
+
+```
 example-unset-1 :
   (x y : Nat, z : Nat := 0) unsetting z = (x y z : Nat)
+```
 
-// Removing.
+We can remove a field to get a new record type.
 
-// We can remove a field to get a new record type.
+```
 example-removing :
   (x y z : Nat) removing z = (x y : Nat)
     := refl
+```
 
-// General record type prototyping.
+### General record type prototyping.
 
-// We can combine joins, renaming, setting, unsetting and removing into a
-// single operation. This way we can create a new record type from a given
-// prototype record type.
+We can combine joins, renaming, setting, unsetting and removing into a single operation. This way we can create a new record type from a given prototype record type.
+
+```
 example-prototyping :
   (x y : Nat, z : Nat := 0, n : Nat) with (x to a := 5, y to b, unset z, remove n)
     =
   (a : Nat := 5, b z : Nat)
     := refl
+```
 
-// Record subtyping.
+### Record subtyping.
 
-// We have a subtyping relation between records. This does not mean that we have
-// subtyping in our language (yet; see the directory Subtypes/), this is just
-// for illustration purposes.
+We have a subtyping relation between records. This does not mean that we have subtyping in our language (yet; see the directory Subtypes/), this is just for illustration purposes.
 
-// Bigger record types are subtypes of smaller record types.
-// (x y z : Nat) <= (x y : Nat)
+Bigger record types are subtypes of smaller record types.
 
-// But record types with manifest fields are subtypes of record types without
-// fields set.
-// (x y : Nat, z : Nat := 0) <= (x y z : Nat)
+```
+(x y z : Nat) <= (x y : Nat)`
+```
 
-// Record types made with a join are subtypes of their arguments.
-// r1 & r2 <= r1
-// r1 & r2 <= r2
+But record types with manifest fields are subtypes of record types without fields set.
 
-// Of course all record types are subtypes of the empty record type.
-// R <= ()
+```
+(x y : Nat, z : Nat := 0) <= (x y z : Nat)
+```
+
+Record types made with a join are subtypes of their arguments.
+
+```
+r1 & r2 <= r1
+r1 & r2 <= r2
+```
+
+Of course all record types are subtypes of the empty record type.
+
+```
+R <= ()
+```
 
 // TODO: how this works with dependent records?
 
+### The Solution of our Problems
 
+Let's solve the problems we have.
 
+#### Problem 1: globally unique field names.
 
+Record field names need not be globally unique. In case they clash, we can disambiguate manually.
 
-
-
-// Let's solve the problems we have.
-
-// Problem 1: globally unique field names.
-
-// Record field names need not be globally unique. In case they clash, we can
-// disambiguate manually.
+```
 Point2D : Type := (x y : Nat)
 Point3D : Type := (x y z : Nat)
 
@@ -708,44 +785,64 @@ Point3D : Type := (x y z : Nat)
 > :check x
 > Point2D.x : Point2D -> R
 > Point3D.x : Point3D -> R
+```
 
-// We also have some facilities for dealing with name clashes in other situations.
+We also have some facilities for dealing with name clashes in other situations.
 
+```
 // Loooooooooong!
 dist1 (p : (x y z : Nat)) : Nat :=
   sqrt (p.x * p.x + p.y * p.y + p.z * p.z)
+```
 
-// We can use the syntax `open p` to make all field of `p` accessible.
+We can use the syntax `open p` to make all field of `p` accessible.
+
+```
 dist2 (p : (x y z : Nat)) : Nat :=
   open p in sqrt (x * x + y * y + z * z)
+```
 
-// But we can `open` the record implicitly if there are no naming conflicts.
+But we can `open` the record implicitly if there are no naming conflicts.
+
+```
 dist3 (p : (x y z : Nat)) : Nat :=
   sqrt (x * x + y * y + z * z)
+```
 
-// And even if there are conflicts, we may still open all records and resolve
-// the name clashes explicitly.
+And even if there are conflicts, we may still open all records and resolve the name clashes explicitly.
+
+```
 bogus (p : (x y z : Nat)) (q : (z w : Nat)) : Nat :=
   x + y + p.z + q.z + w
+```
 
-// Problem 2: no definitional uniqueness principle for records.
+#### Problem 2: no definitional uniqueness principle for records.
 
-// Records do have a definitional uniqueness principle!
+Records do have a definitional uniqueness principle!
+
+```
 definitional-uniqueness-for-records
   (r : (a : A, b : B a)) : r = (a => r.a, b => r.b) := refl
+```
 
-// There's also a uniqueness principle for prototypes.
+There's also a uniqueness principle for prototypes.
+
+```
 uniqueness-principle-for-prototypes
   (r : (a : A, b : B a)) : r = (& r) := refl
+```
 
-// Problem 3: hard to prove record equality.
+#### Problem 3: hard to prove record equality.
 
-// This one is probably more a matter of cubical stuff than of records themselves.
-// TODO
+This one is probably more a matter of cubical stuff than of records themselves.
 
-// Problem 4: hard to reuse record types.
+TODO!
 
-// First, we can define record types in a copattern(-like) syntax.
+#### Problem 4: hard to reuse record types.
+
+First, we can define record types in a copattern(-like) syntax.
+
+```
 Refl : RType
   A : Type
   R : A -> A -> Prop
@@ -760,14 +857,17 @@ Trans : RType
   A : Type
   R : A -> A -> Prop
   transitive : (x y z : A) -> R x y -> R y z -> R x z
+```
 
-// Record types can be joined together. By "join" we mean a kind of non-disjoint
-// union or pushout - fields which have the same names are collapsed into one,
-// and those that have different names remain separate.
+Record types can be joined together. By "join" we mean a kind of non-disjoint union or pushout - fields which have the same names are collapsed into one, and those that have different names remain separate.
+
+```
 Equiv' : RType := Refl & Sym & Trans
+```
 
-// The above join is equal to the manually encoded record type that represents
-// equivalence relations.
+The above join is equal to the manually encoded record type that represents equivalence relations.
+
+```
 Equiv' : RType
   A : Type
   R : A -> A -> Prop
@@ -777,15 +877,21 @@ Equiv' : RType
 
 Equiv-is-Refl-Sym-Trans :
   Equiv = Equiv' := refl
+```
 
-// Problems 5: telescopization stemming from lack of inheritance.
+#### Problems 5: telescopization stemming from lack of inheritance.
 
-// We can also use record types as prototypes to construct other record types.
+We can also use record types as prototypes to construct other record types.
+
+```
 Magma : RType
   A : Type
   op : A -> A -> A
+```
 
-// Here a semigroup is a magma extended with associativity.
+Here a semigroup is a magma extended with associativity. `Pointed` represents a pointed type, i.e. a type together with its element.
+
+```
 Semigroup : RType :=
   Magma &
   assoc : (x y z : A) -> op (op x y) z = op x (op y z)
@@ -793,8 +899,11 @@ Semigroup : RType :=
 Pointed : RType
   A : Type
   point : A
+```
 
-// We can also rename fields during the join.
+We can also rename fields during the join.
+
+```
 Monoid : RType :=
   Semigroup &
   (Pointed renaming point to id) &
@@ -810,15 +919,20 @@ Monoid' : RType
   idr : (x : A) -> op x id = x
 
 Monoids-same : Monoid = Monoid' := refl
+```
 
-// Problem 6: hard to unbundle record types into typeclasses.
+#### Problem 6: hard to unbundle record types into typeclasses.
 
-// We can easily obtain a typeclass by setting a field in the `Monoid` type.
-// For now, we ignore the matter of what a typeclass is.
+We can easily obtain a typeclass by setting a field in the `Monoid` type. For now, we ignore the matter of what a typeclass is.
+
+```
 MonoidClass (A : Type) : RType :=
   Monoid setting A to A
+```
 
-// This is the result of the above definition written more explicitly.
+This is the result of the above definition written more explicitly.
+
+```
 MonoidClass' (A : Type) : RType
   op : A -> A -> A
   assoc : (x y z : A) -> op (op x y) z = op x (op y z)
@@ -827,28 +941,32 @@ MonoidClass' (A : Type) : RType
   idr : (x : A) -> op x id = x
 
 MonoidClass-MonoidClass' : MonoidClass = MonoidClass' := refl
+```
 
-// We can also reverse these operations and bundle MonoidClass' to
-// get a record type.
+We can also reverse these operations and bundle MonoidClass' to get a record type.
 
+```
 Monoid' : RType :=
   A : Type
   & MonoidClass' A
 
 Monoid-Monoid' : Monoid = Monoid' := refl
+```
 
-// Problem 7: currying/uncurrying of functions and the relationship between
-// records and function arguments.
+#### Problem 7: currying/uncurrying of functions and the relationship between records and function arguments.
 
-// Since we have implicit record opening and don't use the bound variable
-// `p` at all, maybe we shouldn't need to write it?
+Since we have implicit record opening and don't use the bound variable `p` at all, maybe we shouldn't need to write it?
+
+```
 dist4 (x y z : Nat) : Nat :=
   sqrt (x * x + y * y + z * z)
+```
 
-// The only difference between `dist1`-`dist3` and `dist4` is that the former's
-// arguments collected into a record, while the latter's are not.
-// Let's see in the repl:
+The only difference between `dist1`-`dist3` and `dist4` is that the former's arguments are collected into a record, while the latter's are not.
 
+Let's see in the repl:
+
+```
 > :check dist1
 > dist1 : (p : (x y z : Nat)) -> Nat
 
@@ -860,10 +978,11 @@ dist4 (x y z : Nat) : Nat :=
 
 > :check dist4
 > dist4 : (x y z : Nat) -> Nat
+```
 
-// We can convert between these two representations (arguments collected into a record
-// and freestanding arguments) using the currying/uncurrying operator &.
+We can convert between these two representations (arguments collected into a record and freestanding arguments) using the currying/uncurrying operator &.
 
+```
 > :check &dist1 : (x y z : Nat) -> Nat
 > :check &dist4 : (dist4-args : (x y z : Nat)) -> Nat
 
@@ -876,6 +995,8 @@ dist4-dist1 : &dist1 = dist4 := refl
 
 As for sum types, we would like to have extensible sum types, akin to OCaml's polymorphic variants. If that's not possible, then sum types are subsumed by inductive types. In theory, getting records right should be enough to get sums right, as they are dual to records.
 
+### Summary
+
 Papers on dependent records in type theory:
 - [Dependent Record Types Revisited](http://www.cs.rhul.ac.uk/home/zhaohui/DRT11.pdf)
 - [Typed Operational Semantics for Dependent Record Types](http://www.cs.rhul.ac.uk/home/zhaohui/TYPES09final11-01-01.pdf)
@@ -883,11 +1004,16 @@ Papers on dependent records in type theory:
 - [Ur: Statically-Typed Metaprogramming with Type-Level Record Computation](http://adam.chlipala.net/papers/UrPLDI10/UrPLDI10.pdf)
 - [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf)
 
+Not papers:
+- [a wild and more ambitious idea of what records should be](Records/TurboRecords.ttw)
+
 **Status: mostly wild speculations. The papers promise much, but no good implementations/prototypes, so probably there's something wrong with them. Sums probably won't happen.**
 
 TODO:
 - Finish thinking about records.
 - How to turn typing contexts into record types? This would free us from some duplication at the meta level. But beware! This is not the same idea as "first-class typing contexts" and certainly not the same as "first-class evaluation contexts".
+- Rethink modify syntax for modules.
+- Rethink whether the prototype should really go at the end of the record definition.
 
 ## Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
@@ -2692,21 +2818,3 @@ Examples:
 ### Quantitative Type Theory
 
 ### Algebraic Effects
-
-## Things to investigate
-
-### Global definitions/declarations
-
-Global definitions are those that can appear in the typing context, as opposed to local definitions which can be represented by let-bindings and ultimately as just functions. Global definitions could be useful in investigating record types with manifest fields.
-
-### Bidirectional typechecking
-
-Bidirectional typechecking is a way of presenting the typing rules that is more algorithmic and thus better suited for implementation. It is also said to increase the quality of error messages. But most importantly, putting rules into the bidirectional format makes them less fishy.
-
-### Explicit substitutions
-
-Another way to make the presentation of your type theory less fishy, more concrete and down-to-earth and more amenable to implementation.
-
-### Normal forms
-
-How to infer, in general, an inductive characterization of normal forms from the reduction relation?
