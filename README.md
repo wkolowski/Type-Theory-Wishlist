@@ -523,6 +523,13 @@ point : (x y z : Nat) :=
   (x => 0, y => 42, z => 111)
 ```
 
+We can use this syntax also for records, when many fields are going to have the same value.
+
+```
+origin : (x y z : Nat) :=
+  (x, y, z => 0)
+```
+
 We can access record fields with dot syntax.
 
 ```
@@ -536,18 +543,32 @@ translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
   (x => p.x + n, y => p.y, z => p.z)
 ```
 
+We can avoid repeating the name of the record by using the `open` syntax which makes all fields of the record available in the context.
+
+```
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  open p in (x => x + n, y => y, z => z)
+```
+
+If that's still too long, rest assured: function arguments which are records are `open`ed automatically for us! So we only need to use field names qualified with the record name to disambiguate in case of name clashes.
+
+```
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  (x => x + n, y => y, z => z)
+```
+
 There's the record update syntax, which we will call prototyping. When we define a record using the prototype `p`, all fields of the new record that are not explicitly given will be the same as in `p`.
 
 ```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
-  (x => p.x + n & p)
+  (x => p.x + n, _ => p)
 ```
 
 When using prototyping, we can also use `$=>` to modify a field instead of just setting it. Maybe this will save us some writing for records with long names and field names.
 
 ```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
-  (x $=> (+ n) & p)
+  (x $=> (+ n), _ => p)
 ```
 
 ### Copattern syntax
@@ -561,6 +582,13 @@ point : (x y z : Nat)
 & z => 111
 ```
 
+If multiple fields have the same value, we can define all of them at once. We call these _and-copatterns_, in analogy with the more established or-patterns from ML.
+
+```
+origin : (x y z : Nat)
+& x & y & z => 0
+```
+
 This is how `translateX` looks in copattern syntax.
 
 ```
@@ -570,12 +598,31 @@ translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
 & z => p.z
 ```
 
+Just like for tuple syntax, we can use `open` to open a record...
+
+```
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
+open p in
+& x => x + n
+& y => y
+& z => z
+```
+
+... but just like for tuple syntax, we don't need it, because it is opened automatically for us.
+
+```
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
+& x => x + n
+& y => y
+& z => z
+```
+
 Copatterns can use prototypes too!
 
 ```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
 & x => p.x + n
-& p
+& _ => p
 ```
 
 Copatterns also allow the modify syntax.
@@ -583,53 +630,98 @@ Copatterns also allow the modify syntax.
 ```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat)
 & x $=> (+ n)
-& p
+& _ => p
 ```
 
 ### Module syntax
 
-The module syntax is lengthy, but offers lots of freedom.
+The module syntax is lengthy, but offers lots of freedom. In the module below, the fields `y-aux` and `garbage` will be ignored, even though we may use them (but don't need to) to define other fields' values.
 
 ```
 point : (x y z : Nat) :=
 module
 
-  x : Nat := 0
+  x : Nat => 0
 
-  y-aux : Nat := 21
+  y-aux : Nat => 21
 
-  y : Nat := 2 * y-aux
+  y : Nat => 2 * y-aux
 
-  z : Nat := 111
+  z : Nat => 111
 
-  garbage : String := "not a field - the only fields are x, y and z"
+  garbage : Text => "not a field - the only fields are x, y and z"
 
 end
 ```
 
-Yes, we can use module syntax to define functions!
+Multiple fields of the same type can be declared/defined more compactly.
 
 ```
-translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+origin : (x y z : Nat) :=
 module
-  x : Nat := p.x + n
-  y : Nat := p.y
-  z : Nat := p.z
+  x y z : Nat => 0
 end
 ```
 
-Modules can use prototypes too!
+Yes, we can use module syntax to define functions! But don't do that - it's verbose and it's better to just use the copattern syntax.
 
 ```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
 module
-  x := p.x + n
+  x : Nat => p.x + n
+  y : Nat => p.y
+  z : Nat => p.z
+end
+```
 
+We have the `open` syntax that we can use just like before...
+
+```
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+  open p in
+module
+  x : Nat => x + n
+  y : Nat => y
+  z : Nat => z
+end
+```
+
+... but we can also put the `open` inside the module.
+
+```
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+module
+  open p
+
+  x : Nat => x + n
+  y : Nat => y
+  z : Nat => z
+end
+```
+
+Just like before, we don't need the `open`, because record arguments are opened automatically.
+
+```
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+module
+  x : Nat => x + n
+  y : Nat => y
+  z : Nat => z
+end
+```
+
+Modules can use prototypes too, but this time we should put them at the top of the module.
+
+```
+translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
+module
   inherit p
+
+  x : Nat => p.x + n
 end
 ```
 
-Modules with modify syntax.
+The modify syntax also works with modules - no surprise there.
 
 ```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
@@ -1776,7 +1868,7 @@ swap (x : A * B) : B * A
 & r => l
 ```
 
-Of course the coinductive type being defined can appear in types of fields, provided that it stands in a strictly positive position. Note that the distinction between parameters and indices we introduced for inductive types applies to coinductives too, so we only need to write `Stream` instead of `Stream A`.
+Of course the coinductive type being defined can appear in types of fields, provided that it stands in a strictly positive position. Note that the distinction between parameters and indices we introduced for inductive types also applies to coinductive types, so we only need to write `Stream` instead of `Stream A`.
 
 ```
 codata Stream (A : Type) : Type
