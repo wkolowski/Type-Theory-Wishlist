@@ -732,9 +732,9 @@ module
 end
 ```
 
-### Record types with manifest fields.
+### Record types with manifest fields
 
-Our record types can have some fields set in advance, like the following type of points that have `x`, `y` and `z` coordinates, but the `z` coordinate is set to zero.
+Our record types can have some fields set in advance, like the following type of points that have `x`, `y` and `z` coordinates, but the `z` coordinate is set to `0`.
 
 ```
 p : (x y : Nat, z : Nat := 0) := (x => 1, y => 2)
@@ -746,41 +746,21 @@ We can access `z` even though we didn't explicitly set it.
 p-z : Nat := p.z
 ```
 
-In fact, after setting a field, the type of the result reflects this.
+In fact, when setting a field, we can reflect the change in the type of the result.
 
 ```
 translateX (n : Nat) (p : (x y z : Nat)) : (x : Nat := p.x + n, y z : Nat) :=
-  (x => p.x + n & p)
+  (x => p.x + n, _ => p)
 ```
 
 Because we already wrote it at the type level, we may omit it at the term level.
 
 ```
 translateX (n : Nat) (p : (x y z : Nat)) : (x : Nat := p.x + n, y z : Nat) :=
-  (& p)
+  (_ => p)
 ```
 
-### Operations on record types.
-
-We can combine multiple record types with the join operator.
-
-```
-example-join-1 : (outl : A) & (outr : B) = (outl : A, outr : B) := refl
-```
-
-We can also combine record types dependently.
-
-```
-example-join-2: (outl : A) & (outr : B outl) = (outl : A, outr : B outl) := refl
-```
-
-The join operation preserves implicitness of arguments.
-
-```
-example-join-3 : (#outl : A) & (outr : B outl) = (#outl : A, outr : B outl) := refl
-```
-
-#### Renaming.
+### Operations on record types
 
 Given a record type, we can rename its fields to get another record type.
 
@@ -789,21 +769,38 @@ example-rename-1 :
   (x y z : Nat) renaming (x to a) = (a y z : Nat) := refl
 ```
 
-Renaming also works on manifest fields.
+We can rename multiple fields at once.
 
 ```
 example-rename-2 :
+  (x y z : Nat) renaming (x to a, y to b, z to c) = (a b c : Nat) := refl
+```
+
+Renaming also works on manifest fields.
+
+```
+example-rename-3 :
   (x y : Nat, z : Nat := 0) renaming (z to w) = (x y : Nat, w : Nat := 0) := refl
 ```
 
-Setting a field.
+Renaming a field on which another depends is also permitted.
+
+```
+example-rename-4 :
+  (outl : A, outr : B outl) renaming (outl to fst, outr to snd)
+    =
+  (fst : A, snd : B fst)
+    := refl
+```
+
+We can set a field to the given value.
 
 ```
 example-set-1 :
   (x y z : Nat) setting (z := 0) = (x y : Nat, z : Nat := 0) := refl
 ```
 
-Unsetting a field.
+We can also unset a field.
 
 ```
 example-unset-1 :
@@ -813,12 +810,32 @@ example-unset-1 :
 We can remove a field to get a new record type.
 
 ```
-example-removing :
-  (x y z : Nat) removing z = (x y : Nat)
-    := refl
+example-removing : (x y z : Nat) removing z = (x y : Nat) := refl
 ```
 
-### General record type prototyping.
+Record types can be joined together. By "join" we mean a kind of non-disjoint union or pushout - fields which have the same names are collapsed into one, and those that have different names remain separate. In case there are two fields with the same names but different types, the join is illegal.
+
+```
+example-join-1 : (outl : A) & (outr : B) = (outl : A, outr : B) := refl
+```
+
+We can also combine record types dependently.
+
+```
+example-join-2 : (outl : A) & (outr : B outl) = (outl : A, outr : B outl) := refl
+```
+
+We can join records with clashing field names, provided that they are of the same type.
+
+```
+example-join-3 : (x y : Nat) & (y z : Nat) = (x y z : Nat) := refl
+```
+
+The join operation preserves implicitness of arguments.
+
+```
+example-join-4 : (#outl : A) & (outr : B outl) = (#outl : A, outr : B outl) := refl
+```
 
 We can combine joins, renaming, setting, unsetting and removing into a single operation. This way we can create a new record type from a given prototype record type.
 
@@ -830,48 +847,15 @@ example-prototyping :
     := refl
 ```
 
-### Record subtyping.
+Armed with such nice records, we can solve the problem that were posed at the beginning of this section.
 
-We have a subtyping relation between records. This does not mean that we have subtyping in our language (yet; see the directory Subtypes/), this is just for illustration purposes.
-
-Bigger record types are subtypes of smaller record types.
-
-```
-(x y z : Nat) <= (x y : Nat)`
-```
-
-But record types with manifest fields are subtypes of record types without fields set.
-
-```
-(x y : Nat, z : Nat := 0) <= (x y z : Nat)
-```
-
-Record types made with a join are subtypes of their arguments.
-
-```
-r1 & r2 <= r1
-r1 & r2 <= r2
-```
-
-Of course all record types are subtypes of the empty record type.
-
-```
-R <= ()
-```
-
-// TODO: how this works with dependent records?
-
-### The Solution of our Problems
-
-Let's solve the problems we have.
-
-#### Problem 1: globally unique field names.
+### Problem 1: globally unique field names
 
 Record field names need not be globally unique. In case they clash, we can disambiguate manually.
 
 ```
-Point2D : Type := (x y : Nat)
-Point3D : Type := (x y z : Nat)
+Point2D : RType := (x y : Nat)
+Point3D : RType := (x y z : Nat)
 
 // In the REPL:
 > :check x
@@ -908,7 +892,7 @@ bogus (p : (x y z : Nat)) (q : (z w : Nat)) : Nat :=
   x + y + p.z + q.z + w
 ```
 
-#### Problem 2: no definitional uniqueness principle for records.
+### Problem 2: no definitional uniqueness principle for records
 
 Records do have a definitional uniqueness principle!
 
@@ -921,99 +905,115 @@ There's also a uniqueness principle for prototypes.
 
 ```
 uniqueness-principle-for-prototypes
-  (r : (a : A, b : B a)) : r = (& r) := refl
+  (r : (a : A, b : B a)) : r = (_ => r) := refl
 ```
 
-#### Problem 3: hard to prove record equality.
+### Problem 3: hard to prove record equality
 
-This one is probably more a matter of cubical stuff than of records themselves.
+With path types and other cubical features, proving record equality is easy enough.
 
-TODO!
+```
+path-point3D #(a b : (x y z : Nat))
+  (px : a.x = b.x, py : a.y = b.y, pz : a.z = b.z) : a = b :=
+    path i => (x => px i, y => py i, z => pz i)
+```
 
-#### Problem 4: hard to reuse record types.
+### Problem 4: hard to reuse record types
 
-First, we can define record types in a copattern(-like) syntax.
+Let's define record types that represent reflexive, symmetric and transitive relations. We can do that not only in tuple syntax, but also in copattern syntax.
 
 ```
 Refl : RType
-  A : Type
-  R : A -> A -> Prop
-  reflexive : (x : A) -> R x x
+& A : Type
+& R : A -> A -> Prop
+& reflexive : (x : A) -> R x x
 
 Sym : RType
-  A : Type
-  R : A -> A -> Prop
-  symmetric : (x y : A) -> R x y -> R y x
+& A : Type
+& R : A -> A -> Prop
+& symmetric : (x y : A) -> R x y -> R y x
 
 Trans : RType
-  A : Type
-  R : A -> A -> Prop
-  transitive : (x y z : A) -> R x y -> R y z -> R x z
+& A : Type
+& R : A -> A -> Prop
+& transitive : (x y z : A) -> R x y -> R y z -> R x z
 ```
 
-Record types can be joined together. By "join" we mean a kind of non-disjoint union or pushout - fields which have the same names are collapsed into one, and those that have different names remain separate.
+We can use the join operation to combine `Refl`, `Sym` and `Trans` into `Equiv`, which represents the type of equivalence relations.
 
 ```
-Equiv' : RType := Refl & Sym & Trans
+Equiv : RType := Refl & Sym & Trans
 ```
 
 The above join is equal to the manually encoded record type that represents equivalence relations.
 
 ```
 Equiv' : RType
-  A : Type
-  R : A -> A -> Prop
-  reflexive : (x : A) -> R x x
-  symmetric : (x y : A) -> R x y -> R y x
-  transitive : (x y z : A) -> R x y -> R y z -> R x z
+& A : Type
+& R : A -> A -> Prop
+& reflexive : (x : A) -> R x x
+& symmetric : (x y : A) -> R x y -> R y x
+& transitive : (x y z : A) -> R x y -> R y z -> R x z
 
 Equiv-is-Refl-Sym-Trans :
   Equiv = Equiv' := refl
 ```
 
-#### Problems 5: telescopization stemming from lack of inheritance.
+### Problems 5: telescopization stemming from lack of inheritance
 
-We can also use record types as prototypes to construct other record types.
+We can also use record types as prototypes to construct other record types. First let's define `Magma`s, i.e. binary operations together with their carrier, and `Pointed` types, i.e. a pair that consists of a type and a term of that type.
 
 ```
 Magma : RType
-  A : Type
-  op : A -> A -> A
+& A : Type
+& op : A -> A -> A
+
+Pointed : RType
+& A : Type
+& point : A
 ```
 
-Here a semigroup is a magma extended with associativity. `Pointed` represents a pointed type, i.e. a type together with its element.
+A `Semigroup` is a magma whose operation is associative. To define `Semigroup`, we (dependently!) join `Magma` with a single-field record that represents associativity of `op`.
 
 ```
 Semigroup : RType :=
   Magma &
-  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
-
-Pointed : RType
-  A : Type
-  point : A
+  (assoc : (x y z : A) -> op (op x y) z = op x (op y z))
 ```
 
-We can also rename fields during the join.
+We can also do this in copattern syntax - here inheritance is denoted with `&&`. TODO: rethink.
 
 ```
-Monoid : RType :=
-  Semigroup &
-  (Pointed renaming point to id) &
-  idl : (x : A) -> op id x = x
-  idr : (x : A) -> op x id = x
+Semigroup : RType
+&& Magma
+& assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+```
 
+We can now define `Monoid` by joining `Semigroup`, `Pointed` and adding the other required laws by hand. Note that can rename fields during the join.
+
+```
+Monoid : RType 
+&& Semigroup
+&& Pointed renaming point to id
+& idl : (x : A) -> op id x = x
+& idr : (x : A) -> op x id = x
+```
+
+The type of `Monoid`s defined in this way is computationally equal to the below one, defined manually.
+
+```
 Monoid' : RType
-  A : Type
-  op : A -> A -> A
-  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
-  id : A
-  idl : (x : A) -> op id x = x
-  idr : (x : A) -> op x id = x
+& A : Type
+& op : A -> A -> A
+& assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+& id : A
+& idl : (x : A) -> op id x = x
+& idr : (x : A) -> op x id = x
 
 Monoids-same : Monoid = Monoid' := refl
 ```
 
-#### Problem 6: hard to unbundle record types into typeclasses.
+### Problem 6: hard to unbundle record types into typeclasses
 
 We can easily obtain a typeclass by setting a field in the `Monoid` type. For now, we ignore the matter of what a typeclass is.
 
@@ -1026,11 +1026,11 @@ This is the result of the above definition written more explicitly.
 
 ```
 MonoidClass' (A : Type) : RType
-  op : A -> A -> A
-  assoc : (x y z : A) -> op (op x y) z = op x (op y z)
-  id : A
-  idl : (x : A) -> op id x = x
-  idr : (x : A) -> op x id = x
+& op : A -> A -> A
+& assoc : (x y z : A) -> op (op x y) z = op x (op y z)
+& id : A
+& idl : (x : A) -> op id x = x
+& idr : (x : A) -> op x id = x
 
 MonoidClass-MonoidClass' : MonoidClass = MonoidClass' := refl
 ```
@@ -1038,14 +1038,14 @@ MonoidClass-MonoidClass' : MonoidClass = MonoidClass' := refl
 We can also reverse these operations and bundle MonoidClass' to get a record type.
 
 ```
-Monoid' : RType :=
-  A : Type
-  & MonoidClass' A
+Monoid' : RType
+& A : Type
+&& MonoidClass' A
 
 Monoid-Monoid' : Monoid = Monoid' := refl
 ```
 
-#### Problem 7: currying/uncurrying of functions and the relationship between records and function arguments.
+### Problem 7: currying/uncurrying of functions and the relationship between records and function arguments
 
 Since we have implicit record opening and don't use the bound variable `p` at all, maybe we shouldn't need to write it?
 
@@ -1072,7 +1072,7 @@ Let's see in the repl:
 > dist4 : (x y z : Nat) -> Nat
 ```
 
-We can convert between these two representations (arguments collected into a record and freestanding arguments) using the currying/uncurrying operator &.
+We can convert between these two representations (arguments collected into a record and freestanding arguments) using the currying/uncurrying operator `&`.
 
 ```
 > :check &dist1 : (x y z : Nat) -> Nat
@@ -1106,6 +1106,10 @@ TODO:
 - How to turn typing contexts into record types? This would free us from some duplication at the meta level. But beware! This is not the same idea as "first-class typing contexts" and certainly not the same as "first-class evaluation contexts".
 - Rethink modify syntax for modules.
 - Rethink whether the prototype should really go at the end of the record definition.
+- Deduplicate explanations of `open` syntax in the first three sections and then in Problem 1 section.
+- How exactly do dependent records work? We need more examples.
+- Discuss the sort of record types and how to declare record types.
+- Discuss implicit record fields.
 
 ## Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
@@ -2693,6 +2697,35 @@ translateX (n : Nat) (r : Sub (x : Nat)) : R :=
 ```
 
 Here we translate the `x`-coordinate by `n` in any record that has a field named `x`, while making sure to return a record of the same type without truncating it.
+
+### Record subtyping (TODO)
+
+We have a subtyping relation between records. This does not mean that we have subtyping in our language (yet; see the directory Subtypes/), this is just for illustration purposes.
+
+Bigger record types are subtypes of smaller record types.
+
+```
+(x y z : Nat) <= (x y : Nat)
+```
+
+But record types with manifest fields are subtypes of record types without fields set.
+
+```
+(x y : Nat, z : Nat := 0) <= (x y z : Nat)
+```
+
+Record types made with a join are subtypes of their arguments.
+
+```
+r1 & r2 <= r1
+r1 & r2 <= r2
+```
+
+Of course all record types are subtypes of the empty record type.
+
+```
+R <= ()
+```
 
 Papers:
 - [Subtype Universes](http://www.cs.rhul.ac.uk/home/zhaohui/Subtype%20Universes.pdf)
