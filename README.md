@@ -4,7 +4,7 @@ This repo is a playground in which I'm trying to invent a better type theory/pro
 
 ## Table of Contents <a id="toc"></a>
 
-When reading on GitHub, you can click in the upepr-left corner, near the file name, for an always-up-to-date table of contents.
+When reading on GitHub, you can click in the upper-left corner, near the file name, for an always-up-to-date table of contents.
 
 1. [The Guiding Principle of Syntax](#guiding-principle)
 1. [Basic syntax](#basic-syntax)
@@ -1523,6 +1523,7 @@ Papers:
 
 TODO:
 - Come up with more examples of useful Constructors that Compute.
+- Rename this whole business to "Computational Inductive Types".
 
 ### [Higher Inductive Types](Induction/HIT) <a id="HIT"></a> [↩](#toc)
 
@@ -2740,106 +2741,182 @@ TODO:
 
 ## [Type-level rewriting](Rewriting) <a id="type-level-rewriting"></a> [↩](#toc)
 
-TODO!
+Computational equality is good, so we would like to have more of it. We have already made `Empty` and `Unit` into strict propositions to make our lives easier - nobody likes having to pattern match on `u : Unit` just to learn that it's equal to `unit` (what a surprise!), just as nobody likes having to infer that two proofs of `Empty` are equal from contradiction.
 
-The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's Prop, but I think this shouldn't be a problem.
+But since computational equality is so good, we would like to have more of it also at the type level. In this section we list some additional computational equalities that we would like `Empty`, `Unit` and `=` to satisfy.
 
-We have made `Empty` and `Unit` into strict propositions to make our lives easier - nobody likes having to pattern match on `u : Unit` just to learn that it's equal to `unit` (what a surprise!), just as nobody likes having to infer that two proofs of `Empty` are equal from contradiction.
+Let's start with some computational properties of `Empty` and `+` (i.e. the usual inductive sum with `inl` and `inr` as constructors).
 
-But since we are greedy type-theoretic bastards, we would like to have more computational equalities than that. So, `Empty` enjoys some special computational properties at the type-level and also the corresponding properties at the term level.
-
-`Empty` lives in the lowest predicative universe and at h-level 1 (i.e. in the universe of strict propositions).
-
-```
-> :check Empty
-> Empty : Type (h = 1, p = 0)
-```
-
-Some computational properties of `Empty` and `Sum`.
+`Empty` is the left identity of `+`, i.e. `Empty + A = A`. In ordinary type theory this is easy to prove (as an equivalence) and with univalence also as an actual equality, but it's also a little bothersome, so we make it hold by computation.
 
 ```
 Sum-Empty-l : Empty + A = A := refl
+```
+
+But this additional computational equality, if left alone, would break important properties of our type theory, like preservation of types by computation, so we also need to add some more computation at the term level to avoid it. Namely, since `Empty + A` computes to `A`, we need to know, for terms of type `Empty + A`, what terms of type `A` they compute to.
+
+```
 Sum-Empty-l-inl (e : Empty) : (inl e : Empty + A) = (abort e : A) := refl
 Sum-Empty-l-inr (a : A) : (inr a : Empty + A) = a := refl
+```
 
+Of course `Empty` is also the right identity of `+`, so we have analogous computational equalities for that case too.
+
+```
 Sum-Empty-r : A + Empty = A := refl
 Sum-Empty-r-inl (a : A) : (inl a : A + Empty) = a := refl
 Sum-Empty-r-inr (e : Empty) : (inr e : A + Empty) = (abort e : A) := refl
 ```
 
-Some computational properties of `Empty` and `Prod`.
+For `*` (i.e. the binary product type), `Empty` is a left annihilator.
 
 ```
 Prod-Empty-l : Empty * A = Empty := refl
-Prod-Empty-l' (e : Empty) (a : A) : (e, a) = e := refl
-Prod-Empty-l'' (x : Empty * A) : x = x.outl := refl
+```
 
+But again, this equation alone breaks type preservation, so we need to add some more to restore this property.
+
+```
+Prod-Empty-l-outl (x : Empty * A) : x = x.outl := refl
+```
+
+We have analogous computational equalities for `*` and `Empty` on the right too.
+
+```
 Prod-Empty-r : A * Empty = Empty := refl
-Prod-Empty-r' (e : Empty) (a : A) : (a, e) = e := refl
-Prod-Empty-r'' (x : A * Empty) : x = x.outr := refl
+Prod-Empty-r-outr (x : A * Empty) : x = x.outr := refl
 ```
 
-These properties generalize to records. TODO: stating this property requires extensible records, which are experimental.
+The above annihilation properties generalize to records.
 
 ```
-Record-Empty (R : RType) : (e : Empty & R) = Empty := refl
+Record-Empty (R : RType) : (e : Empty) & R = Empty := refl
+Record-Empty-proj (R : RType) (x : (e : Empty) & R) : x = x.e := refl
 ```
 
-These are not the only special computational properties of `Empty` - there's more.
+These are not the only special computational properties of `Empty` - there are more.
+
+Function types with `Empty` domain are the same as `Unit`.
 
 ```
 Fun-Empty : Empty -> A = Unit := refl
 Fun-Empty' (f : Empty -> A) : f = unit := refl
+```
 
+`Empty` is equal to `Empty` in a single canonical way.
+
+```
 Path-Empty : (Empty = Empty) = Unit := refl
+Path-Empty' (p : Empty = Empty) : p = unit := refl
+```
 
+The nominal function with `Empty` codomain is `Empty`.
+
+```
 Nabla-Empty : (∇ α : A. Empty) = Empty := refl
+```
 
+But stating the appropriate term-level computation rule is a little difficult. First we need to define by pattern matching a function which pulls `Empty` from under the nabla.
+
+```
+anonymize-Empty (x : ∇ α : A. Empty) : Empty :=
+| ν α. e => e
+```
+
+And only then we can state that every nominal function with `Empty` codomain is equal to its anonymization.
+
+```
+Nabla-Empty' (x : ∇ α : A. Empty) : x = anonymize-Empty x := refl
+```
+
+There's not much sense in putting refinements on `Empty`.
+
+```
 Ref-Empty (P : Empty -> Prop) : {e : Empty | P e} = Empty := refl
-Singleton-Empty (e : Empty) : Singleton Empty e = Empty := refl
+```
 
+For the term-level computational equality, similarly to what was the case for nominal function type, we first need to have a function which gets rid of the refinement, and then state that every term of the refined `Empty` type is equal to an unrefined one.
+
+```
+// No definition.
+unrefine #(A : Type, P : A -> Prop) : {a : A | P a} -> A
+
+Ref-Empty' (P : Empty -> Prop) (x : {e : Empty | P e}) : x = unrefine x := refl
+```
+
+Singletons made from a term of type `Empty` are equal to `Empty` and their values are equal to the term they were made from.
+
+```
+Singleton-Empty (e : Empty) : Singleton Empty e = Empty := refl
+Singleton-Empty' #(e : Empty) (x : Singleton Empty e) : x = e := refl
+```
+
+Finally, `Empty` has only one subtype (namely itself), so its universe of subtype is equal to `Unit`, and its only inhabitant is equal to `unit`.
+
+```
 Sub-Empty : Sub Empty = Unit := refl
 Sub-Empty' (X : Sub Empty) (x : X) : x = unit := refl
 ```
 
-`Unit` lives in the lowest predicative universe and at h-level 0 (i.e. in the universe of contractible types).
+Another type that enjoys special computational properties is `Unit`.
 
-```
-> :check Unit
-> Unit : Type (h = 0, p = 0)
-```
-
-`Unit` enjoys some special computational properties at the type level to make our lives easier.
+First, `Unit` is the (left and right) identity of `*`.
 
 ```
 Prod-Unit-l : Unit * A = A := refl
-Prod-Unit-l' (u : Unit) (a : A) : (u, a) = a := refl
+Prod-Unit-l-outr (x : Unit * A) : x = x.outr := refl
 
 Prod-Unit-r : A * Unit = A := refl
-Prod-Unit-r' (a : A) (u : Unit) : (a, u) = a := refl
+Prod-Unit-r-outl (x : A * Unit) : x = x.outl := refl
 ```
 
-These properties generalize to records. TODO: stating this property requires extensible records, which are experimental.
+These properties generalize to records.
 
 ```
-Record-Unit-r (R : RType) : (u : Unit & R) = R := refl
+Record-Unit (R : RType) : (u : Unit) & R = R := refl
+Record-Unit' (R : RType) (x : (u : Unit) & R) : x ={R} (_ => x) := refl
 ```
 
-These are not the only special computational properties of `Unit` - there's more.
+Function types with `Unit` domain are equal to just their codomain.
 
 ```
 Fun-Unit-Dom : Unit -> A = A := refl
 Fun-Unit-Dom' (f : Unit -> A) : f = f unit := refl
+```
 
+Function types with `Unit` codomain are equal to `Unit`.
+
+```
 Fun-Unit-Cod : A -> Unit = Unit := refl
 Fun-Unit-Cod' (f : A -> Unit) : f = unit := refl
+```
 
+`Unit` is equal to `Unit` is a single canonical way.
+
+```
 Path-Unit : (Unit = Unit) = Unit := refl
+Path-Unit' (p : Unit = Unit) : p = unit := refl
+```
 
+Nominal function types with `Unit` codomain are equal to `Unit`. This time, contrary to what was the case for `Empty`, we don't need any kind of anonymization function.
+
+```
 Nabla-Unit : (∇ α : A. Unit) = Unit := refl
+Nabla-Unit' (x : ∇ α : A. Unit) : x = unit := refl
+```
+
+TODO: maybe we shouldn't get rid of refinement after all?
+
+```
+// No definition.
+unrefine #(A : Type, P : A -> Prop) : {a : A | P a} -> A
 
 Ref-Unit (P : Unit -> Prop) : {u : Unit | P u} = Unit := refl
-Sub-Unit : Sub Unit = Bool := refl
+Ref-Unit' (P : Unit -> Prop) (x : {u : Unit | P u}) : x = unrefine x := refl
+```
+
+```
+Sub-Unit : Sub Unit = Prop := refl
 ```
 
 Some type-level computational properties of Paths.
@@ -2850,11 +2927,11 @@ Path-outl #(x y : A * B) (p : x = y) : outl x = outl y := outl p
 Path-outr #(x y : A * B) (p : x = y) : outr x = outr y := outr p
 ```
 
-These properties generalize to records. TODO: stating this requires extensible records, which are experimental. `x removing a` is somewhat experimental too. The story for coinductives is probably similar.
+These properties generalize to records. `x removing a` is somewhat experimental too.
 
 ```
-Path-Rec (A : Type) (R : RType) (x y : (a : A & R)) :
-  (x = y) = (a : x.a = y.a & x removing a = y removing a) := refl
+Path-Rec #(A : Type, R : RType) (x y : (a : A) & R) :
+  (x = y) = (a : x.a = y.a) & (x removing a = y removing a) := refl
 ```
 
 ```
@@ -2877,8 +2954,14 @@ The rest.
 ```
 Path-Nabla (x y : ∇ α : A. B α) : (x = y) = ν α. x @ α = y @ α := refl
 Path-Concr #(x y : ∇ α : A. B α) (p : x = y) (α : Name A) : x @ α = y @ α := p @ α
+```
 
+```
 Path-Ref (x y : {a : A | P a}) : (x = y) = (x ={A} y) := refl
+```
+
+```
+Path-Singleton #(A : Type, x y : A) : (Singleton A x = Singleton A y) = (x = y) := refl
 Path-Singleton #(A : Type, a : A) (x y : Singleton A a) : (x = y) = Unit := refl
 ```
 
@@ -2886,7 +2969,9 @@ Also known as the Univalence Principle :)
 
 ```
 Path-Type (A B : Type) : (A = B) = Equiv A B := refl
+```
 
+```
 Path-Sub #(A : Type) (X Y : Sub A) : (X ={Sub A} Y) = (X ={Type} Y) := refl
 ```
 
@@ -2907,6 +2992,8 @@ Path-inr (x y : B) : (inr x = inr y) = (x = y) := refl
 
 Of course we don't want to confine ourselves to just built-in computational equalities for `Empty` and `Unit` - we want to be able to define custom types with custom equalities of this kind. One way to do this is with rewrite rules.
 
+The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's `Prop`, but I think this shouldn't be a problem.
+
 Book:
 - [Term Rewriting And All That](https://www21.in.tum.de/~nipkow/TRaAT/)
 
@@ -2921,6 +3008,7 @@ TODO:
 - Everything.
 - Find how these types will be declared.
 - Make sure that it all makes sense.
+- `unrefine` for refinement types, a pattern for the `Empty` type.
 
 ## Tooling <a id="tooling"></a> [↩](#toc)
 
@@ -2936,19 +3024,6 @@ This wishlist is not comprehensive. We could probably do better (i.e. have more 
 ### Typed Holes
 
 Holes are a way of leaving a part of a term unfilled as a kind of local "axiom". They can be later revisited with the help of the language's type inference, filled automatically or serve as names for goals in the proving mode. More ambitious works try to use holes for accomodating ill-typed, ill-formed and incomplete (yet unwritten) programs into the semantics.
-
-We would get, let's call them, Partial types - something like Singleton Types.
-
-Examples:
-1. `{x : nat ^^^ x = S (S ?n)}` - type of naturals that definitionally compute to `2 + something`. How do we compute with this? Dunno, but maybe `coe : {x : nat ^^^ _} -> nat`, with the rule `coe x => S (S ?n)`, whatever that means.
-2. `{l : list A ^^^ l = []}` - singleton type of empty lists.
-3. `{p : nat * nat ^^^ fst p = 42}` - type of pairs of naturals whose left component is definitionally equal to `42`, i.e. `fst (coe p) = 42`.
-4. `{x : nat + bool ^^^ x = inr ?b}` - sum type of `nat` and `bool`, but its element are definitionally equal to `inr something`, so that `match coe x with | inl a => f a | inr b => g b end` computes to `g ?b`.
-5. `{s : Stream nat ^^^ hd s = 42}` - type of streams whose head is `42`.
-6. `{f : bool -> nat ^^^ f true = 42}` - type of functions from `bool` to `nat` that compute to `42` on `true`.
-7. `{f : bool -> nat ^^^ f true = f false}` - type of definitionally weakly constant functions from `bool` to `nat`.
-8. `{f : bool -> nat ^^^ f _ = 42}` - type of definitionally strongly constant functions that always returns `42`.
-9. Maybe we need intersection and union types for this?
 
 TODO: Typed Holes have something to do with First-Class Patterns. And what if we could make typed holes first-class?
 
