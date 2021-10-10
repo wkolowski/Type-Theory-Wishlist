@@ -36,7 +36,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Singleton Types (TODO)](#singletons)
 1. [Universes](#universes)
 1. [Subtyping, coercions and subtype universes](#subtyping)
-1. [Type-level rewriting (TODO)](#type-level-rewriting)
+1. [Type-level rewriting](#type-level-rewriting)
 1. [Tooling (TODO)](#tooling)
 1. [Missing features (TODO)](#missing-features)
 
@@ -1119,6 +1119,7 @@ TODO:
 - Rethink whether `$` is a good syntax for record type prototyping. Make sure it does not collide with `$=>` and with `$` used for complex function application.
 - Decide whether prototype copatterns should be at the beginning or at the end.
 - Rethink `RType` and how to make records first-class.
+- Add a term-level `removing` operation.
 
 ## Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
@@ -2745,6 +2746,8 @@ Computational equality is good, so we would like to have more of it. We have alr
 
 But since computational equality is so good, we would like to have more of it also at the type level. In this section we list some additional computational equalities that we would like `Empty`, `Unit` and `=` to satisfy.
 
+### Computational properties of the `Empty` type
+
 Let's start with some computational properties of `Empty` and `+` (i.e. the usual inductive sum with `inl` and `inr` as constructors).
 
 `Empty` is the left identity of `+`, i.e. `Empty + A = A`. In ordinary type theory this is easy to prove (as an equivalence) and with univalence also as an actual equality, but it's also a little bothersome, so we make it hold by computation.
@@ -2819,7 +2822,7 @@ Nabla-Empty : (∇ α : A. Empty) = Empty := refl
 But stating the appropriate term-level computation rule is a little difficult. First we need to define by pattern matching a function which pulls `Empty` from under the nabla.
 
 ```
-anonymize-Empty (x : ∇ α : A. Empty) : Empty :=
+anonymize-Empty (x : ∇ α : A. Empty) : Empty
 | ν α. e => e
 ```
 
@@ -2858,9 +2861,11 @@ Sub-Empty : Sub Empty = Unit := refl
 Sub-Empty' (X : Sub Empty) (x : X) : x = unit := refl
 ```
 
+### Computational properties of the `Unit` type
+
 Another type that enjoys special computational properties is `Unit`.
 
-First, `Unit` is the (left and right) identity of `*`.
+First and foremost, `Unit` is the (left and right) identity of `*`.
 
 ```
 Prod-Unit-l : Unit * A = A := refl
@@ -2905,71 +2910,94 @@ Nabla-Unit : (∇ α : A. Unit) = Unit := refl
 Nabla-Unit' (x : ∇ α : A. Unit) : x = unit := refl
 ```
 
-TODO: maybe we shouldn't get rid of refinement after all?
+`Unit` with refinements put on it is computationally equal to `Unit`.
 
 ```
-// No definition.
-unrefine #(A : Type, P : A -> Prop) : {a : A | P a} -> A
-
 Ref-Unit (P : Unit -> Prop) : {u : Unit | P u} = Unit := refl
 Ref-Unit' (P : Unit -> Prop) (x : {u : Unit | P u}) : x = unrefine x := refl
 ```
 
-```
-Sub-Unit : Sub Unit = Prop := refl
-```
+### Computational properties of the Path type
 
-Some type-level computational properties of Paths.
+Paths between pairs are pairs of paths.
 
 ```
 Path-Prod (x y : A * B) : (x = y) = (outl x = outl y * outr x = outr y) := refl
-Path-outl #(x y : A * B) (p : x = y) : outl x = outl y := outl p
-Path-outr #(x y : A * B) (p : x = y) : outr x = outr y := outr p
+Path-Prod' #(x y : A * B) (p : x = y)
+  : p = (path i => outl (p i), path i => outr (p i)) := refl
 ```
 
-These properties generalize to records. `x removing a` is somewhat experimental too.
+Paths between records are records of paths.
 
 ```
-Path-Rec #(A : Type, R : RType) (x y : (a : A) & R) :
-  (x = y) = (a : x.a = y.a) & (x removing a = y removing a) := refl
+Path-Rec #(A : Type, R : RType) (x y : (a : A) & R)
+  : (x = y) = (a : x.a = y.a) & (r : x removing a = y removing a) := refl
+Path-Rec' #(A : Type, R : RType) (x y : (a : A) & R) (p : x = y)
+  : p = (a => path i => a (p i), r => path i => p i removing a) := refl
 ```
+
+Paths between functions are homotopies (i.e. functions that return paths in the codomain).
 
 ```
 Path-Fun (f g : (x : A) -> B x) : (f = g) = ((x : A) -> f x = g x) := refl
-Path-App #(f g : (x : A) -> B x) (p : f = g) (x : A) : f x = g x := p x
-
-Path-Empty (e1 e2 : Empty) : (e1 = e2) = Unit := refl
-
-Path-Unit (u1 u2 : Unit) : (u1 = u2) = Unit := refl
+Path-Fun' #(f g : (x : A) -> B x) (p : f = g) : p = fun x : A => path i => p i x := refl
 ```
 
-Not sure about this one, but maybe.
+`Empty` is a strict proposition, so all paths between its terms are equal.
+
+```
+Path-Empty (e1 e2 : Empty) : (e1 = e2) = Unit := refl
+Path-Empty' #(e1 e2 : Empty) (p : e1 = e2) : p = unit := refl
+```
+
+The same is true for `Unit`.
+
+```
+Path-Unit (u1 u2 : Unit) : (u1 = u2) = Unit := refl
+Path-Unit' #(u1 u2 : Unit) (p : u1 = u2) : p = unit := refl
+```
+
+Paths between paths are squares.
 
 ```
 Path-Path #(x y : A) (p q : x = y) : (p = q) = (path i j => p i = q j)
 ```
 
-The rest.
+Paths between nominal functions are nominal functions that return paths.
 
 ```
-Path-Nabla (x y : ∇ α : A. B α) : (x = y) = ν α. x @ α = y @ α := refl
-Path-Concr #(x y : ∇ α : A. B α) (p : x = y) (α : Name A) : x @ α = y @ α := p @ α
+Path-Nabla (x y : ∇ α : A. B α) : (x = y) = ∇ α. x @ α = y @ α := refl
+Path-Nabla' #(x y : ∇ α : A. B α) (p : x = y) : p = ν α. path i => p i @ α
 ```
 
-```
-Path-Ref (x y : {a : A | P a}) : (x = y) = (x ={A} y) := refl
-```
+Paths between terms of a refinement type are the same as paths in its base type, after dropping the refinement.
 
 ```
-Path-Singleton #(A : Type, x y : A) : (Singleton A x = Singleton A y) = (x = y) := refl
+Path-Ref (x y : {a : A | P a}) : (x = y) = (unrefine x ={A} unrefine y) := refl
+Path-Ref #(x y : {a : A | P a}) (p : x = y) : p = path i => unrefine (p i)
+```
+
+Paths in singleton types are unique.
+
+```
 Path-Singleton #(A : Type, a : A) (x y : Singleton A a) : (x = y) = Unit := refl
+Path-Singleton' #(A : Type, a : A, x y : Singleton A a) (p : x = y) : p = unit := refl
 ```
 
-Also known as the Univalence Principle :)
+Because all singletons are, well, singletons, paths between singleton types are equal to `Unit`.
+
+```
+Path-Singleton #(A : Type, x y : A) : (Singleton A x = Singleton A y) = Unit := refl
+Path-Singleton #(A : Type, x y : A) (p : Singleton A x = Singleton A y) : p = unit := refl
+```
+
+Ladies and gentlemen, the venerable champion, Univalence Principle!
 
 ```
 Path-Type (A B : Type) : (A = B) = Equiv A B := refl
 ```
+
+Paths between subtypes of some type are the same as paths between these types in `Type`.
 
 ```
 Path-Sub #(A : Type) (X Y : Sub A) : (X ={Sub A} Y) = (X ={Type} Y) := refl
@@ -2977,22 +3005,9 @@ Path-Sub #(A : Type) (X Y : Sub A) : (X ={Sub A} Y) = (X ={Type} Y) := refl
 
 Inductives are a bit more problematic. Usually it's easy to prove a characterization of paths using the encode-decode method, but stating how this will work in general is troublesome.
 
-```
-Path-Sum (x y : A + B) :
-  (x = y) =
-  match x, y with
-  | inl a1, inl a2 => a1 = a2
-  | inr b1, inr b2 => b1 = b2
-  | _     , _      => Empty
-  := refl
+Of course we don't want to confine ourselves to just built-in computational equalities for `Empty`, `Unit` and path types - we want to be able to define custom types with custom equalities of this kind.
 
-Path-inl (x y : A) : (inl x = inl y) = (x = y) := refl
-Path-inr (x y : B) : (inr x = inr y) = (x = y) := refl
-```
-
-Of course we don't want to confine ourselves to just built-in computational equalities for `Empty` and `Unit` - we want to be able to define custom types with custom equalities of this kind. One way to do this is with rewrite rules.
-
-The additional computational properties can be realized using rewrite rules, whose prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's `Prop`, but I think this shouldn't be a problem.
+One way to do this is with rewrite rules, which can also be used to realize the additional computational properties we have already seen. The prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's `Prop`, but I think this shouldn't be a problem.
 
 Book:
 - [Term Rewriting And All That](https://www21.in.tum.de/~nipkow/TRaAT/)
@@ -3002,13 +3017,16 @@ Papers:
 - [The Taming of the Rew: A Type Theory with Computational Assumptions](https://hal.archives-ouvertes.fr/hal-02901011v2/document)
 - [The Multiverse: Logical Modularity for Proof Assistants](https://arxiv.org/pdf/2108.10259.pdf)
 
-**Status: wild speculations.**
+**Status: very wild speculations.**
 
 TODO:
 - Everything.
 - Find how these types will be declared.
 - Make sure that it all makes sense.
 - `unrefine` for refinement types, a pattern for the `Empty` type.
+- Maybe we shouldn't get rid of refinements on `Unit` (i.e. by additing more computational equalities)?
+- Revisit "paths between paths are squares".
+- Write a section on general rewriting in type theory.
 
 ## Tooling <a id="tooling"></a> [↩](#toc)
 
@@ -3025,8 +3043,9 @@ This wishlist is not comprehensive. We could probably do better (i.e. have more 
 
 Holes are a way of leaving a part of a term unfilled as a kind of local "axiom". They can be later revisited with the help of the language's type inference, filled automatically or serve as names for goals in the proving mode. More ambitious works try to use holes for accomodating ill-typed, ill-formed and incomplete (yet unwritten) programs into the semantics.
 
-TODO: Typed Holes have something to do with First-Class Patterns. And what if we could make typed holes first-class?
+Other missing features:
+- Quantitative Type Theory
+- Algebraic Effects
 
-### Quantitative Type Theory
-
-### Algebraic Effects
+TODO:
+- Typed Holes have something to do with First-Class Patterns. And what if we could make typed holes first-class?
