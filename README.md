@@ -1253,10 +1253,11 @@ filter (p : A -> Bool) : List A -> List A
 TODO:
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments and `@` used for name concretion.
 - Describe the fact that constructor names need not be unique and that every inductive type has its own namespace. The same for coinductives.
+- Mention discriminators (like `Cons?` in F*) and constructor projections (like `Cons?.hd` in F*).
 
 ## Pattern matching on steroids <a id="pattern-matching"></a> [↩](#toc)
 
-Besides the usual pattern matching, we also allow some extensions which significantly increase it's power:
+Besides the usual pattern matching, we also allow some extensions which significantly increase its power:
 - [Overlapping and Order-Independent Patterns](#overlapping-and-order-independent-patterns)
 - [Decidable Equality Patterns](#decidable-equality-patterns)
 
@@ -2424,13 +2425,24 @@ F* also has some additional nice features related to refinement types that make 
   - `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
 - Note that the above are written in F* syntax and require refinement types to get anywhere.
 
-Papers:
-- TODO
+Tutorials and notes:
+- [Programming with Refinement Types: An Introduction to LiquidHaskell](https://ucsd-progsys.github.io/liquidhaskell-tutorial/) - a nice introduction to the Liquid Haskell language, which is basically Haskell + refinement types
+- [Proof-Oriented Programming in F*](https://www.fstar-lang.org/tutorial/) - the new F* tutorial. Looks bad now (in comparison with the old tutorial), but will probably get better in the future.
+- [Principles of Type Refinement (OPLSS 2016)](http://noamz.org/oplss16/refinements-notes.pdf) - a theoretical tutorial on refinement types and their relationship with subtyping and intersection types
+- [Refinement Types](https://arxiv.org/pdf/2010.07763.pdf) - a tutorial that shows how to implement a simple functional language with refinement types
+- [INTEGRATING REFINEMENT AND DEPENDENT TYPES: A FELLOWSHIP REPORT](https://www.tweag.io/blog/2021-02-05-refinement-types/) - the only note I can find which discusses the fact that dependent types subsume refinement types
 
-**Status: implemented in F\*, works pretty well there.**
+Papers:
+- [Refinement Types for ML](https://www.cs.cmu.edu/~fp/papers/pldi91.pdf)
+- [Liquid Types](http://goto.ucsd.edu/~rjhala/liquid/liquid_types.pdf)
+- [Refinement Types For Haskell](https://goto.ucsd.edu/~nvazou/refinement_types_for_haskell.pdf)
+- [Abstract Refinement Types](http://goto.ucsd.edu/~rjhala/liquid/abstract_refinement_types.pdf)
+- [Functional Extensionality for Refinement Types](https://arxiv.org/pdf/2103.02177.pdf)
+- [Refinements of Futures Past: Higher-Order Specification with Implicit Refinement Types](https://drops.dagstuhl.de/opus/volltexte/2021/14061/pdf/LIPIcs-ECOOP-2021-18.pdf)
+
+**Status: the only dependently-typed language with refinement types I know is F\*. The refinement types work pretty well there.**
 
 TODO:
-- Hunt for papers.
 - Figure out relation between refinement types and dependent records with fields in `Prop`.
 - Figure out relationship between refinement types and inductive/coinductive types.
 
