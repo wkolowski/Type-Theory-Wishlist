@@ -2440,6 +2440,9 @@ Papers:
 - [Functional Extensionality for Refinement Types](https://arxiv.org/pdf/2103.02177.pdf)
 - [Refinements of Futures Past: Higher-Order Specification with Implicit Refinement Types](https://drops.dagstuhl.de/opus/volltexte/2021/14061/pdf/LIPIcs-ECOOP-2021-18.pdf)
 
+Tangentially related blog posts:
+- [Poltergeist Types](https://gallais.github.io/blog/poltergeist-types)
+
 **Status: the only dependently-typed language with refinement types I know is F\*. The refinement types work pretty well there.**
 
 TODO:
@@ -3056,8 +3059,31 @@ This wishlist is not comprehensive. We could probably do better (i.e. have more 
 Holes are a way of leaving a part of a term unfilled as a kind of local "axiom". They can be later revisited with the help of the language's type inference, filled automatically or serve as names for goals in the proving mode. More ambitious works try to use holes for accomodating ill-typed, ill-formed and incomplete (yet unwritten) programs into the semantics.
 
 Other missing features:
-- Quantitative Type Theory
 - Algebraic Effects
 
 TODO:
 - Typed Holes have something to do with First-Class Patterns. And what if we could make typed holes first-class?
+
+### Quantitative Type Theory
+
+Papers:
+- [I Got Plenty o’ Nuttin’](https://personal.cis.strath.ac.uk/conor.mcbride/PlentyO-CR.pdf)
+- [Syntax and Semantics of Quantitative Type Theory](https://bentnib.org/quantitative-type-theory.pdf)
+
+
+### Graded Type Theory
+
+Papers:
+- [A Graded Dependent Type System with a Usage-Aware Semantics (extended version)](https://arxiv.org/pdf/2011.04070.pdf)
+- [Graded Modal Dependent Type Theory](https://arxiv.org/pdf/2010.13163.pdf)
+- [Combining Effects and Coeffects via Grading](https://cs-people.bu.edu/gaboardi/publication/GaboardiEtAlIicfp16.pdf)
+- [Quantitative Program Reasoning with Graded Modal Types](https://metatheorem.org/includes/pubs/ICFP19.pdf)
+- [Idris 2: Quantitative Type Theory in Practice](https://arxiv.org/pdf/2104.00480.pdf)
+
+Prototypes:
+- [Granule](https://github.com/granule-project/granule/blob/main/examples/intro.gr.md) (this link leads to a nice intro with actual code)
+
+Tangential papers (on graded monads):
+- [Unifying graded and parameterised monads](https://arxiv.org/pdf/2001.10274.pdf)
+- [Towards a Formal Theory of Graded Monads](https://www.researchgate.net/publication/309092270_Towards_a_Formal_Theory_of_Graded_Monads)
+- [Relational Algebra by Way of Adjunctions](https://dl.acm.org/doi/pdf/10.1145/3236781) ([slides](http://www.cs.ox.ac.uk/jeremy.gibbons/publications/reladj-dbpl.pdf))
