@@ -255,7 +255,7 @@ comp (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 
 We can omit writing implicit arguments altogether when they are easily inferable from something else. This piece of syntax is inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments). We will call it "super implicit arguments". It is used pretty often in this repo, almost always with `A` and `B` standing in for types.
 
-There are also other kinds of implicitness, like looking up typeclass instances, but these are dealth with by [records](#records).
+There are also other kinds of implicitness, like looking up typeclass instances, but these are dealt with by [records](#records).
 
 ```
 (|>) (x : A) (f : A -> B) : B := f x
@@ -1094,15 +1094,36 @@ As for sum types, we would like to have extensible sum types, akin to OCaml's po
 
 ### Summary
 
+[Here](Records/TurboRecords.ttw) you can find a wilder and more ambitious idea of what records should be.
+
 Papers on dependent records in type theory:
 - [Dependent Record Types Revisited](http://www.cs.rhul.ac.uk/home/zhaohui/DRT11.pdf)
 - [Typed Operational Semantics for Dependent Record Types](http://www.cs.rhul.ac.uk/home/zhaohui/TYPES09final11-01-01.pdf)
-- [Extension of Martin-Löf's Type Theory with Record Types and Subtyping](https://www.researchgate.net/publication/2683061_Extension_of_Martin-Lof's_Type_Theory_with_Record_Types_and_Subtyping)
 - [Ur: Statically-Typed Metaprogramming with Type-Level Record Computation](http://adam.chlipala.net/papers/UrPLDI10/UrPLDI10.pdf)
 - [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf)
 
-Not papers:
-- [a wild and more ambitious idea of what records should be](Records/TurboRecords.ttw)
+Older papers:
+- [Extension of Martin-Löf 's Type Theory with Record Types and Subtyping](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.49.5862&rep=rep1&type=pdf)
+- [Dependently Typed Records in Type Theory](https://sci-hub.se/10.1007/s001650200018) (also see [Agda code](https://agda.github.io/agda-stdlib/Data.Record.html) based on the paper)
+- [Dependently Typed Records for Representing Mathematical Structure](https://sci-hub.se/10.1007/3-540-44659-1_29)
+- [A Logical Framework with Dependently Typed Records](https://www.researchgate.net/publication/226374245_A_Logical_Framework_with_Dependently_Typed_Records)
+- [Algebraic Structures and Dependent Records](https://www.researchgate.net/publication/242555886_Dependent_record_types_and_algebraic_structures_in_type_theory)
+
+Papers on manifest fields:
+- [Manifest types, modules, and separate compilation](https://www.cs.tufts.edu/~nr/cs257/archive/xavier-leroy/105.pdf)
+- [Manifest Fields and Module Mechanisms in Intensional Type Theory](http://www.cs.rhbnc.ac.uk/home/zhaohui/Modules08.pdf)
+
+Other papers:
+- [Functions, Records and Compatibility in the λN Calculus](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1046.5339&rep=rep1&type=pdf) - also describes functions with named arguments
+- [Theories as Types](https://kwarc.info/people/frabe/Research/MRK_modelsof_18.pdf)
+- [Dependent Intersection: A New Way of Defining Records in Type Theory](https://www.cs.cornell.edu/people/kopylov/papers/dinter/dinter.pdf)
+- [A Type-Theoretic Approach to Higher-Order Modules with Sharing](https://www.cs.tufts.edu/~nr/cs257/archive/modules/p123-harper.pdf)
+
+Papers on type classes:
+- [Type Classes for Mathematics in Type Theory](https://arxiv.org/pdf/1102.1323.pdf)
+- [First-Class Type Classes](https://sozeau.gitlabpages.inria.fr/www/research/publications/First-Class_Type_Classes.pdf)
+- [Modular Type Classes](https://www.cs.cmu.edu/~rwh/papers/mtc/short.pdf)
+- [Modular implicits](https://www.cl.cam.ac.uk/~jdy22/papers/modular-implicits.pdf)
 
 **Status: mostly wild speculations. The papers promise much, but no good implementations/prototypes, so probably there's something wrong with them. Sums probably won't happen.**
 
@@ -2451,7 +2472,18 @@ TODO:
 
 ## Singleton Types <a id="singletons"></a> [↩](#toc)
 
-TODO
+A singleton type is a type that has exactly one value. We can already express this with in our type theory with the following type.
+
+```
+Sad-Singleton : RType
+& A : Type
+& c : A
+& p : (x : A) -> c = x
+```
+
+The thing is, the above type has exactly one value only up to a path, whereas we want true singleton types to have exactly one value up to computational equality.
+
+When `A : Type` and `x : A`, we can form the type `Singleton A x`
 
 Papers:
 - TODO
@@ -3069,7 +3101,6 @@ TODO:
 Papers:
 - [I Got Plenty o’ Nuttin’](https://personal.cis.strath.ac.uk/conor.mcbride/PlentyO-CR.pdf)
 - [Syntax and Semantics of Quantitative Type Theory](https://bentnib.org/quantitative-type-theory.pdf)
-
 
 ### Graded Type Theory
 
