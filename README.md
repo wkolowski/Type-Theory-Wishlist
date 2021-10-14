@@ -1269,6 +1269,12 @@ filter (p : A -> Bool) : List A -> List A
 | h :: t => if p h then h :: filter t else filter t
 ```
 
+Papers:
+- [Inductive Types Deconstructed](https://www.iro.umontreal.ca/~monnier/itd-tyde-2019.pdf)
+- [Elaborating Inductive Definitions](https://arxiv.org/pdf/1210.6390.pdf)
+- [The Gentle Art of Levitation](https://www.irif.fr/~dagand/papers/levitation.pdf)
+- [A Cosmology of Datatypes](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.366.3635&rep=rep1&type=pdf)
+
 **Status: inductive types and pattern matching are standard, with Agda probably being the closest implementation to what has been described so far.**
 
 TODO:
@@ -1488,9 +1494,8 @@ Cons:
 Note: induction principles may be problematic in Coq or other languages where pattern matching is equivalent to eliminators, but after some thinking, using an induction principle of a type or function (functional induction) in a proof just amounts to copying that type's constructors/functions cases and pasting them in the proof.
 
 Papers:
-- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf)
-- [Slides for the above](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)
-- [A simpler encoding of indexed types](https://dl.acm.org/doi/10.1145/3471875.3472991)
+- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf))
+- [A simpler encoding of indexed types](https://arxiv.org/pdf/2103.15408.pdf)
 
 **Status: very wild speculations.**
 
@@ -1626,7 +1631,7 @@ Papers:
 - [QUOTIENTS, INDUCTIVE TYPES, & QUOTIENT INDUCTIVE TYPES](https://arxiv.org/pdf/2101.02994.pdf)
 - [Type theory in a type theory with quotient inductive types](http://www.cs.nott.ac.uk/~pszgmh/kaposi-thesis.pdf)
 - [Constructing Infinitary Quotient-Inductive Types](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7788612/)
-- [LARGE AND INFINITARY QUOTIENT INDUCTIVE-INDUCTIVE TYPES](https://arxiv.org/abs/2006.11736)
+- [Large and Infinitary Quotient Inductive-Inductive Types](https://arxiv.org/abs/2006.11736) (not a very good paper)
 - [Quotient inductive-inductive types](https://arxiv.org/abs/1612.02346)
 - [Codes for Quotient Inductive Inductive Types](https://akaposi.github.io/qiit.pdf)
 - [Constructing quotient inductive-inductive types](https://akaposi.github.io/finitaryqiit.pdf)
@@ -1634,7 +1639,7 @@ Papers:
 - [A model of type theory with quotient inductive-inductive types](http://real.mtak.hu/112971/1/1.pdf)
 - [Higher Inductive Types, Inductive Families, and Inductive-Inductive Types](http://von-raumer.de/academic/phd_vonraumer.pdf)
 - [A Syntax for Higher Inductive-Inductive Types](https://drops.dagstuhl.de/opus/volltexte/2018/9190/pdf/LIPIcs-FSCD-2018-20.pdf)
-- [SIGNATURES AND INDUCTION PRINCIPLES FOR HIGHER INDUCTIVE-INDUCTIVE TYPES](https://lmcs.episciences.org/6100/pdf)
+- [Signatures and Induction Principles for Higher Inductive-Inductive Types](https://lmcs.episciences.org/6100/pdf)
 - [CONSTRUCTING HIGHER INDUCTIVE TYPES AS GROUPOID QUOTIENTS](https://lmcs.episciences.org/7391/pdf)
 - [The Construction of Set-Truncated Higher Inductive Types](https://www.sciencedirect.com/science/article/pii/S1571066119301306)
 - [Semantics of higher inductive types](https://arxiv.org/abs/1705.07088)
@@ -2207,8 +2212,13 @@ Papers:
 - [Mixing Induction and Coinduction](https://www.cse.chalmers.se/~nad/publications/danielsson-altenkirch-mixing.pdf)
 - [Subtyping, Declaratively: An Exercise in Mixed Induction and Coinduction](https://www.cse.chalmers.se/~nad/publications/danielsson-altenkirch-subtyping.pdf)
 - [Mixed Inductive-Coinductive Reasoning](https://liacs.leidenuniv.nl/~basoldh/thesis/Thesis.pdf) (PhD thesis from 2016, 340 pages, probably the best place to look for more papers on the topic, also probably contains a good introduction and overview)
-- [THE SIZE-CHANGE PRINCIPLE FOR MIXED INDUCTIVE AND COINDUCTIVE TYPES](https://arxiv.org/pdf/1901.07820.pdf)
+- [The Size-Change Principle for Mixed Inductive and Coinductive types](https://arxiv.org/pdf/1901.07820.pdf)
 - [Integrating Induction and Coinduction via Closure Operators and Proof Cycles](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7324239/)
+
+Other papers:
+- [Mixed Inductive/Coinductive Types and Strong Normalization](http://www2.tcs.ifi.lmu.de/~abel/aplas07.pdf)
+- [Type-Based Termination, Inflationary Fixed-Points, and Mixed Inductive-Coinductive Types](https://arxiv.org/pdf/1202.3496.pdf)
+- [Termination Checking in the Presence of Nested Inductive and Coinductive Types](https://www.cse.chalmers.se/~nad/publications/altenkirch-danielsson-par2010.pdf)
 
 **Status: mostly speculation, but based on the solid "positive" coinductive syntax sugar and solid principles. It looks mostly doable.**
 
@@ -3052,6 +3062,69 @@ Path-Sub #(A : Type) (X Y : Sub A) : (X ={Sub A} Y) = (X ={Type} Y) := refl
 
 Inductives are a bit more problematic. Usually it's easy to prove a characterization of paths using the encode-decode method, but stating how this will work in general is troublesome.
 
+### Computational properties of negation
+
+```
+not-Empty : ~ Empty = Unit
+not-Empty' (x : ~ Empty) : x = unit := refl
+```
+
+```
+not-Unit : ~ Unit = Empty
+not-Unit (x : ~ Unit) : x = x unit := refl
+```
+
+```
+~ i8 ≡ Empty
+~ i16 ≡ Empty
+~ i32 ≡ Empty
+~ i64 ≡ Empty
+
+~ u8 ≡ Empty
+~ u16 ≡ Empty
+~ u32 ≡ Empty
+~ u64 ≡ Empty
+
+~ f32 ≡ Empty
+~ f64 ≡ Empty
+~ Char ≡ Empty
+~ Text ≡ Empty
+
+~ Array A n ≡ (~ A * n <> 0)
+
+~ Name A ≡ Empty
+
+~ Singleton A x ≡ Empty
+
+~ Type ≡ Empty
+~ hType ≡ Empty
+
+~ (μ X. F X) ≡ ν X. ~ (F (~ X))
+~ (ν X. F X) ≡ μ X. ~ (F (~ X))
+```
+
+Function type	(x : A) -> B x	fun x : A => e	f a
+Path type	x = y	path i => e	p i
+
+Nominal function type	∇ α : A. B α	ν α : A. e	t @ α
+
+Record types	(a : A, ...)	(a => e, ...)	p.x
+Sum types	not sure
+Inductive types	see below	constructors	pattern matching
+Coinductive types	see below	copattern matching	field selection
+
+Refinement types	{x : A | P x}	implicit (?)	implicit (?)
+
+
+```
+not-Sub (A : Type) : ~ Sub A = Empty
+not-Sub' #(A : Type) (x : ~ Sub A) : x = x Empty
+```
+
+
+
+### Summary
+
 Of course we don't want to confine ourselves to just built-in computational equalities for `Empty`, `Unit` and path types - we want to be able to define custom types with custom equalities of this kind.
 
 One way to do this is with rewrite rules, which can also be used to realize the additional computational properties we have already seen. The prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's `Prop`, but I think this shouldn't be a problem.
@@ -3086,12 +3159,15 @@ TODO:
 
 This wishlist is not comprehensive. We could probably do better (i.e. have more nice things), but we have to stop somewhere, not to mention that all the interactions between all the different features blow up the complexity of the language dramatically.
 
+Other missing features:
+- Algebraic Effects
+
 ### Typed Holes
 
 Holes are a way of leaving a part of a term unfilled as a kind of local "axiom". They can be later revisited with the help of the language's type inference, filled automatically or serve as names for goals in the proving mode. More ambitious works try to use holes for accomodating ill-typed, ill-formed and incomplete (yet unwritten) programs into the semantics.
 
-Other missing features:
-- Algebraic Effects
+Papers:
+- [Live Functional Programming with Typed Holes](https://dl.acm.org/doi/pdf/10.1145/3290327)
 
 TODO:
 - Typed Holes have something to do with First-Class Patterns. And what if we could make typed holes first-class?
