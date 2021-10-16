@@ -2493,10 +2493,14 @@ Sad-Singleton : RType
 
 The thing is, the above type has exactly one value only up to a path, whereas we want true singleton types to have exactly one value up to computational equality.
 
-When `A : Type` and `x : A`, we can form the type `Singleton A x`
+When `A : Type` and `x : A`, we can form the type `Singleton A x` (also written `{x}`) which represents the type whose only value is `x` and which is a strict proposition.
 
 Papers:
-- TODO
+- [Subtyping with Singleton Types](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.5.8740&rep=rep1&type=pdf)
+- [Singleton types here, Singleton types there, Singleton types everywhere](https://www.iro.umontreal.ca/~monnier/comp-deptypes.pdf)
+- [Strong Normalization with Singleton Types](https://www.doc.ic.ac.uk/~svb/ITRS02/ENTCS/entcs75105.pdf)
+- [Singleton Kinds and Singleton Types](https://apps.dtic.mil/sti/pdfs/ADA387141.pdf)
+
 
 **Status: TODO**
 
