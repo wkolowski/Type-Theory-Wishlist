@@ -3064,68 +3064,117 @@ Inductives are a bit more problematic. Usually it's easy to prove a characteriza
 
 ### Computational properties of negation
 
-```
-not-Empty : ~ Empty = Unit
-not-Empty' (x : ~ Empty) : x = unit := refl
-```
+Besides `Empty`, `Unit` and `=`, we can also improve our negation.
+
+First, negating `Empty` gives `Unit` and vice versa.
 
 ```
+not-Empty : ~ Empty = Unit
 not-Unit : ~ Unit = Empty
+```
+
+But that's not all: now we also need some new computational equalities at the term level.
+
+```
+not-Empty' (x : ~ Empty) : x = unit := refl
 not-Unit (x : ~ Unit) : x = x unit := refl
 ```
 
+Negation of most of the primitive types is `Empty`.
+
 ```
-~ i8 ≡ Empty
-~ i16 ≡ Empty
-~ i32 ≡ Empty
-~ i64 ≡ Empty
+not-i8  : ~ i8 = Empty := refl
+not-i16 : ~ i16 = Empty := refl
+not-i32 : ~ i32 = Empty := refl
+not-i64 : ~ i64 = Empty := refl
 
-~ u8 ≡ Empty
-~ u16 ≡ Empty
-~ u32 ≡ Empty
-~ u64 ≡ Empty
+not-u8  : ~ u8 = Empty := refl
+not-u16 : ~ u16 = Empty := refl
+not-u32 : ~ u32 = Empty := refl
+not-u64 : ~ u64 = Empty := refl
 
-~ f32 ≡ Empty
-~ f64 ≡ Empty
-~ Char ≡ Empty
-~ Text ≡ Empty
+not-f32 : ~ f32 = Empty := refl
+not-f64 : ~ f64 = Empty := refl
 
-~ Array A n ≡ (~ A * n <> 0)
-
-~ Name A ≡ Empty
-
-~ Singleton A x ≡ Empty
-
-~ Type ≡ Empty
-~ hType ≡ Empty
-
-~ (μ X. F X) ≡ ν X. ~ (F (~ X))
-~ (ν X. F X) ≡ μ X. ~ (F (~ X))
+not-Char : ~ Char = Empty := refl
+not-Text : ~ Text = Empty := refl
 ```
 
-Function type	(x : A) -> B x	fun x : A => e	f a
-Path type	x = y	path i => e	p i
+The term-level rules are somewhat arbitrary and ad-hoc.
 
-Nominal function type	∇ α : A. B α	ν α : A. e	t @ α
+```
+not-i8'  (x : ~ i8)  : x = x 0 := refl
+not-i16' (x : ~ i16) : x = x 0 := refl
+not-i32' (x : ~ i32) : x = x 0 := refl
+not-i64' (x : ~ i64) : x = x 0 := refl
 
-Record types	(a : A, ...)	(a => e, ...)	p.x
-Sum types	not sure
-Inductive types	see below	constructors	pattern matching
-Coinductive types	see below	copattern matching	field selection
+not-u8'  (x : ~ u8)  : x = x 0 := refl
+not-u16' (x : ~ u16) : x = x 0 := refl
+not-u32' (x : ~ u32) : x = x 0 := refl
+not-u64' (x : ~ u64) : x = x 0 := refl
 
-Refinement types	{x : A | P x}	implicit (?)	implicit (?)
+not-f32' (x : ~ f32) : x = x 0.0 := refl
+not-f64' (x : ~ f64) : x = x 0.0 := refl
 
+not-Char' (x : ~ i8) : x = x '' := refl
+not-Text' (x : ~ i8) : x = x "" := refl
+```
+
+For arrays, the story is a bit more complicated: the type `Array A n` is uninhabited only when `A` is uninhabited and `n` is not zero. Providing the term-level equation, however, is pretty difficult, so we won't have any equation for a negated `Array`.
+
+Other types for which we won't have any additional computational equalities with respect to negation are function types, path types and nominal function types.
+
+But we will have an additional equation for the type of names - of course negating `Name A` returns `Empty`, since `Name A` is a countable set for any `A`.
+
+```
+not-Name : ~ Name A = Empty := refl
+not-Name' (x : ~ Name A) : x = anonymize (ν α. x α) := refl
+```
+
+The term-level equation is a bit complicated. To get a proof of `Empty` from `x : ~ Name A`, we need to supply `x` with a name. Since we don't have one, we will create it using nominal abstraction. But then we have `ν α. x α : ∇ α. Empty`, so we need to `anonymize` it before we proceed to get a clean proof of `Empty`.
+
+We also won't have any more computational equalities for records and refinement types. But we will have some for sums singletons.
+
+```
+not-Sum : ~ (A + B) = ~ A * ~ B := refl
+not-Sum' (x : ~ (A + B)) : x = (inl >> x, inr >> x) := refl
+```
+
+Negation of a sum if a product of negations. At the term level, we use function composition `>>` to get `~ A ` from `inl : A -> A + B` and `x : ~ (A + B)` and similarly for `inr`.
+
+Negating a singleton type of course gives an `Empty`.
+
+```
+not-Singleton #(A : Type, x : A) : ~ Singleton A x = Empty := refl
+not-Singleton' (s : ~ Singleton A x) : s = s x := refl
+```
+
+Negations of universes are `Empty`.
+
+```
+not-Type : ~ Type = Empty := refl
+not-Type' (x : ~ Type) : x = x Empty := refl
+
+not-hType : ~ hType = Empty := refl
+not-hType' (x : ~ hType) : x = x Empty := refl
+```
+
+Similarly, because all types have at least one subtype (which is, of course, `Empty`), negating the universe of subtypes of any types gives `Empty`.
 
 ```
 not-Sub (A : Type) : ~ Sub A = Empty
 not-Sub' #(A : Type) (x : ~ Sub A) : x = x Empty
 ```
 
+We don't have any additional computational equalities for inductive and coinductive types, but if we wanted, we could generalize the equation for sums to one for least fixpoints.
 
+```
+~ (μ X. F X) ≡ ν X. ~ (F (~ X))
+```
 
 ### Summary
 
-Of course we don't want to confine ourselves to just built-in computational equalities for `Empty`, `Unit` and path types - we want to be able to define custom types with custom equalities of this kind.
+Of course we don't want to confine ourselves to just built-in computational equalities for `Empty`, `Unit` and path types (and negation) - we want to be able to define custom types with custom equalities of this kind.
 
 One way to do this is with rewrite rules, which can also be used to realize the additional computational properties we have already seen. The prototype is implemented in Agda. I'm not sure how rewrite rules interact with Agda's `Prop`, but I think this shouldn't be a problem.
 
@@ -3140,7 +3189,6 @@ Papers:
 **Status: very wild speculations.**
 
 TODO:
-- Everything.
 - Find how these types will be declared.
 - Make sure that it all makes sense.
 - `unrefine` for refinement types, a pattern for the `Empty` type.
