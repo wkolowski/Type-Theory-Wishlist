@@ -256,7 +256,7 @@ f : (x : A, y : B) -> C x y :=
   fun (x : A, y : B) => ...
 ```
 
-There's also an alternative notation which uses more parentheses, but it's discouraged.
+There's also an alternative notation which uses more parentheses, but it's discouraged (we will see one way in which its useful very soon).
 
 ```
 f : (x : A) (y : B) -> C x y :=
@@ -289,12 +289,12 @@ id : (#A : Type, x : A) -> A :=
   fun A x => x
 ```
 
-If there are many implicit arguments, like in `comp1` below, the syntax gets quite heavy. This is why we can prefix `#` in front of a group of arguments, like in `comp2` below, which makes them all implicit at once.
+If there are many implicit arguments, like in `comp1` below, the syntax gets quite heavy. This is why we can put the arguments into groups separated by parentheses and then prefix `#` in front of a group of arguments, like in `comp2` below, which makes them all implicit at once.
 
 ```
-comp1 (#A #B #C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
+comp1 (#A #B #C : Type, f : A -> B, g : B -> C, x : A) : C := g (f x)
 
-comp2 #(A B C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
+comp2 #(A B C : Type) (f : A -> B, g : B -> C, x : A) : C := g (f x)
 ```
 
 But then syntax gets heavy when we want to mark as implicit all argument in a group except one. In such cases, we may prefix the argument with `@` (inspired by Coq's and Haskell's syntax for explicit arguments), which overrides the group's implicitness.
@@ -383,7 +383,6 @@ TODO:
 - Describe default and optional arguments and how they relate to record types.
 - Describe "mixed" functions that take a combination of normal arguments, path dimensions and names.
 - Describe instance arguments. See Agda manual for details.
-- Rethink, whether the notation `(x : A) (y : B) -> C x y` and `fun (x : A) (y : B) => ...` should be allowed, or should we get rid of it?
 
 ## [Path types and the rest of Cubical Type Theory](Paths) <a id="paths"></a> [↩](#toc)
 
@@ -1330,6 +1329,37 @@ filter (p : A -> Bool) : List A -> List A
 | h :: t => if p h then h :: filter t else filter t
 ```
 
+As a slight bonus, when we define an inductive type, we get for free discriminators which check what constructors a term was made with. This feature is inspired by the F* language. They are named after the constructor, with a `?` at the end.
+
+For `Bool`, they are
+
+```
+tt? : Bool -> Bool
+ff? : Bool -> Bool
+```
+
+and for `Nat`, the discriminators are
+
+```
+z? : Nat -> Bool
+s? : Nat -> Bool
+```
+
+Their definitions are very predictable. For example, `z?` is defined as follows.
+
+```
+z? : Nat -> Bool
+| z => tt
+| _ => ff
+```
+
+We also have discriminators for `List A`, although their names are somewhat ugly.
+
+```
+[]? : List A -> Bool
+::? : List A -> Bool
+```
+
 Papers:
 - [Inductive Types Deconstructed](https://www.iro.umontreal.ca/~monnier/itd-tyde-2019.pdf)
 - [Elaborating Inductive Definitions](https://arxiv.org/pdf/1210.6390.pdf)
@@ -1341,7 +1371,6 @@ Papers:
 TODO:
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments and `@` used for name concretion.
 - Describe the fact that constructor names need not be unique and that every inductive type has its own namespace. The same for coinductives.
-- Mention discriminators (like `Cons?` in F*) and constructor projections (like `Cons?.hd` in F*).
 
 ## Pattern matching on steroids <a id="pattern-matching"></a> [↩](#toc)
 
@@ -2509,13 +2538,56 @@ TODO
 The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solver, but that's meh...) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
 
 F* also has some additional nice features related to refinement types that make life a lot easier:
-- Discriminators that check which constructor was used to make the given term, e.g.:
-  - `Nil? : list 'a -> bool`
-  - `Cons? : list 'a -> bool`
 - Projections which project constructor arguments out of a term (given that the term was really made using that constructor):
   - `Cons?.hd : l : list 'a{Cons? l} -> 'a`
   - `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
 - Note that the above are written in F* syntax and require refinement types to get anywhere.
+
+One thing we can use refinement types for is to define _constructor projections_. These are like the usual projections for records, but they take fields out of inductive types' constructors, provided that an element was made with the appropriate constructor.
+
+For `Nat`, there's a single projection
+
+```
+s?.pred : {n : Nat | s? n} -> Nat
+```
+
+which could be manually defined as
+
+```
+s?.pred {n : Nat | s? n} -> Nat
+| s n' => n'
+```
+
+Note that the type `{n : Nat | s? n}` is treated just like `Nat`, so we can pattern match on terms of this type, but it also gives us (and the typechecker) some additional knowledge, so that we don't need to consider the case `z`, because the refinement guarantees that the argument can't be `z`.
+
+For lists, the projection are
+
+```
+::?.hd : {l : List A | ::? l} -> A
+::?.tl : {l : List A | ::? l} -> List A
+```
+
+which could manually be implemented as follows.
+
+```
+::?.hd {l : List A | ::? l} -> A
+| h :: _ => h
+```
+
+As was the case for `s?.pred`, we don't need to consider the `[]` case, because the refinement `::? l` guarantees that it can't happen.
+
+Additionally, we could also have another projection that projects out all arguments of `::` at once.
+
+```
+un-:: : {l : List A | ::? l} -> (hd : A, tl : List A)
+```
+
+This one could be manually implemented as
+
+```
+un-:: {l : List A | ::? l} -> (hd : A, tl : List A)
+| h :: t => (hd => h, tl => t)
+```
 
 Tutorials and notes:
 - [Programming with Refinement Types: An Introduction to LiquidHaskell](https://ucsd-progsys.github.io/liquidhaskell-tutorial/) - a nice introduction to the Liquid Haskell language, which is basically Haskell + refinement types
