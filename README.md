@@ -47,30 +47,41 @@ The syntax of many ((dependently-typed) functional) languages is not optimal and
 ## Basic syntax <a id="basic-syntax"></a> [↩](#toc)
 
 Comments start with `//` like in C.
+
 ```
 // This is a comment.
 ```
 
 Multiline comments are enclosed between ``(* *)`` like in the ML languages and can be nested.
+
 ```
 (* A multiline (* nested *) comment. *)
 ```
 
 Definitions are maximally uncluttered - no keywords, just a name, type and value.
+
 ```
 name : type := value
 ```
 
 Declarations, which at the top-level play the role of axioms, look similar but without the value part.
+
 ```
 name : type
 ```
 
 Directives that modify the language start with a `%`. They can be used to turn off termination checking, strict positivity, etc.
+
 ```
 %NoTerminationCheck
 wut : Empty := wut
 ```
+
+Papers dealing with the formal treatment of definitions and declarations in PTSs:
+- [Pure Type Systems with Definitions](cs.ru.nl/E.Poll/papers/dpts.pdf) - a formal treatment of definitions and `δ`-reduction
+- [Pure type systems with definitions](https://pure.tue.nl/ws/files/1874317/9313025.pdf) - looks like a different (longer) version of the above
+- [Parameters in Pure Type Systems](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.8.1670&rep=rep1&type=pdf)
+- [Refining the Barendregt Cube using Parameters](https://www.researchgate.net/publication/2441334_Refining_the_Barendregt_Cube_using_Parameters)
 
 TODO:
 - Revisit the comment syntax.
@@ -210,24 +221,75 @@ TODO:
 
 Function types work mostly as usual, except that we want to think that all functions (including dependent ones) take just one argument which is a big (dependent) record. This view is distinct from the usual "every function takes one argument, and then maybe returns another function".
 
+The dependent function type is written `(x : A) -> B x` and anonymous functions themselves are written `fun x : A => ...`.
+
 ```
-f : (x y : A) -> B :=
+f : (x : A) -> B x :=
+  fun x : A => ...
+```
+
+We can omit the type in the `fun`, because it can be inferred from the type anyway.
+
+```
+f : (x : A) -> B x :=
+  fun x => ...
+```
+
+In case `B` does not depend on `x`, we can simply write `A -> B`.
+
+```
+double : Nat -> Nat :=
+  fun n : Nat => n + n
+```
+
+Function types associate to the right, i.e. `(x : A) -> (y : B) -> C x y` means `(x : A) -> ((y : B) -> C x y)`.
+
+```
+f : (x : A) -> (y : B) -> C x y :=
+  fun x : A => fun y : B => ...
+```
+
+If a function takes more than one argument, we can list them all in parentheses and avoid writing the arrows in the type. We can do the same for `fun`.
+
+```
+f : (x : A, y : B) -> C x y :=
+  fun (x : A, y : B) => ...
+```
+
+There's also an alternative notation which uses more parentheses, but it's discouraged.
+
+```
+f : (x : A) (y : B) -> C x y :=
+  fun (x : A) (y : B) => ...
+```
+
+If the arguments are of the same type, we can make it even shorter.
+
+```
+f : (x y : A) -> C x y :=
   fun x y : A => ...
-```
-
-Typical (non-recursive) function definition.
-
-```
-f (x y : A) : B := ...
 ```
 
 We can bind arguments together with the name, to the left of the final colon.
 
 ```
-id (#A : Type) (x : A) : A := x
+f (x y : A) : B := ...
 ```
 
 There is a mechanism of implicit arguments. The syntax is inspired by [the F* language](https://www.fstar-lang.org/).
+
+```
+id (#A : Type) (x : A) : A := x
+```
+
+Of course, we can also use implicit arguments in anonymous functions.
+
+```
+id : (#A : Type, x : A) -> A :=
+  fun A x => x
+```
+
+If there are many implicit arguments, like in `comp1` below, the syntax gets quite heavy. This is why we can prefix `#` in front of a group of arguments, like in `comp2` below, which makes them all implicit at once.
 
 ```
 comp1 (#A #B #C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
@@ -235,7 +297,7 @@ comp1 (#A #B #C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 comp2 #(A B C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 ```
 
-If there are many implicit arguments, like in `comp1` above, the syntax gets quite heavy. This is why we can prefix `#` in front of a group of arguments, like in `comp2` above, which makes them all implicit at once.
+But then syntax gets heavy when we want to mark as implicit all argument in a group except one. In such cases, we may prefix the argument with `@` (inspired by Coq's and Haskell's syntax for explicit arguments), which overrides the group's implicitness.
 
 ```
 // Function composition with the middle type (`B`) explicit.
@@ -245,7 +307,7 @@ comp3 #(A @B C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 comp3' (#A : Type) (B : Type) (#C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 ```
 
-But then syntax gets heavy when we want to mark as implicit all argument in a group except one. In such cases, we may prefix the argument with `@` (inspired by Coq's and Haskell's syntax for explicit arguments), which overrides the group's implicitness.
+We can omit writing implicit arguments altogether when they are easily inferable from something else. This piece of syntax is inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments). We will call it "super implicit arguments". It is used pretty often in this repo, almost always with `A` and `B` standing in for types.
 
 ```
 id (x : A) : A := x
@@ -253,9 +315,9 @@ id (x : A) : A := x
 comp (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 ```
 
-We can omit writing implicit arguments altogether when they are easily inferable from something else. This piece of syntax is inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments). We will call it "super implicit arguments". It is used pretty often in this repo, almost always with `A` and `B` standing in for types.
-
 There are also other kinds of implicitness, like looking up typeclass instances, but these are dealt with by [records](#records).
+
+Names of functions are allowed to consist entirely of symbols, although this style is discouraged except for the most common functions, like the above operators borrowed from F#: pipe forward `|>`, pipe backward `<|`, forward function composition `>>` and backward function composition `<<`.
 
 ```
 (|>) (x : A) (f : A -> B) : B := f x
@@ -267,7 +329,9 @@ There are also other kinds of implicitness, like looking up typeclass instances,
 (<<) (g : B -> C) (f : A -> B) (x : A) : C := g (f x)
 ```
 
-Names of functions are allowed to consist entirely of symbols, although this style is discouraged except for the most common functions, like the above operators borrowed from F#: pipe forward `|>`, pipe backward `<|`, forward function composition `>>` and backward function composition `<<`.
+There are two syntaxes for operator sections. The first one (`(* 3)` below) is borrowed from Haskell and works only for already-defined functions whose names are symbols. The second one (`(_ `mod` 2 =? 0)` below) works for any expression that represents a single-argument function, with the underscore `_` used to mark the argument. We can turn any function into an infix operator by enclosing the function's name in backticks, like for `mod` below.
+
+Together with the pipe operators and function composition operators, this makes data processing easy and readable.
 
 ```
 f0 (l : List Nat) : List Nat :=
@@ -283,23 +347,21 @@ f2 (l : List Nat) : List Nat :=
   l |> (filter (not << odd) >> map (* 3))
 ```
 
-There are two syntaxes for operator sections. The first one (`(* 3)` above) is borrowed from Haskell and works only for already-defined functions whose names are symbols. The second one (`(_ `mod` 2 =? 0)` above) works for any expression that represents a single-argument function, with the underscore `_` used to mark the argument. We can turn any function into an infix operator by enclosing the function's name in backticks, like for `mod` above.
-
-Together with the pipe operators and function composition operators, this makes data processing easy and readable.
+Functions can be applied not only positionally, but also by naming the argument. With such application, the order of the arguments doesn't matter anymore. This is also useful when we need to explicitly provide an implicit argument.
 
 ```
 self-comp (h : Nat -> Nat) : Nat -> Nat :=
   comp {A => Nat, B => Nat, C => Nat} {g => h} {f => h}
 ```
 
-Functions can be applied not only positionally, but also by naming the argument. With such application, the order of the arguments doesn't matter anymore. This is also useful when we need to explicitly provide an implicit argument.
+To reiterate: the order of arguments doesn't matter. As a bonus, we can set many arguments to the same value easily - this should be very useful easpecially for type arguments.
 
 ```
 self-comp' (h : Nat -> Nat) : Nat -> Nat :=
   comp {C, A, B => Nat; f, g => h}
 ```
 
-To reiterate: the order of arguments doesn't matter. As a bonus, we can set many arguments to the same value very easily - this should be very useful easpecially for type arguments.
+Last but not least, there is special syntax for applying functions which have a lot of complex arguments. To apply a function `f` in this way, we write `f $` and then list the arguments below on separate lines. We can supply the arguments positionally in order and also by name, in which case they can appear out of order. This syntax is inspired by Haskell's `$` operator, and may also be used to avoid parenthesis hell when a function takes a lot of other functions as arguments.
 
 ```
 complex-application
@@ -314,15 +376,14 @@ complex-application
     x7 => fun y => ...
 ```
 
-Last but not least, there is special syntax for applying functions which have a lot of complex arguments. To apply a function `f` in this way, we write `f $` and then list the arguments below on separate lines. We can supply the arguments positionally in order and also by name, in which case they can appear out of order. This syntax is inspired by Haskell's `$` operator, and may also be used to avoid parenthesis hell when a function takes a lot of other functions as arguments.
-
-**Status: mostly standard, with `@` for explicit arguments and `$` for complex application being new, but very easy to implement.**
+**Status: dependent function types and dependent functions are standard, with `@` for explicit arguments and `$` for complex application being new, but very easy to implement.**
 
 TODO:
 - Figure out the precise workings of "all functions take just one argument which is a big record".
 - Describe default and optional arguments and how they relate to record types.
 - Describe "mixed" functions that take a combination of normal arguments, path dimensions and names.
-- Describe functions with implicit arguments (like `#(x : A) -> B x`).
+- Describe instance arguments. See Agda manual for details.
+- Rethink, whether the notation `(x : A) (y : B) -> C x y` and `fun (x : A) (y : B) => ...` should be allowed, or should we get rid of it?
 
 ## [Path types and the rest of Cubical Type Theory](Paths) <a id="paths"></a> [↩](#toc)
 
