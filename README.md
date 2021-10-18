@@ -13,6 +13,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Functions](#functions)
 1. [Paths and the rest of Cubical Type Theory](#paths)
 1. [Names and Nominal Function Type](#names)
+1. [Mixed functions](#mixed-functions)
 1. [Empty and Unit](#empty-and-unit)
 1. [Records (and sums)](#records)
 1. [Basic Inductive Types](#basic-inductive-types)
@@ -210,7 +211,7 @@ Not papers:
 **Status: implemented in Coq.**
 
 TODO:
-- How does it work at the level of formal rules?
+- How does it work at the level of formal rules? Do we need zillion rules for every single primitive operation and its specification?
 - Decide the details of the char type.
 - Decide the details of division by zero.
 - We may also want to have other char types, like `Ascii` and `UTF-16`.
@@ -361,6 +362,30 @@ self-comp' (h : Nat -> Nat) : Nat -> Nat :=
   comp {C, A, B => Nat; f, g => h}
 ```
 
+This is not the end of comfy features for functions - functions can also have default arguments!
+
+```
+// Assume for the sake of example that {} denotes text interpolation.
+greet : (name : Text => "World") -> Text :=
+  "Hello {name}!"
+```
+
+The function `greet` takes one argument `name : Text`, but we may also call it with no arguments. In such a case, `name` defaults to `"World"`.
+
+```
+Hello-Walt : Text := greet "Walt"
+Hello-Walt-spec : Hello-Walt = "Hello Walt!" := refl
+
+Hello-World : Text := greet ()
+Hello-World-spec : Hello-World = "Hello World!" := refl
+```
+
+
+
+
+```
+```
+
 Last but not least, there is special syntax for applying functions which have a lot of complex arguments. To apply a function `f` in this way, we write `f $` and then list the arguments below on separate lines. We can supply the arguments positionally in order and also by name, in which case they can appear out of order. This syntax is inspired by Haskell's `$` operator, and may also be used to avoid parenthesis hell when a function takes a lot of other functions as arguments.
 
 ```
@@ -380,9 +405,8 @@ complex-application
 
 TODO:
 - Figure out the precise workings of "all functions take just one argument which is a big record".
-- Describe default and optional arguments and how they relate to record types.
-- Describe "mixed" functions that take a combination of normal arguments, path dimensions and names.
 - Describe instance arguments. See Agda manual for details.
+- Describe how default and optional arguments relate to record types.
 
 ## [Path types and the rest of Cubical Type Theory](Paths) <a id="paths"></a> [↩](#toc)
 
@@ -506,6 +530,27 @@ Note: so far, our nominal features are based on the first of these papers, i.e. 
 
 TODO:
 - Find a better name for the nominal function type. Maybe "nominal abstraction type".
+
+## Mixed functions <a id="mixed-functions"></a> [↩](#toc)
+
+As you have noticed by now, we have three function-type-like types: the actual function type, the path type and the nominal abstraction type. Since we may sometimes want to mix them (a function which returns a path between nominal functions which return a function... and so on), we have a special uniform notation for this case.
+
+As a showcase, we will prove extensionality of nominal functions.
+
+```
+nominal-funext :
+  (#A : Type, #B : A -> Type, f g : ∇ α : A. B α, H : ∇ α : A. f @ α = g @ α) -> f = g :=
+    \A B f g H i 'α => H @ α i
+```
+
+Instead of the previously seen `fun`, `path` and `ν`, we now have a single abstraction operation written `\`, like in Haskell. In this syntax ordinary function arguments and path arguments are written as usual, whereas name arguments are written with an apostrophe at the front, like type variables in ML. This marking is necessary - if we don't write it, the thing will be interpreted as an ordinary function that takes an argument of type `Name _`.
+
+At the type level, we can use double backslash `\\` to denote mixing of ordinary and nominal function types (the names also need to be marked with an apostrophe). For example, `\\(A : Type) ('α : A) -> B α` means `(A : Type) -> ∇ α : A. B α`.
+
+**Status: not sure, but I think Agda allows mixing ordinary functions with paths. Anyway, this is very easy to implement.**
+
+TODO:
+- Reconsider the syntax.
 
 ## `Empty` and `Unit` <a id="empty-and-unit"></a> [↩](#toc)
 
