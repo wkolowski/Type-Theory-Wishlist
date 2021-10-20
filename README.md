@@ -136,7 +136,7 @@ There are implicit coercions between integer types provided that they do not los
 x : i64 := 123 : u16
 
 // Failure - there are values of type `u8`, like `255`, that don't fit into an `i8`, which ranges from `-128` to `127`. It doesn't matter that the particular value we use, i.e. `5`, is a valid value of type `i8`.
-% Fail
+%Fail
 y : i8 := 5 : u8
 
 // To transform a value of type `u8` into a value of type `i8`, we have to use an explicit coercion. `coerce-rounding-down` casts `u8`s into `i8`s, rounding values out of range like `255` down to `127`.
@@ -217,6 +217,7 @@ TODO:
 - We may also want to have other char types, like `Ascii` and `UTF-16`.
 - Alternatively, `Char` could be made more abstract and the encoding is just its property.
 - Maybe disambiguate array literal syntax from syntax sugar for lists?
+- Array indexing (`a[i]`) conflicts somewhat with array literal syntax. If `a` is a function, we may interpret `a[i]` as "apply function `a` to argument `[i]`".
 
 ## Functions <a id="functions"></a> [↩](#toc)
 
@@ -366,7 +367,7 @@ This is not the end of comfy features for functions - functions can also have de
 
 ```
 // Assume for the sake of example that {} denotes text interpolation.
-greet : (name : Text => "World") -> Text :=
+greet (name : Text => "World") : Text :=
   "Hello {name}!"
 ```
 
@@ -380,17 +381,24 @@ Hello-World : Text := greet ()
 Hello-World-spec : Hello-World = "Hello World!" := refl
 ```
 
-
-
+Of course anonymous function also can have default arguments.
 
 ```
+greet' : (name : Text => "World") -> Text :=
+  fun (name : Text => "World") => "Hello {name}!"
+```
+
+We can combine default arguments with the `Option` type (which works just like in Coq/ML/OCaml/F#) to get a nice handling of optional function arguments.
+
+```
+f : (x : A, y : Option B => None) : C := ...
 ```
 
 Last but not least, there is special syntax for applying functions which have a lot of complex arguments. To apply a function `f` in this way, we write `f $` and then list the arguments below on separate lines. We can supply the arguments positionally in order and also by name, in which case they can appear out of order. This syntax is inspired by Haskell's `$` operator, and may also be used to avoid parenthesis hell when a function takes a lot of other functions as arguments.
 
 ```
 complex-application
-  (f : (x1 : A) (x2 : B) (x3 : C) (x4 : D) (x5 : E -> E') (x6 : F) (x7 : G -> G') -> X) : X :=
+  (f : (x1 : A, x2 : B, x3 : C, x4 : D, x5 : E -> E', x6 : F, x7 : G -> G') -> X) : X :=
   f $
     arg1
     x2 => arg2
@@ -406,7 +414,7 @@ complex-application
 TODO:
 - Figure out the precise workings of "all functions take just one argument which is a big record".
 - Describe instance arguments. See Agda manual for details.
-- Describe how default and optional arguments relate to record types.
+- Describe precisely how positional, named and optional arguments work when combined.
 
 ## [Path types and the rest of Cubical Type Theory](Paths) <a id="paths"></a> [↩](#toc)
 
@@ -530,6 +538,7 @@ Note: so far, our nominal features are based on the first of these papers, i.e. 
 
 TODO:
 - Find a better name for the nominal function type. Maybe "nominal abstraction type".
+- Figure out how the paper "A Dependent Type Theory with Abstractable Names" works at an intuitive level.
 
 ## Mixed functions <a id="mixed-functions"></a> [↩](#toc)
 
@@ -545,7 +554,9 @@ nominal-funext :
 
 Instead of the previously seen `fun`, `path` and `ν`, we now have a single abstraction operation written `\`, like in Haskell. In this syntax ordinary function arguments and path arguments are written as usual, whereas name arguments are written with an apostrophe at the front, like type variables in ML. This marking is necessary - if we don't write it, the thing will be interpreted as an ordinary function that takes an argument of type `Name _`.
 
-At the type level, we can use double backslash `\\` to denote mixing of ordinary and nominal function types (the names also need to be marked with an apostrophe). For example, `\\(A : Type) ('α : A) -> B α` means `(A : Type) -> ∇ α : A. B α`.
+At the type level, we can use double backslash `\\` to denote mixing of ordinary and nominal function types (the names also need to be marked with an apostrophe). For example, `\\(A : Type, 'α : A) -> B α` means `(A : Type) -> ∇ α : A. B α`. If we wanted a normal function that takes a name, we would write `\\(A : Type, α : Name A) -> B α`, which is interpreted as `(A : Type) -> (α : Name A) -> B α`.
+
+As for application of such mixed functions, it is written like ordinary function application - `(\n : Nat => n + n) 5` is the same as `(fun n : Nat => n + n) 5`, whereas `(\'α : A => ...) β` is the same as `(ν α : A. => ...) @ β`.
 
 **Status: not sure, but I think Agda allows mixing ordinary functions with paths. Anyway, this is very easy to implement.**
 
@@ -1254,6 +1265,7 @@ Basic inductive types work mostly as usual, but as for functions, we want to thi
 The different genres of inductive types (enumerations, parameterized types, inductive families, etc.) have progressively more complete syntaxes, so that simple types can be written in a simple way and only the more complicated ones require more details.
 
 Enumerations can NOT be written in a single line and must have the initial bar. Note that we don't need to (and should not) write the return type of the constructors when it's the same in every case.
+
 ```
 data Bool : Type
 | ff
@@ -1261,6 +1273,7 @@ data Bool : Type
 ```
 
 Definition by patterns matching are very concise.
+
 ```
 notb : Bool -> Bool
 | ff => tt
@@ -1275,24 +1288,28 @@ data _*_ (A B : Type) : Type
 ```
 
 This doesn't affect the ordinary way of doing pattern matching that binds names.
+
 ```
 swap : A * B -> B * A
 | pair x y => pair y x
 ```
 
 But if we want, we can rely on arguments' original names in definitions by pattern matching.
+
 ```
 swap : (x : A * B) -> B * A
 | pair => pair x.outr x.outl
 ```
 
 We can also unpack the constructor's arguments in place to use their shorter names by postfixing the constructor's name with `{..}` (this syntax is based on Haskell's [Record Wildcards](https://kodimensional.dev/recordwildcards)).
+
 ```
 swap : A * B -> B * A
 | pair{..} => pair outr outl
 ```
 
 Even better: we don't need to write `{..}` because records get opened/unpacked automatically.
+
 ```
 swap : A * B -> B * A
 | pair => pair outr outl
@@ -1325,7 +1342,7 @@ fib : Nat -> Nat
 
 We make a distinction between **parameters**, which are bound to the left of the main colon, and **indices**, which are bound to the right of the main colon. The difference is that parameters always stay the same, so that we don't need to write them explicitly. Indices can change, so we must write them explicitly.
 
-In the definition of the type of `List`s below, this manifests in that we write `tl : List` for the tail of the list instead of `tl : List A` as we would if `A` were an index. Also note that we allow constructor names to by symbols, including infix symbols, just like in Agda.
+In the definition of the type of `List`s below, this manifests in that we write `tl : List` for the tail of the list instead of `tl : List A` as we would if `A` were an index. Also note that we allow constructor names to be symbols, including infix symbols, just like in Agda.
 
 ```
 data List (A : Type) : Type
@@ -1374,6 +1391,8 @@ filter (p : A -> Bool) : List A -> List A
 | h :: t => if p h then h :: filter t else filter t
 ```
 
+### Discriminators
+
 As a slight bonus, when we define an inductive type, we get for free discriminators which check what constructors a term was made with. This feature is inspired by the F* language. They are named after the constructor, with a `?` at the end.
 
 For `Bool`, they are
@@ -1405,17 +1424,37 @@ We also have discriminators for `List A`, although their names are somewhat ugly
 ::? : List A -> Bool
 ```
 
+### Constructor names and namespacing
+
+Note that constructors of inductive types do NOT need to be globally unique, unlike in many other languages.
+
+```
+data TrafficLight
+| Red
+| Orange
+| Green
+
+data Color
+| Red
+| Green
+| Blue
+| RGBA (r : u8, g : u8, b : u8, a : u8)
+```
+
+Both of the above types have constructors named `Red` and `Green`, but there is no confusion between them. For example, if we apply a function `canDrive : TrafficLight -> Bool` to `Red`, i.e. `canDrive Red`, then `Red` is interpreted as `Red : TrafficLight`. If a color is expected, e.g. in `isPretty Red` for `isPretty : Color -> Bool`, `Red` is interpreted as `Red : Color`.
+
+If we need to disambiguate between the two `Red`s, we can write `TrafficLight.Red` and `Color.Red`, respectively. Here the dot syntax is the same as for records, and in fact every inductive type has its own namespace, which is a record that holds various useful things related to the inductive type, like its constructors or its elimination principle.
+
 Papers:
 - [Inductive Types Deconstructed](https://www.iro.umontreal.ca/~monnier/itd-tyde-2019.pdf)
 - [Elaborating Inductive Definitions](https://arxiv.org/pdf/1210.6390.pdf)
 - [The Gentle Art of Levitation](https://www.irif.fr/~dagand/papers/levitation.pdf)
 - [A Cosmology of Datatypes](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.366.3635&rep=rep1&type=pdf)
 
-**Status: inductive types and pattern matching are standard, with Agda probably being the closest implementation to what has been described so far.**
+**Status: inductive types and pattern matching are standard, with Agda probably being the closest implementation to what has been described so far. Discriminators are not standard, but implemented in F\*, so they shouldn't pose a problem. Each inductive type being its own namespace/module is also not standard, but implemented in Lean, so it also shouldn't pose any problems.**
 
 TODO:
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments and `@` used for name concretion.
-- Describe the fact that constructor names need not be unique and that every inductive type has its own namespace. The same for coinductives.
 
 ## Pattern matching on steroids <a id="pattern-matching"></a> [↩](#toc)
 
@@ -2177,6 +2216,18 @@ findAndReplace (p : A -> Bool) (x : A) : (s : Stream A) -> Stream A
 & tl => findAndReplace s.tl
 ```
 
+### Field names and namespacing
+
+Note that names of fields do NOT need be globally unique, contrary to what is the case in many other languages.
+
+```
+codata NonEmptyCoList (A : Type)
+& hd : A
+& tl : Option NonEmptyCoList
+```
+
+The above type defines a colist, i.e. something like a list, but possibly infinite, which in addition can not be empty. The fields are named `hd` and `tl`, just the fields of `Stream`, but this does not produce much confusion. When accessing a field, like `s.hd`, it is clear from the type of `s` which `hd` is meant. This is the case also in many other situations. If `hd` is truly ambiguous, we can disambiguate by writing `Stream.hd` and `NonEmptyCoList.hd`, respectively. Just like for inductive types, each coinductive type has its own namespace, which is a record that contains the fields in function form (`Stream.hd : (#A : Type, s : Stream A) -> A`) and other useful autogenerated stuff.
+
 Papers:
 - [Copatterns Programming Infinite Structures by Observations](https://www.researchgate.net/profile/Anton-Setzer/publication/262366004_Copatterns_Programming_Infinite_Structures_by_Observations/links/587fe0f208ae9275d4ee3ae2/Copatterns-Programming-Infinite-Structures-by-Observations.pdf)
 - [Unnesting of Copatterns](http://www2.tcs.ifi.lmu.de/~abel/rtatlca14.pdf)
@@ -2187,12 +2238,12 @@ Papers:
 Not papers:
 - [Pattern and Copattern matching](http://www1.maths.leeds.ac.uk/pure/logic/images/slidesLeedsLogicSeminarMay2015.pdf)
 
-**Status: negative inductive types are imeplemented in Agda and Coq. Additionally, copattern matching is implemented in Agda. The Agda implementation of copatterns is based on one of the papers, which means things look pretty good.**
+**Status: negative inductive types are imeplemented in Agda and Coq. Additionally, copattern matching is implemented in Agda. The Agda implementation of copatterns is based on one of the papers, which means things look pretty good. Name resolution and namespacing is not standard, but probably easy to implement.**
 
 TODO:
 - Maybe if we start with patterns, then the definition should still be interpreted as legal corecursive definition?
-- Overlapping and Order-Independent Copatterns.
-- Another possibility for handling coinductives is for them to be just (co)recursive records, but this depends on how cool and foreign records will be.
+- Invent Overlapping and Order-Independent Copatterns.
+- Another possibility for handling coinductives is for them to be just (co)recursive records, but this depends on how cool and strange records will be.
 
 ## "Positive" Coinductive Types <a id="positive-coinductive-types"></a> [↩](#toc)
 
@@ -2260,10 +2311,29 @@ app : (l1 l2 : CoList A) -> CoList A
 
 See [the file dealing with conatural numbers](Coinduction/Conat.ttw) for more details on this notation.
 
+### Discriminators and namespaces
+
+Our "positive" coinductive types have their own namespaces, like ordinary inductive and coinductive types. Just like for inductive types, for every "positive" coinductive type we get for free a bunch of discriminators that allow us to check which constructor a value was made with. For `CoList`, these are
+
+```
+CoNil?  : CoList A -> Bool
+CoCons? : CoList A -> Bool
+```
+
+which could be manually implemented as
+
+```
+CoNil? : CoList A -> Bool
+| Nil    => ff
+| CoCons => tt
+```
+
+We can find these discriminators in the `CoList`s associated namespace - their full names are `CoList.CoNil?` and `CoList.CoCons?`.
+
 **Status: somewhat experimental. There are no papers nor a prototype implementation. However, it looks pretty reasonable and I have some Coq code [here](Coinduction/Code/Vec.v) that shows an example manual desugaring.**
 
 TODO:
-- Check the details.
+- Write some (pseudo)code that uses this to get comfortable with it.
 
 ## Coinductive families <a id="coinductive-families"> [↩](#toc)
 
@@ -2337,30 +2407,6 @@ There are quite a few flavours of advanced coinductive types:
 - Coinduction-Coinduction (analogous to induction-induction) using the "positive" coinductive syntax sugar
 - Self-referential types in which some occurrences are inductive and others are coinductive
 - Oh man, this is so hard to systematize.
-
-We'll explore the above in the following subsections. To avoid giving you a headache, we'll start with the status of it all.
-
-Papers:
-- There are quite a few papers on mixing coinduction with induction, but most of them are written in the old deprecated Agda-style coinduction, so they aren't that much useful. We are going to list them, nevertheless (this time in chronological order (oldest first), not in order of relevance):
-- [Continuous Functions on Final Coalgebras](https://core.ac.uk/download/pdf/82531251.pdf)
-- [REPRESENTATIONS OF STREAM PROCESSORS USING NESTED FIXED POINTS](https://arxiv.org/pdf/0905.4813.pdf)
-- [Mixing Induction and Coinduction](https://www.cse.chalmers.se/~nad/publications/danielsson-altenkirch-mixing.pdf)
-- [Subtyping, Declaratively: An Exercise in Mixed Induction and Coinduction](https://www.cse.chalmers.se/~nad/publications/danielsson-altenkirch-subtyping.pdf)
-- [Mixed Inductive-Coinductive Reasoning](https://liacs.leidenuniv.nl/~basoldh/thesis/Thesis.pdf) (PhD thesis from 2016, 340 pages, probably the best place to look for more papers on the topic, also probably contains a good introduction and overview)
-- [The Size-Change Principle for Mixed Inductive and Coinductive types](https://arxiv.org/pdf/1901.07820.pdf)
-- [Integrating Induction and Coinduction via Closure Operators and Proof Cycles](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7324239/)
-
-Other papers:
-- [Mixed Inductive/Coinductive Types and Strong Normalization](http://www2.tcs.ifi.lmu.de/~abel/aplas07.pdf)
-- [Type-Based Termination, Inflationary Fixed-Points, and Mixed Inductive-Coinductive Types](https://arxiv.org/pdf/1202.3496.pdf)
-- [Termination Checking in the Presence of Nested Inductive and Coinductive Types](https://www.cse.chalmers.se/~nad/publications/altenkirch-danielsson-par2010.pdf)
-
-**Status: mostly speculation, but based on the solid "positive" coinductive syntax sugar and solid principles. It looks mostly doable.**
-
-TODO:
-- Currently using pattern matching means that the function is recursive, so the second definition of `toStream` is not legal. Maybe some annotation for whether a function is recursive or corecursive?
-- Does `let` and copattern matching play out together as nicely as in the last example?
-- Reconsider the `mutual` keyword for mutual coinductive-inductive definitions.
 
 ### Coinduction-Recursion? Not really.
 
@@ -2488,6 +2534,7 @@ Out first attempt consists of three mutually defined functions. The main functio
 We might be a little dissatisfied with our first attempt, however, because it looks somewhat redundant. Namely, the recursion scheme of `head` and `tail` are very similar, so maybe they could be merged?
 
 ```
+%Corecursive
 toStream : (f : SP A B) (s : Stream A) -> Stream B
 | Put
   & hd => f.hd
@@ -2502,7 +2549,9 @@ toStream' : (g : GetSP A B) (s : Stream A) -> Stream B
 | Get => toStream' (g.g s.hd) s.tl
 ```
 
-The second attempt results in a much more compact definition. `toStream` is still corecursive, but we use pattern matching at the top level to make the definition shorter. In the `Put` case, we unpack the head of the stream from the argument and compute the tail corecursively, just as in the first definition. In the `Get` case, we use `toStream'`, which computes the result stream recursively from `g : GetSP A B` and `s : Stream A`. In the `Put` case, it behaves the same as `toStream`, whereas in the `Get` case it recursively feeds the input stream `s` into `g`. As we can see, we managed to cut down the redundancy.
+The second attempt results in a much more compact definition. We use pattern matching at the top level to make the definition shorter, but `toStream` is still to be understood corecursively, thanks to the `%Corecursive` directive.
+
+In the `Put` case, we unpack the head of the stream from the argument and compute the tail corecursively, just as in the first definition. In the `Get` case, we use `toStream'`, which computes the result stream recursively from `g : GetSP A B` and `s : Stream A`. In the `Put` case, it behaves the same as `toStream`, whereas in the `Get` case it recursively feeds the input stream `s` into `g`. As we can see, we managed to cut down the redundancy.
 
 But we may still be somewhat dissatisfied, because `toStream` and `toStream'` are defined by mutual corecursion-recursion, which is a suspicious principle. Can we untie them so that we first define `toStream'` by recursion and only then `toStream` by corecursion? Let's try.
 
@@ -2570,25 +2619,39 @@ toStream' : (g : GetSP A B) (s : Stream A) -> Stream B
 
 Since both `SP` and `GetSP` have the same base functor (or more poetically, the same "skeleton"), we don't need to duplicate it. Then we tie the know twice, first inductively to obtain an early version of `GetSP` and then coinductively to obtain `SP`. Then we define the final version of `GetSP` and smart constructors that wrap the actual constructors in `In` and `Out`. The desugaring of `toStream` and `toStream'` is somewhat ad hoc and chaotic. It looks more akin to our original definition (the one that used `head` and `tail`) and I wouldn't be very surprised if I made an error here or there...
 
-### Untangleable coinduction-induction?
+### Summary
 
-TODO
+Papers:
+- There are quite a few papers on mixing coinduction with induction, but most of them are written in the old deprecated Agda-style coinduction, so they aren't that much useful. We are going to list them, nevertheless (this time in chronological order (oldest first), not in order of relevance):
+- [Continuous Functions on Final Coalgebras](https://core.ac.uk/download/pdf/82531251.pdf)
+- [REPRESENTATIONS OF STREAM PROCESSORS USING NESTED FIXED POINTS](https://arxiv.org/pdf/0905.4813.pdf)
+- [Mixing Induction and Coinduction](https://www.cse.chalmers.se/~nad/publications/danielsson-altenkirch-mixing.pdf)
+- [Subtyping, Declaratively: An Exercise in Mixed Induction and Coinduction](https://www.cse.chalmers.se/~nad/publications/danielsson-altenkirch-subtyping.pdf)
+- [Mixed Inductive-Coinductive Reasoning](https://liacs.leidenuniv.nl/~basoldh/thesis/Thesis.pdf) (PhD thesis from 2016, 340 pages, probably the best place to look for more papers on the topic, also probably contains a good introduction and overview)
+- [The Size-Change Principle for Mixed Inductive and Coinductive types](https://arxiv.org/pdf/1901.07820.pdf)
+- [Integrating Induction and Coinduction via Closure Operators and Proof Cycles](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7324239/)
 
-### Untangleable coinduction-coinduction?
+Other papers:
+- [Mixed Inductive/Coinductive Types and Strong Normalization](http://www2.tcs.ifi.lmu.de/~abel/aplas07.pdf)
+- [Type-Based Termination, Inflationary Fixed-Points, and Mixed Inductive-Coinductive Types](https://arxiv.org/pdf/1202.3496.pdf)
+- [Termination Checking in the Presence of Nested Inductive and Coinductive Types](https://www.cse.chalmers.se/~nad/publications/altenkirch-danielsson-par2010.pdf)
 
-TODO
+**Status: mostly speculation, but based on the solid "positive" coinductive syntax sugar and solid principles. It looks mostly doable.**
+
+TODO:
+- Does `let` and copattern matching play out together as nicely as in the last example?
+- Reconsider the `mutual` keyword for mutual coinductive-inductive definitions.
+- Special syntax for (co)inductive types in which some recursive arguments are to be interpreted inductively and others coinductively.
+- Untangleable coinduction-induction?
+- Untangleable coinduction-coinduction?
 
 ## Refinement types <a id="refinements"></a> [↩](#toc)
 
 The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solver, but that's meh...) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
 
-F* also has some additional nice features related to refinement types that make life a lot easier:
-- Projections which project constructor arguments out of a term (given that the term was really made using that constructor):
-  - `Cons?.hd : l : list 'a{Cons? l} -> 'a`
-  - `Cons?.tl : l : list 'a{Cons? l} -> list 'a`
-- Note that the above are written in F* syntax and require refinement types to get anywhere.
+Some nice features related to refinement types that make life a lot easier are the already-described discriminators for inductive (and "positive" coinductive) types.
 
-One thing we can use refinement types for is to define _constructor projections_. These are like the usual projections for records, but they take fields out of inductive types' constructors, provided that an element was made with the appropriate constructor.
+Another thing we can use refinement types for is to define _constructor projections_. These are like the usual projections for records, but they take fields out of inductive types' constructors, provided that an element was made with the appropriate constructor.
 
 For `Nat`, there's a single projection
 
@@ -2655,8 +2718,9 @@ Tangentially related blog posts:
 **Status: the only dependently-typed language with refinement types I know is F\*. The refinement types work pretty well there.**
 
 TODO:
-- Figure out relation between refinement types and dependent records with fields in `Prop`.
-- Figure out relationship between refinement types and inductive/coinductive types.
+- Figure out the precise relationship between refinement types and dependent records with fields in `Prop`.
+- Figure out relationship between refinement types and inductive/coinductive types. Hint: looks like there is no relationship for coinductives, but for inductives, the refinements should distribute over the constructors.
+- Figure out the relationship between refinement types and ornaments.
 
 ## Singleton Types <a id="singletons"></a> [↩](#toc)
 
@@ -2671,14 +2735,13 @@ Sad-Singleton : RType
 
 The thing is, the above type has exactly one value only up to a path, whereas we want true singleton types to have exactly one value up to computational equality.
 
-When `A : Type` and `x : A`, we can form the type `Singleton A x` (also written `{x}`) which represents the type whose only value is `x` and which is a strict proposition.
+When `A : Type` and `x : A`, we can form the type `Singleton A x` (also written `{x}` and more explicitly `{x}_A`) which represents the type whose only value is `x` and which is a strict proposition.
 
 Papers:
 - [Subtyping with Singleton Types](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.5.8740&rep=rep1&type=pdf)
 - [Singleton types here, Singleton types there, Singleton types everywhere](https://www.iro.umontreal.ca/~monnier/comp-deptypes.pdf)
 - [Strong Normalization with Singleton Types](https://www.doc.ic.ac.uk/~svb/ITRS02/ENTCS/entcs75105.pdf)
 - [Singleton Kinds and Singleton Types](https://apps.dtic.mil/sti/pdfs/ADA387141.pdf)
-
 
 **Status: TODO**
 

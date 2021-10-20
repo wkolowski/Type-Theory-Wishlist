@@ -1,4 +1,4 @@
-// Let's say that when both constructors of `T` have a field `a : A`,
+// Let's say that when all constructors of `T` have a field `a : A`,
 // then `a` becomes a function `a : T -> A`.
 
 // This is a type of lists with constant-time length.
