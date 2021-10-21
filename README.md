@@ -24,7 +24,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Standard Inductive Families (TODO)](#standard-inductive-families)
     1. [Indices that Compute (TODO)](#indices-that-compute)
 1. [Advanced Inductive Types](#advanced-inductive-types)
-    1. [Constructors that Compute](#constructors-that-compute)
+    1. [Computational Inductive Types](#computational-inductive-types)
     1. [Higher Inductive Types](#HIT)
     1. [Nominal Inductive Types](#nominal-inductive-types)
     1. [Induction-Induction](#induction-induction)
@@ -106,7 +106,7 @@ TODO:
 | Inductive types   |  see below       | constructors     | pattern matching |
 | Coinductive types |  see below       | copattern matching | field selection |
 | Refinement types  | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
-| Singleton types   | `Singleton x`    | TODO             | TODO             |
+| Singleton types   | `Singleton A x`  | TODO             | TODO             |
 | Strict universes  | `Type h p`       | `Type h p`       | impossible       |
 | Non-strict universes | `hType h p`   | `hType h p`      | impossible       |
 | Subtype universes | `Sub A`          | implicit (?)     | implicit (?)     |
@@ -1680,7 +1680,7 @@ TODO:
 ## [Advanced Inductive Types](Induction) <a id="advanced-inductive-types"></a> [↩](#toc)
 
 Inductive families are just the tip of the iceberg, as our inductive types are supposed to be REALLY powerful. We take the usual inductive families as baseline and add:
-- [Constructors that Compute](#constructors-that-compute)
+- [Computational Inductive Types](#computational-inductive-types)
 - [Higher Inductive Types](#higher-inductive-types)
 - [Nominal Inductive Types](#nominal-inductive-types)
 - [Induction-Induction](#induction-induction)
@@ -1688,7 +1688,7 @@ Inductive families are just the tip of the iceberg, as our inductive types are s
 
 We have listed the various enhancements in order from most to least wild. We take the former ones for granted when describing the latter, so as to show their synergy.
 
-### [Constructors that Compute](Induction/ConstructorsThatCompute) <a id="constructors-that-compute"></a> [↩](#toc)
+### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="constructors-that-compute"></a> [↩](#toc)
 
 The basic idea here is that in inductive type definitions constructors can pattern match on their arguments and compute (almost) like ordinary recursive functions. Let's see an example.
 
@@ -1716,20 +1716,20 @@ We can define functions using pattern matching and structural recursion, just li
 
 In the above example we want to compute the absolute value of the argument. For non-negative integers this is easy and we just return the argument, whereas for negative numbers we need to recursively turn predecessors into successors.
 
-See [this file](Induction/ConstructorsThatCompute/Z.ttw) for a more thorough explanation and exploration of the type of integers defined using Constructors that Compute.
+See [this file](Induction/ComputationalInductiveTypes/Z.ttw) for a more thorough explanation and exploration of the type of integers defined using Computational Inductive Types.
 
 Papers:
 - None, this idea is brand new invention of mine.
 
-**Status: highly experimental. It looks like if we put reasonable constraints on the kinds of computation rules associated with constructors, there isn't any abvious contradiction, nontermination or anything like that. However, there are no prototypes and no papers, except that some Constructors that Compute can be simulated using [Self Types](https://github.com/uwu-tech/Kind/blob/master/blog/1-beyond-inductive-datatypes.md).**
+**Status: highly experimental. It looks like if we put reasonable constraints on the kinds of computation rules associated with constructors, there isn't any abvious contradiction, nontermination or anything like that. However, there are no prototypes and no papers, except that some Computational Inductive Types can be simulated using [Self Types](https://github.com/uwu-tech/Kind/blob/master/blog/1-beyond-inductive-datatypes.md).**
 
 TODO:
-- Come up with more examples of useful Constructors that Compute.
+- Come up with more examples of useful Computational Inductive Types.
 - Rename this whole business to "Computational Inductive Types".
 
 ### [Higher Inductive Types](Induction/HIT) <a id="HIT"></a> [↩](#toc)
 
-Higher Inductive Types are inductive types which can be defined using not only point ("ordinary") constructors, but also path constructors which put additional paths into the type. This has two serious uses: the more practical one is for making all kinds of quotients and quotient-like types (and a lot of these can't be made using Constructors that Compute, because there is no canonical form of some collection of terms) and the more theoretical one is synthetic homotopy theory.
+Higher Inductive Types are inductive types which can be defined using not only point ("ordinary") constructors, but also path constructors which put additional paths into the type. This has two serious uses: the more practical one is for making all kinds of quotients and quotient-like types (and a lot of these can't be made using Computational Inductive Types, because there is no canonical form of some collection of terms) and the more theoretical one is synthetic homotopy theory.
 
 ```
 data Set (A : Type) : Type
@@ -2011,7 +2011,7 @@ and El : (u : U) -> Type
 | eq u x y => x = y
 ```
 
-We can combine induction-recursion with Constructors that Compute to get a more interesting kind of universe - one in which the various type isomorphisms hold by definition. For the boring isomorphisms like `Empty + A = A` this is not very useful (as it's helpful only rarely), but it's extremely useful for the equality type - thanks to Constructors that Compute we can have `(f = g) = (x : A) -> f x = g x` and `((x1, y1) = (x2, y2)) = (x1 = x2) * (y1 = y2)` and so on.
+We can combine induction-recursion with Computational Inductive Types to get a more interesting kind of universe - one in which the various type isomorphisms hold by definition. For the boring isomorphisms like `Empty + A = A` this is not very useful (as it's helpful only rarely), but it's extremely useful for the equality type - thanks to Computational Inductive Types we can have `(f = g) = (x : A) -> f x = g x` and `((x1, y1) = (x2, y2)) = (x1 = x2) * (y1 = y2)` and so on.
 
 ```
 data BHeap (R : A -> A -> Prop) : Type
@@ -2037,7 +2037,7 @@ Papers:
 - [Fibred Data Types](https://www.researchgate.net/publication/261165437_Fibred_Data_Types)
 
 Tangentially related:
-- [Higher inductive-recursive univalence and type-directed definitions](https://homotopytypetheory.org/2014/06/08/hiru-tdd/) - see for a definition of universe with type-directed equality like the one presented above, but using higher-inductive types instead of constructor that compute
+- [Higher inductive-recursive univalence and type-directed definitions](https://homotopytypetheory.org/2014/06/08/hiru-tdd/) - see for a definition of universe with type-directed equality like the one presented above, but using higher-inductive types instead of computational inductive types
 - [Simulating Induction-Recursion for Partial Algorithms](https://members.loria.fr/DLarchey/files/papers/TYPES_2018_paper_19.pdf) - how to define complicated recursive functions without resorting to induction-recursion)
 - [A polymorphic representation of induction-recursion](https://www.researchgate.net/publication/244448805_A_polymorphic_representation_of_induction-recursion) ([slides](http://www.cs.ru.nl/dtp11/slides/capretta.pdf))
 - [A Formalisation of a Dependently Typed Language as an Inductive-Recursive Family](https://www.cse.chalmers.se/~nad/publications/danielsson-types2006.pdf)
@@ -2957,7 +2957,7 @@ Some reading on universes:
 
 TODO:
 - Write some code dealing with universes.
-- Maybe merge strict and non-strict universes these into one, i.e. `Type s h p`, with `s` being the strict (homotopy) level, `h` the (non-strict) homotopy level and `p` the predicative level? Of course we will then have `h <= s`.
+- Maybe merge strict and non-strict universes into one, i.e. `Type s h p`, with `s` being the strict (homotopy) level, `h` the (non-strict) homotopy level and `p` the predicative level? Of course we will then have `h <= s`.
 - Rethink the formation rules for universes. I think the universe `Contr` shouldn't live in `Contr`, but rather in `hContr` - all singletons are equivalent, but we can't just computationally equate `Unit` with the type of sorting functions...
 - Rethink when can strict inductive types be eliminated.
 
@@ -2973,9 +2973,9 @@ We summarize the rules that govern subtyping in the table below.
 | ----------------- | ---------------- | ---------------- |
 | Primitive signed integers | `i8 <= i16 <= i32 <= i64` | built-in: copy the bits and pad the result with zeros |
 | Primitive unsigned integers | `u8 <= u16 <= u32 <= u64` | built-in: copy the bits and pad the result with zeros |
-| Primitive floats | `f32 <= f64` | built-in |
+| Primitive floats  | `f32 <= f64` | built-in |
 | Coercions between signed and unsigned integers | `u8 <= i16` <br> `u16 <= i32` <br> `u32 <= i64` | built-in |
-| Char              | `Char <= Text` | make single character text |
+| Char and Text     | `Char <= Text` | make single character text |
 | Arrays            | if `c : A <= A'` <br> and `n' <= n` <br> then `Array A n <= Array A' n'` | `map c` and clip the result to the correct length || Function type     | if `f : A <= A'` <br> and `g : B <= B'` <br> then `A' -> B <= A -> B'` | `fun h => f >> h >> g` |
 | Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
 | Name              | no subtyping | none |
@@ -2983,17 +2983,17 @@ We summarize the rules that govern subtyping in the table below.
 | `Empty`           | `Empty <= A`     | `abort` |
 | `Unit`            | `A <= Unit`      | `fun _ => unit` |
 | `Bool`            | `Bool <= Prop`   | `fun b : Bool => if b then Unit else Empty` |
-| Width-subtyping for record types | `r1 & r2 <= r1` <br> `r1 & r2 <= r2` (if `r2` does not depend on `r1`) | TODO, but maybe <br> `fun x => (_ => x)` |
+| Width-subtyping for record types | `r1 & r2 <= r1` <br> `r1 & r2 <= r2` (if `r2` does not depend on `r1`) | `fun x => (_ => x)` in prototyping syntax <br> spelled out: just copy the relevant fields |
 | Depth-subtyping for record types | if `c1 : r1 <= r1'` <br> and `c2 : r2 <= r2'` <br> then `r1 & r2 <= r1' & r2'` | `fun x => (_ => c r1, _ => c r2)` |
 | Manifest field subtyping | `(a : A := a') & r <= (a : A) & r` | `fun x => (a => x.a, _ => r)` |
-| Advanced subtyping for records | [complicated](Records/TurboRecords.ttw) | TODO |
-| Sums              | `inl : A <= A + B` <br> `inr : B <= A + B` | TODO: uniqueness problems <br> fine only if no conflict arises |
-| Inductives        | not sure |
+| Advanced subtyping for records | [complicated](Records/TurboRecords.ttw) | |
+| Sums              | `inl : A <= A + B` <br> `inr : B <= A + B` | fine only if no conflict arises <br> each case has to be declared manually |
+| Inductives        | not sure. but maybe similar to sums |
 | Coinductives      | not sure, but maybe similar to records |
-| Width-subtyping for refinement types | `{x : A \| P} <= A` | identity |
-| Depth-subtyping for refinement types | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` | identity |
-| Width-subtyping for singleton types | `Singleton A x <= A` | TODO |
-| Depth-subtyping for singleton types | if `c : A <= B` <br> then `Singleton A x <= Singleton B (c x)` | `c`, somehow |
+| Width-subtyping for refinement types | `{x : A \| P} <= A` | forget the refinement |
+| Depth-subtyping for refinement types | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` | change the refinement |
+| Width-subtyping for singleton types | `Singleton A x <= A` | `fun _ => x` |
+| Depth-subtyping for singleton types | if `c : A <= B` <br> then `Singleton A x <= Singleton B (c x)` | `c`, somehow <br> or `fun _ => c x` |
 | Strict Universes  | if `h1 <= h2` <br> and `p1 <= p2` <br> then `Type h1 p1 <= Type h2 p2` | lift |
 | Non-strict Universes | if `h1 <= h2` <br> and `p1 <= p2` <br> then `hType h1 p1 <= hType h2 p2` | lift |
 | Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | built-in <br> `c` magically works on subtypes |
@@ -3031,6 +3031,35 @@ Here we translate the `x`-coordinate by `n` in any record that has a field named
 
 Subtyping for subtype universes is very simple - if `A` is a subtype of `B`, then the universe of subtypes of `A` is a subtype of the universe of subtypes of `B`.
 
+### Subtyping inductive and coinductive types
+
+It's not entirely clear to me how subtyping should work for inductive and coinductive types, but I have a few ideas that would be nice to have.
+
+```
+data Answer
+| Yes
+| No
+
+data Option (A : Type)
+| Yes (value : A)
+| No
+
+data Decision (P : Prop)
+| Yes (yes : P)
+| No  (no  : ~ P)
+
+%Coercion
+Dec2Opt : Decision P -> Option P
+| Yes y => Yes y
+| No  _ => No
+
+%Coercion
+Opt2Ans : Option A -> Answer
+| Yes _ => Yes
+| No    => No
+```
+
+### Summary
 
 Papers:
 - [Subtype Universes](http://www.cs.rhul.ac.uk/home/zhaohui/Subtype%20Universes.pdf)
@@ -3385,7 +3414,7 @@ not-Sum : ~ (A + B) = ~ A * ~ B := refl
 not-Sum' (x : ~ (A + B)) : x = (inl >> x, inr >> x) := refl
 ```
 
-Negation of a sum if a product of negations. At the term level, we use function composition `>>` to get `~ A ` from `inl : A -> A + B` and `x : ~ (A + B)` and similarly for `inr`.
+Negation of a sum if a product of negations. At the term level, we use function composition `>>` to get `~ A` from `inl : A -> A + B` and `x : ~ (A + B)` and similarly for `inr`.
 
 Negating a singleton type of course gives an `Empty`.
 
