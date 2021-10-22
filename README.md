@@ -1455,6 +1455,9 @@ Papers:
 
 TODO:
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments and `@` used for name concretion.
+- Describe nested inductive types.
+- Describe list notation for list-like types.
+- Describe bundled syntax for inductives (and inductive families).
 
 ## Pattern matching on steroids <a id="pattern-matching"></a> [↩](#toc)
 
@@ -2985,15 +2988,18 @@ We summarize the rules that govern subtyping in the table below.
 | `Bool`            | `Bool <= Prop`   | `fun b : Bool => if b then Unit else Empty` |
 | Width-subtyping for record types | `r1 & r2 <= r1` <br> `r1 & r2 <= r2` (if `r2` does not depend on `r1`) | `fun x => (_ => x)` in prototyping syntax <br> spelled out: just copy the relevant fields |
 | Depth-subtyping for record types | if `c1 : r1 <= r1'` <br> and `c2 : r2 <= r2'` <br> then `r1 & r2 <= r1' & r2'` | `fun x => (_ => c r1, _ => c r2)` |
+| Projection subtyping for records | `a : (a : A) & r <= A` | only ok if no confusion arises |
 | Manifest field subtyping | `(a : A := a') & r <= (a : A) & r` | `fun x => (a => x.a, _ => r)` |
 | Advanced subtyping for records | [complicated](Records/TurboRecords.ttw) | |
-| Sums              | `inl : A <= A + B` <br> `inr : B <= A + B` | fine only if no conflict arises <br> each case has to be declared manually |
-| Inductives        | not sure. but maybe similar to sums |
-| Coinductives      | not sure, but maybe similar to records |
-| Width-subtyping for refinement types | `{x : A \| P} <= A` | forget the refinement |
+| Width-subtyping for sums | `s1 <= s1 \| s2` <br> `s2 <= s1 \| s2` | TODO |
+| Depth-subtyping for sums | if `c1 : s1 <= s1'` <br> and `c2 : s2 <= s2'` <br> then `s1 \| s2 <= s1' \| s2'` | TODO |
+| Injection subtyping for sums | `a : A <= [a : A] \| S` | only ok if no confusion arises |
+| Inductives        | similar to sums |
+| Coinductives      | similar to records |
 | Depth-subtyping for refinement types | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` | change the refinement |
-| Width-subtyping for singleton types | `Singleton A x <= A` | `fun _ => x` |
+| Projection subtyping for refinement types | `{x : A \| P} <= A` | forget the refinement |
 | Depth-subtyping for singleton types | if `c : A <= B` <br> then `Singleton A x <= Singleton B (c x)` | `c`, somehow <br> or `fun _ => c x` |
+| Projection subtyping for singleton types | `Singleton A x <= A` | `fun _ => x` |
 | Strict Universes  | if `h1 <= h2` <br> and `p1 <= p2` <br> then `Type h1 p1 <= Type h2 p2` | lift |
 | Non-strict Universes | if `h1 <= h2` <br> and `p1 <= p2` <br> then `hType h1 p1 <= hType h2 p2` | lift |
 | Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | built-in <br> `c` magically works on subtypes |
@@ -3006,11 +3012,9 @@ Subtyping for functions is standard: contravariant in the domain and covariant i
 
 It's not entirely clear, however, what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <= B` then `Name A <= Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. If `Name` was covariant, then I think (but I'm not sure) that `∇` could be contravariant in its domain, just like the function type.
 
-It's not clear what the rules should be for inductive and coinductive types. However, we have some subtyping for `Empty`, `Unit` and `Bool`. First, `Empty` is a subtype of any type because given `e : Empty` we can just `abort` it. Second, any type is a subtype of `Unit`, because we can just erase the term and return `unit`. Third, `Bool` is a subtype of `Prop` so that we can easily go from the world of decidable propositions to the world of all propositions.
+We have some subtyping for `Empty`, `Unit` and `Bool`. First, `Empty` is a subtype of any type because given `e : Empty` we can just `abort` it. Second, any type is a subtype of `Unit`, because we can just erase the term and return `unit`. Third, `Bool` is a subtype of `Prop` so that we can easily go from the world of decidable propositions to the world of all propositions.
 
-The matter for records is complicated. The basic principles from other languages are present, i.e. we have width subtyping (bigger record types are subtypes of smaller record types) and depth-subtyping (record types with subtype fields are subtypes of record types with supertype fields). Records types with manifest fields are subtypes of records types in which these fields are not manifest. For advanced records that behave like functions, however, it is less clear what the subtyping rules should be like.
-
-For refinement types, we allow making the refinement less precise (depth subtyping) or dropping it altogether (depth subtyping). The rules for singleton types are similar. We can make a singleton type less precise by going to a singleton in the supertype (depth subtyping) or we can drop the singleton altogether and go to the surrounding type (width subtyping).
+For refinement types, we allow making the refinement less precise (depth subtyping) or dropping it altogether (width subtyping). The rules for singleton types are similar. We can make a singleton type less precise by going to a singleton in the supertype (depth subtyping) or we can drop the singleton altogether and go to the surrounding type (width subtyping).
 
 We cannot have cumulativity between strict propositions and larger universes in order to obey the restrictions on elimination. For now this means there's cumulativity between `Contr` and `Prop`, then a **GIANT WALL**, and then cumulativity starts again from strict sets upwards. So we have `Type 0 p <= Type h p'` for `h = 0` or `h = 1` and `p <= p'`, then a **GIANT WALL**, and then `Type (2 + h) p <= Type (2 + h') p'` for `h <= h'` and `p <= p'`.
 
@@ -3018,22 +3022,27 @@ For non-strict universes things are simpler, as we don't need a giant wall to av
 
 Additionally we have `Type (2 + h) p <= hType (2 + h) p`, i.e. we may go from a strict universe to a non-strict one if we are at or above the set level, but not the other way around.
 
-### Subtype Universes
+### Records and sums
 
-We shall reify the subtyping judgement into a type. The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
+The matter for records is complicated. The basic principles from other languages are present, i.e. we have width subtyping (bigger record types are subtypes of smaller record types) and depth-subtyping (record types with subtype fields are subtypes of record types with supertype fields). Records types with manifest fields are subtypes of records types in which these fields are not manifest.
 
-```
-translateX (n : Nat) (r : Sub (x : Nat)) : R :=
-  (x $=> (+ n), _ => r)
-```
-
-Here we translate the `x`-coordinate by `n` in any record that has a field named `x`, while making sure to return a record of the same type without truncating it.
-
-Subtyping for subtype universes is very simple - if `A` is a subtype of `B`, then the universe of subtypes of `A` is a subtype of the universe of subtypes of `B`.
+For advanced records that behave like functions, however, it is less clear what the subtyping rules should be like.
 
 ### Subtyping inductive and coinductive types
 
 It's not entirely clear to me how subtyping should work for inductive and coinductive types, but I have a few ideas that would be nice to have.
+
+Naive subtyping for coinductive types is problematic because it does not satisfy the uniqueness condition in all cases. Consider the type of streams `Stream A`. If we made `hd` and `tl` into coercions, then we have `Stream A <= A` through `hd`, but also `Strea A <= Stream A <= A` through `tl >> hd` and these two coercions are not equal. We can't even have `Stream A <= (hd : A)`, as for records, because of the same problem as above.
+
+We can probably rescue this situation if we disallow making coercions from fields whose type is the same as the coinductive type being defined. For example, if `tl` is not allowed to be a coercion, then `hd` can safely be one.
+
+But this rule is not general enough. Consider a coinductive type `C`. If `C` has a field `cs : C * Bool`, then `cs` can't be a coercion, because if it were, then we would have `C <= C * Bool <= (outl : C) <= (outl : (outl : C))` and so on, which is bad (or maybe not?).
+
+In general, a field whose type is a subtype of `C` can't be a coercion.
+
+### A nice idea
+
+It should be the case that strongly-specified programs are subtypes of weakly specified programs.
 
 ```
 data Answer
@@ -3058,6 +3067,19 @@ Opt2Ans : Option A -> Answer
 | Yes _ => Yes
 | No    => No
 ```
+
+### Subtype Universes
+
+We shall reify the subtyping judgement into a type. The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
+
+```
+translateX (n : Nat) (r : Sub (x : Nat)) : R :=
+  (x $=> (+ n), _ => r)
+```
+
+Here we translate the `x`-coordinate by `n` in any record that has a field named `x`, while making sure to return a record of the same type without truncating it.
+
+Subtyping for subtype universes is very simple - if `A` is a subtype of `B`, then the universe of subtypes of `A` is a subtype of the universe of subtypes of `B`.
 
 ### Summary
 
