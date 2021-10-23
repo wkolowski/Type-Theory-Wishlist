@@ -2745,6 +2745,7 @@ Papers:
 - [Singleton types here, Singleton types there, Singleton types everywhere](https://www.iro.umontreal.ca/~monnier/comp-deptypes.pdf)
 - [Strong Normalization with Singleton Types](https://www.doc.ic.ac.uk/~svb/ITRS02/ENTCS/entcs75105.pdf)
 - [Singleton Kinds and Singleton Types](https://apps.dtic.mil/sti/pdfs/ADA387141.pdf)
+- [A MODULAR TYPE-CHECKING ALGORITHM FOR TYPE THEORY WITH SINGLETON TYPES AND PROOF IRRELEVANCE](https://arxiv.org/pdf/1102.2405.pdf)
 
 **Status: TODO**
 
@@ -2979,7 +2980,8 @@ We summarize the rules that govern subtyping in the table below.
 | Primitive floats  | `f32 <= f64` | built-in |
 | Coercions between signed and unsigned integers | `u8 <= i16` <br> `u16 <= i32` <br> `u32 <= i64` | built-in |
 | Char and Text     | `Char <= Text` | make single character text |
-| Arrays            | if `c : A <= A'` <br> and `n' <= n` <br> then `Array A n <= Array A' n'` | `map c` and clip the result to the correct length || Function type     | if `f : A <= A'` <br> and `g : B <= B'` <br> then `A' -> B <= A -> B'` | `fun h => f >> h >> g` |
+| Arrays            | if `c : A <= A'` <br> and `n' <= n` <br> then `Array A n <= Array A' n'` | `map c` and clip the result to the correct length |
+| Function type     | if `f : A <= A'` <br> and `g : B <= B'` <br> then `A' -> B <= A -> B'` | `fun h => f >> h >> g` |
 | Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
 | Name              | no subtyping | none |
 | Nominal function type | if `c : A <= B` <br> then `∇ α : N. A <= ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
@@ -3024,21 +3026,42 @@ Additionally we have `Type (2 + h) p <= hType (2 + h) p`, i.e. we may go from a 
 
 ### Records and sums
 
-The matter for records is complicated. The basic principles from other languages are present, i.e. we have width subtyping (bigger record types are subtypes of smaller record types) and depth-subtyping (record types with subtype fields are subtypes of record types with supertype fields). Records types with manifest fields are subtypes of records types in which these fields are not manifest.
+The basic subtyping rules for records are the same as in other languages, i.e. we have width subtyping (bigger record types are subtypes of smaller record types) and depth-subtyping (record types with subtype fields are subtypes of record types with supertype fields). Records types with manifest fields are subtypes of records types in which these fields are not manifest.
 
-For advanced records that behave like functions, however, it is less clear what the subtyping rules should be like.
+As far as projections are concerned, we can't make all of them into coercions, because it would break uniqueness. For example, consider the product `A * B` (which is defined as the record `(outl : A, outr : B)`). If we made both `outl` and `outr` into coercions, then for `A * A` we have `outl : A * A <= A` and also `outr : A * A <= A`, which means uniqueness doesn't hold.
+
+Moreover, we can't automatically make any projection into a coercion, even if the record has only a single field, because the above problem would reappear. In such a scenario for `A * A` we would have `(outl : A, outr : A) <= (outl : A) <= A` and also `(outl : A, outr : A) <= (outr : A) <= A`, so uniqueness wouldn't hold.
+
+The solution to this problem is surprisingly simple. We introduce a distinction between a non-coercion field, written `a : A` as usual, and a coercion field, written `a :> A`. The difference is that the latter field declares the field `a` a coercion from the whole record to the type `A`, whereas the former does not. So we have `a : (a :> A) <= A`, but not `(a : A) <= A`. The types `(a : A)` and `(a :> A)` are isomorphic (and thus equal, by univalence), but not computationally equal.
+
+Equipped with new syntax for coercion fields, all it takes to solve the previous problem is to decide which fields we want to designate as coercions and which ones we don't. The only criterion for whether our choice is valid is that uniqueness must hold.
+
+As an example, consider (a part of) the type of vector spaces `VectorSpace := (V : Type, S : Type, ...)`. `V` (the type of vectors) and `S` (the type of scalars) can't be both coercions, because then we have `VectorSpace <= Type` into two different ways. But since when writing `v : A` for `A : VectorSpace` we usually mean `v : A.V`, it makes sense to turn `V` into a coercion. So we instead define `VectorSpace := (V :> Type, S : Type, ...)`, which means that the only way to interpret a vector space as a type is to interpret it as its type of vectors.
+
+Subtyping rules for sums are dual to those for records. There's width subtyping (smaller sums are subtypes of bigger sums) and depth-subtyping (sums whose constructors take subtypes are subtypes of sums whose constructors take supertypes).
+
+As with record, constructors can't be coercions by default, because it would break uniqueness. Consider, for example, the sum type `A + B`, defined as `A + B := [inl : A, inr : B]`. If both `inl` and `inr` were coercions, then for `A + A` we have `inl : A <= A + A` and also `inr : A <= A + A`, so uniqueness doesn't hold.
+
+In the other direction and analogously to what was the case for records, we can't automatically make constructors into coercions even for sums with only one constructor. If we did, then `A <= [inl : A]`, but also `A <= [inr : A]`, so that `A <= [inl : A, inr : A]` into two different ways.
+
+The solution is the same as for records: we have ordinary constructors, written `[a : A]`, and coercion constructors, written `[a :> A]`, which make `a` into a coercion from `A` to `[a :> A]`. We can then manually decide which constructors are coercions and which are not, the only criterion to be satisfied being uniqueness.
+
+As an example, consider the syntax of a language that has natural constants and variables represented as naturals, `L := [Var : Nat, Const : Nat]`. Since it makes more sense to consider `42` to be just a number (i.e. `Const 42`) than a variable (i.e. `Var 42`), we can mark `Const` as a coercion by writing `[Var : Nat, Const :> Nat]`.
+
+TODO:
+- Subtyping rules for advanced records that behave like functions (i.e. have manifest fields whose value depends on another field).
 
 ### Subtyping inductive and coinductive types
 
-It's not entirely clear to me how subtyping should work for inductive and coinductive types, but I have a few ideas that would be nice to have.
+Subtyping for inductive and coinductive types works similarly to that for sums and records. The details are not entirely clear to me yet, but I have a few ideas of things that would be nice to have.
 
-Naive subtyping for coinductive types is problematic because it does not satisfy the uniqueness condition in all cases. Consider the type of streams `Stream A`. If we made `hd` and `tl` into coercions, then we have `Stream A <= A` through `hd`, but also `Strea A <= Stream A <= A` through `tl >> hd` and these two coercions are not equal. We can't even have `Stream A <= (hd : A)`, as for records, because of the same problem as above.
+First, subtyping for coinductives needs to be more restrictive than that for records in order to guarantee that uniqueness holds in all cases. Consider the type of streams (with some coercions added), `CStream A := (hd :> A, tl :> Stream A)`. We have `CStream A <= A` through `hd`, but also `CStream A <= CStream A <= A` through `tl >> hd` and these two coercions are not equal.
 
-We can probably rescue this situation if we disallow making coercions from fields whose type is the same as the coinductive type being defined. For example, if `tl` is not allowed to be a coercion, then `hd` can safely be one.
+We can probably rescue this situation if we disallow coercion fields from a coinductive type `C` to itself. For example, if `tl` is not allowed to be a coercion, then `hd` can safely be one.
 
-But this rule is not general enough. Consider a coinductive type `C`. If `C` has a field `cs : C * Bool`, then `cs` can't be a coercion, because if it were, then we would have `C <= C * Bool <= (outl : C) <= (outl : (outl : C))` and so on, which is bad (or maybe not?).
+But this rule is not general enough. Consider a coinductive type `C`. If `C` has a field `cs : (outl :> C, outr : Bool)`, then `cs` can't be a coercion, because if it were, then we would have `C <= (outl :> C, outr : Bool) <= (outl :> C) <= C`, which is bad.
 
-In general, a field whose type is a subtype of `C` can't be a coercion.
+In general, a field whose type is a subtype of `C` can't be a coercion. Dually, a constructor whose argument is a supertype of `I` can't be a coercion from that type into `I`. As long as these conditions hold, subtyping for inductive and coinductive types coincides with subtyping for sums and records.
 
 ### A nice idea
 
