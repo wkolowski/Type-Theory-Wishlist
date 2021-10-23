@@ -2967,9 +2967,9 @@ TODO:
 
 ## Subtyping, coercions and subtype universes <a id="subtyping"></a> [↩](#toc)
 
-### Subtyping
-
 We want to have subtyping in our type theory, but we want to avoid all the pitfalls associated with subtyping. For this reason, our subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`. It should also be possible to declare custom coercions, as long as they don't break uniqueness.
+
+### Subtyping
 
 We summarize the rules that govern subtyping in the table below.
 
@@ -3024,7 +3024,7 @@ For non-strict universes things are simpler, as we don't need a giant wall to av
 
 Additionally we have `Type (2 + h) p <= hType (2 + h) p`, i.e. we may go from a strict universe to a non-strict one if we are at or above the set level, but not the other way around.
 
-### Records and sums
+### Subtyping for records and sums
 
 The basic subtyping rules for records are the same as in other languages, i.e. we have width subtyping (bigger record types are subtypes of smaller record types) and depth-subtyping (record types with subtype fields are subtypes of record types with supertype fields). Records types with manifest fields are subtypes of records types in which these fields are not manifest.
 
@@ -3051,11 +3051,11 @@ As an example, consider the syntax of a language that has natural constants and 
 TODO:
 - Subtyping rules for advanced records that behave like functions (i.e. have manifest fields whose value depends on another field).
 
-### Subtyping inductive and coinductive types
+### Subtyping for inductive and coinductive types
 
-Subtyping for inductive and coinductive types works similarly to that for sums and records. The details are not entirely clear to me yet, but I have a few ideas of things that would be nice to have.
+Subtyping for inductive and coinductive types works similarly to that for sums and records. The details are not entirely clear to me yet, but I have a few ideas.
 
-First, subtyping for coinductives needs to be more restrictive than that for records in order to guarantee that uniqueness holds in all cases. Consider the type of streams (with some coercions added), `CStream A := (hd :> A, tl :> Stream A)`. We have `CStream A <= A` through `hd`, but also `CStream A <= CStream A <= A` through `tl >> hd` and these two coercions are not equal.
+Subtyping for coinductives needs to be more restrictive than that for records in order to guarantee that uniqueness holds in all cases. Consider the type of streams (with some coercions added), `CStream A := (hd :> A, tl :> Stream A)`. We have `CStream A <= A` through `hd`, but also `CStream A <= CStream A <= A` through `tl >> hd` and these two coercions are not equal.
 
 We can probably rescue this situation if we disallow coercion fields from a coinductive type `C` to itself. For example, if `tl` is not allowed to be a coercion, then `hd` can safely be one.
 
@@ -3063,9 +3063,16 @@ But this rule is not general enough. Consider a coinductive type `C`. If `C` has
 
 In general, a field whose type is a subtype of `C` can't be a coercion. Dually, a constructor whose argument is a supertype of `I` can't be a coercion from that type into `I`. As long as these conditions hold, subtyping for inductive and coinductive types coincides with subtyping for sums and records.
 
-### A nice idea
+Papers:
+- [Subtyping and Inheritance for Inductive Types](https://www.cs.ru.nl/E.Poll/papers/durham97.pdf)
+- [Structural subtyping for inductive types with functorial equality rules](https://www.researchgate.net/profile/Zhaohui-Luo-4/publication/220173612_Structural_subtyping_for_inductive_types_with_functorial_equality_rules/links/0deec52a102605dacc000000/Structural-subtyping-for-inductive-types-with-functorial-equality-rules.pdf)
 
-It should be the case that strongly-specified programs are subtypes of weakly specified programs.
+TODO:
+- Describe co-inheritance (see the first paper above).
+
+### Strong vs weak specifications
+
+One nice consequence of our subtyping rules for inductive types is that types of strongly-specified programs are (or can be made into, depending on constructor's chosen names) subtypes of weakly-specified programs. This solves (or at least diminishes) a long-lasting clash between strong and weak specifications.
 
 ```
 data Answer
@@ -3076,10 +3083,16 @@ data Option (A : Type)
 | Yes (value : A)
 | No
 
-data Decision (P : Prop)
+data Decision (P : Type)
 | Yes (yes : P)
 | No  (no  : ~ P)
+```
 
+Consider the above definitions of `Answer`, `Option` and `Decision`. `Answer` is a renamed version of `Bool`, with `Yes` instead of `tt` and `No` instead of `ff`. `Option` is defined as usual in ML languages and represents the presence of a value (`Yes`) or lack of a value (`No`). `Decision P` is an analogue of Coq's `sumbool` and represents a decision procedure for the proposition `P`, where the `Yes` constructor carries a proof of `P` and the `No` constructor carries a proof of `~ P`.
+
+Thanks to our subtyping rules for inductives, we have `Decision P <= Option P <= Answer` thanks to the autogenerated coercions, which could be manually implemented as
+
+```
 %Coercion
 Dec2Opt : Decision P -> Option P
 | Yes y => Yes y
@@ -3089,6 +3102,95 @@ Dec2Opt : Decision P -> Option P
 Opt2Ans : Option A -> Answer
 | Yes _ => Yes
 | No    => No
+```
+
+Let's say we implement a function to remove consecutive duplicated elements from a list, similar to `dedupConsecutive` from before.
+
+```
+dedupConsecutive (#A : Type, eq : A -> A -> Bool) : List A -> List A
+| []          => []
+| [x]         => [x]
+| x :: y :: t => if eq x y then dedupConsecutive (y :: t) else x :: dedupConsecutive (y :: t)
+```
+
+Now let's say we have proved that some type `A` has decidable equality, i.e. we have `dec : (x y : A) -> Decision (x = y)`. Thanks to subtyping for inducive types, we can freely use `dec` in every place that requires a function `A -> A -> Bool`.
+
+```
+// For some x y z : A
+dedupConsecutive dec [x, x, y, x, y, y, z, x, z, z]
+```
+
+### Subtyping between inductive and coinductive types
+
+We should have subtyping between an inductive type and a "positive" coinductive type with the same base functor. For example, `List A` should be a subtype of `CoList A`, where
+
+```
+data List (A : Type)
+| Nil
+| Cons (hd : A, tl : List)
+
+codata CoList (A : Type)
+| Nil
+| Cons (hd : A, tl : CoList)
+```
+
+The coercion is of course
+
+```
+%Coercion
+c : List A -> CoList A
+| Nil      => Nil
+| Cons h t => Cons h (c t)
+```
+
+Another example: natural numbers should be a subtype of the conaturals numbers, where
+
+```
+data Nat
+| Z
+| S (pred : Nat)
+
+codata Conat
+| Z
+| S (pred : Conat)
+```
+
+with the coercion being
+
+```
+%Coercion
+c : Nat -> Conat
+| Z   => Z
+| S n => S (c n)
+```
+
+### Subtyping between negative and "positive" coinductives
+
+"Positive" coinductive types often represent data structures that are potentially infinite, whereas negative coinductive types often represent versions of these data structures that are necessarily infinite (for completeness, inductives represent versions of these data structures that are necessarily finite).
+
+For example, `Stream`s are necessarily infinite, whereas `CoList`s are only potentially infinite (and `List`s are necessarily finite). Therefore it makes sense to ask whether there can be some subtyping between `Stream A` and `CoList A`. Certainly we can define a function `c : Stream A -> CoList A` and declare it a coercion, but having to do this every single time and for every pair of types would force us to write a lot of boilerplate.
+
+We propose a different solution of this problem: we can declare a constructor name for negative coinductive types. The constructor's name is then used to determine subtyping relations for this type.
+
+```
+codata Stream (A : Type)
+& constructor Cons
+& hd : A
+& tl : Stream
+
+codata CoList (A : Type)
+| Nil
+| Cons (hd : A, tl : CoList)
+```
+
+The type family `Stream` defined as above is equivalent to our previous definition, but additionally we get an autogenerated function `Cons : (hd : A, tl : Stream A) -> Stream A`, so that we can write `Cons h t` and we don't need to use tupe syntax (`hd => h, tl => t)`) nor copattern syntax nor module syntax.
+
+This `Cons` constructor, thanks to its name, induces an autogenerated coercion from `Stream`s to `CoList`s, which could be manually defined as follows.
+
+```
+%Coercion
+c : (s : Stream A) -> CoList A :=
+  Cons s.hd (c s.tl)
 ```
 
 ### Subtype Universes
@@ -3104,8 +3206,6 @@ Here we translate the `x`-coordinate by `n` in any record that has a field named
 
 Subtyping for subtype universes is very simple - if `A` is a subtype of `B`, then the universe of subtypes of `A` is a subtype of the universe of subtypes of `B`.
 
-### Summary
-
 Papers:
 - [Subtype Universes](http://www.cs.rhul.ac.uk/home/zhaohui/Subtype%20Universes.pdf)
 - [Luo's thesis](http://www.cs.rhul.ac.uk/home/zhaohui/ECS-LFCS-90-118.pdf) (see here for [a book version of the thesis](https://global.oup.com/academic/product/computation-and-reasoning-9780198538356?cc=gb&lang=en&)) describes the type theory on which the above paper is based. It's called ECC and is a particular presentation of the Calculus of Constructions extended with coercive subtyping, described in
@@ -3115,6 +3215,7 @@ Papers:
 
 TODO:
 - Find out how subtype universes interact with records.
+- Change notation from `A <= B` to `A <: B`.
 
 ## [Type-level rewriting](Rewriting) <a id="type-level-rewriting"></a> [↩](#toc)
 
