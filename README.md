@@ -2967,44 +2967,75 @@ TODO:
 
 ## Subtyping, coercions and subtype universes <a id="subtyping"></a> [↩](#toc)
 
-We want to have subtyping in our type theory, but we want to avoid all the pitfalls associated with subtyping. For this reason, our subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`. It should also be possible to declare custom coercions, as long as they don't break uniqueness.
+We want to have subtyping in our type theory, but we want to avoid all the pitfalls associated with subtyping. For this reason, our subtyping judgement shall be proof-relevant, i.e. it should explicitly specify the coercion used to pass from the subtype to the supertype. The judgement is written `c : A <: B` and means that `c` is a coercion from `A` to `B`. These coercions should be unique, i.e. there can't be two coercions from `A` to `B`.
 
-### Subtyping
+It should also be possible to declare custom coercions, as long as they don't break uniqueness. This, however, is a bit more problematic, because if we allow this then we need coercion management when importing modules etc.
+
+Papers:
+- [Luo's thesis](http://www.cs.rhul.ac.uk/home/zhaohui/ECS-LFCS-90-118.pdf) (see here for [a book version of the thesis](https://global.oup.com/academic/product/computation-and-reasoning-9780198538356?cc=gb&lang=en&)) describes ECC, a variant of the Calculus of Constructions which includes coercive subtyping.
+- [Coercive subtyping: Theory and implementation](https://hal.archives-ouvertes.fr/hal-01130574/document)
+- [Coherence and transitivity in coercive subtyping](https://core.ac.uk/download/pdf/6116522.pdf)
+
+**Status: Coercions have been implemented in Coq for a long time. Implicit coercions between primitive types are standard in a lot of languages.**
+
+### Subtype Universes
+
+We shall reify the subtyping judgement into a type. The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
+
+```
+translateX (n : Nat) (r : Sub (x : Nat)) : R :=
+  (x $=> (+ n), _ => r)
+```
+
+Here we translate the `x`-coordinate by `n` in any record that has a field named `x`, while making sure to return a record of the same type without truncating it.
+
+Subtyping for subtype universes is very simple - if `A` is a subtype of `B`, then the universe of subtypes of `A` is a subtype of the universe of subtypes of `B`.
+
+Papers:
+- [Subtype Universes](http://www.cs.rhul.ac.uk/home/zhaohui/Subtype%20Universes.pdf)
+
+**Status: the paper is well-written and easy to understand, but there is no prototype, so it's mostly somewhat substantiated speculations.**
+
+TODO:
+- Find out how subtype universes interact with records.
+- Find out how subtype universes work, at all.
+
+### Subtyping rules
 
 We summarize the rules that govern subtyping in the table below.
 
 | Name              | Rule             | Coercion         |
 | ----------------- | ---------------- | ---------------- |
-| Primitive signed integers | `i8 <= i16 <= i32 <= i64` | built-in: copy the bits and pad the result with zeros |
-| Primitive unsigned integers | `u8 <= u16 <= u32 <= u64` | built-in: copy the bits and pad the result with zeros |
-| Primitive floats  | `f32 <= f64` | built-in |
-| Coercions between signed and unsigned integers | `u8 <= i16` <br> `u16 <= i32` <br> `u32 <= i64` | built-in |
-| Char and Text     | `Char <= Text` | make single character text |
-| Arrays            | if `c : A <= A'` <br> and `n' <= n` <br> then `Array A n <= Array A' n'` | `map c` and clip the result to the correct length |
-| Function type     | if `f : A <= A'` <br> and `g : B <= B'` <br> then `A' -> B <= A -> B'` | `fun h => f >> h >> g` |
-| Paths             | if `c : A <= B` <br> then `x ={A} y <= c x ={B} c y` | `fun p => path i => c (p i)` |
+| Primitive signed integers | `i8 <: i16 <: i32 <: i64` | built-in: copy the bits and pad the result with zeros |
+| Primitive unsigned integers | `u8 <: u16 <: u32 <: u64` | built-in: copy the bits and pad the result with zeros |
+| Primitive floats  | `f32 <: f64` | built-in |
+| Coercions between signed and unsigned integers | `u8 <: i16` <br> `u16 <: i32` <br> `u32 <: i64` | built-in |
+| Char and Text     | `Char <: Text` | make single character text |
+| Arrays            | if `c : A <: A'` <br> and `n' <= n` <br> then `Array A n <: Array A' n'` | `map c` and clip the result to the correct length |
+| Function type     | if `f : A <: A'` <br> and `g : B <: B'` <br> then `A' -> B <: A -> B'` | `fun h => f >> h >> g` |
+| Paths             | if `c : A <: B` <br> then `x ={A} y <: c x ={B} c y` | `fun p => path i => c (p i)` |
 | Name              | no subtyping | none |
-| Nominal function type | if `c : A <= B` <br> then `∇ α : N. A <= ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
-| `Empty`           | `Empty <= A`     | `abort` |
-| `Unit`            | `A <= Unit`      | `fun _ => unit` |
-| `Bool`            | `Bool <= Prop`   | `fun b : Bool => if b then Unit else Empty` |
-| Width-subtyping for record types | `r1 & r2 <= r1` <br> `r1 & r2 <= r2` (if `r2` does not depend on `r1`) | `fun x => (_ => x)` in prototyping syntax <br> spelled out: just copy the relevant fields |
-| Depth-subtyping for record types | if `c1 : r1 <= r1'` <br> and `c2 : r2 <= r2'` <br> then `r1 & r2 <= r1' & r2'` | `fun x => (_ => c r1, _ => c r2)` |
-| Projection subtyping for records | `a : (a : A) & r <= A` | only ok if no confusion arises |
-| Manifest field subtyping | `(a : A := a') & r <= (a : A) & r` | `fun x => (a => x.a, _ => r)` |
+| Nominal function type | if `c : A <: B` <br> then `∇ α : N. A <: ∇ α : N. B` | `fun x => ν α. c (x @ α)` |
+| `Empty`           | `Empty <: A`     | `abort` |
+| `Unit`            | `A <: Unit`      | `fun _ => unit` |
+| `Bool`            | `Bool <: Prop`   | `fun b : Bool => if b then Unit else Empty` |
+| Width-subtyping for record types | `r1 & r2 <: r1` <br> `r1 & r2 <: r2` (if `r2` does not depend on `r1`) | `fun x => (_ => x)` in prototyping syntax <br> spelled out: just copy the relevant fields |
+| Depth-subtyping for record types | if `c1 : r1 <: r1'` <br> and `c2 : r2 <: r2'` <br> then `r1 & r2 <: r1' & r2'` | `fun x => (_ => c r1, _ => c r2)` |
+| Projection subtyping for records | `a : (a : A) & r <: A` | only ok if no confusion arises |
+| Manifest field subtyping | `(a : A := a') & r <: (a : A) & r` | `fun x => (a => x.a, _ => r)` |
 | Advanced subtyping for records | [complicated](Records/TurboRecords.ttw) | |
-| Width-subtyping for sums | `s1 <= s1 \| s2` <br> `s2 <= s1 \| s2` | TODO |
-| Depth-subtyping for sums | if `c1 : s1 <= s1'` <br> and `c2 : s2 <= s2'` <br> then `s1 \| s2 <= s1' \| s2'` | TODO |
-| Injection subtyping for sums | `a : A <= [a : A] \| S` | only ok if no confusion arises |
+| Width-subtyping for sums | `s1 <: s1 \| s2` <br> `s2 <: s1 \| s2` | TODO |
+| Depth-subtyping for sums | if `c1 : s1 <: s1'` <br> and `c2 : s2 <: s2'` <br> then `s1 \| s2 <: s1' \| s2'` | TODO |
+| Injection subtyping for sums | `a : A <: [a : A] \| S` | only ok if no confusion arises |
 | Inductives        | similar to sums |
 | Coinductives      | similar to records |
-| Depth-subtyping for refinement types | if `P -> Q` <br> then `{x : A \| P} <= {x : A \| Q}` | change the refinement |
-| Projection subtyping for refinement types | `{x : A \| P} <= A` | forget the refinement |
-| Depth-subtyping for singleton types | if `c : A <= B` <br> then `Singleton A x <= Singleton B (c x)` | `c`, somehow <br> or `fun _ => c x` |
-| Projection subtyping for singleton types | `Singleton A x <= A` | `fun _ => x` |
-| Strict Universes  | if `h1 <= h2` <br> and `p1 <= p2` <br> then `Type h1 p1 <= Type h2 p2` | lift |
-| Non-strict Universes | if `h1 <= h2` <br> and `p1 <= p2` <br> then `hType h1 p1 <= hType h2 p2` | lift |
-| Subtype universes | if `c : A <= B` <br> then `Sub A <= Sub B` | built-in <br> `c` magically works on subtypes |
+| Depth-subtyping for refinement types | if `P -> Q` <br> then `{x : A \| P} <: {x : A \| Q}` | change the refinement |
+| Projection subtyping for refinement types | `{x : A \| P} <: A` | forget the refinement |
+| Depth-subtyping for singleton types | if `c : A <: B` <br> then `Singleton A x <: Singleton B (c x)` | `c`, somehow <br> or `fun _ => c x` |
+| Projection subtyping for singleton types | `Singleton A x <: A` | `fun _ => x` |
+| Strict Universes  | if `h1 <= h2` <br> and `p1 <= p2` <br> then `Type h1 p1 <: Type h2 p2` | lift |
+| Non-strict Universes | if `h1 <= h2` <br> and `p1 <= p2` <br> then `hType h1 p1 <: hType h2 p2` | lift |
+| Subtype universes | if `c : A <: B` <br> then `Sub A <: Sub B` | built-in <br> `c` magically works on subtypes |
 
 Primitive types have very predictable subtyping - we only allow coercions that don't lose informatiomn, i.e. that are injective.
 
@@ -3012,37 +3043,42 @@ We allow subtyping for arrays, both through the element type and through length,
 
 Subtyping for functions is standard: contravariant in the domain and covariant in the codomain. This transfers to function-like types, i.e. path types and nominal function types, which are covariant in their codomains, but invariant in their domains (as the interval/`Name` types don't have subtypes).
 
-It's not entirely clear, however, what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <= B` then `Name A <= Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. If `Name` was covariant, then I think (but I'm not sure) that `∇` could be contravariant in its domain, just like the function type.
+It's not entirely clear, however, what the correct rules for `Name` and `∇` are. For now `Name` is invariant, but nothing prevents it from being covariant: if `c : A <: B` then `Name A <: Name B` with coercion `map c` for some `map : (A -> B) -> Name A -> Name B`. If `Name` was covariant, then I think (but I'm not sure) that `∇` could be contravariant in its domain, just like the function type.
 
 We have some subtyping for `Empty`, `Unit` and `Bool`. First, `Empty` is a subtype of any type because given `e : Empty` we can just `abort` it. Second, any type is a subtype of `Unit`, because we can just erase the term and return `unit`. Third, `Bool` is a subtype of `Prop` so that we can easily go from the world of decidable propositions to the world of all propositions.
 
 For refinement types, we allow making the refinement less precise (depth subtyping) or dropping it altogether (width subtyping). The rules for singleton types are similar. We can make a singleton type less precise by going to a singleton in the supertype (depth subtyping) or we can drop the singleton altogether and go to the surrounding type (width subtyping).
 
-We cannot have cumulativity between strict propositions and larger universes in order to obey the restrictions on elimination. For now this means there's cumulativity between `Contr` and `Prop`, then a **GIANT WALL**, and then cumulativity starts again from strict sets upwards. So we have `Type 0 p <= Type h p'` for `h = 0` or `h = 1` and `p <= p'`, then a **GIANT WALL**, and then `Type (2 + h) p <= Type (2 + h') p'` for `h <= h'` and `p <= p'`.
+We cannot have cumulativity between strict propositions and larger universes in order to obey the restrictions on elimination. For now this means there's cumulativity between `Contr` and `Prop`, then a **GIANT WALL**, and then cumulativity starts again from strict sets upwards. So we have `Type 0 p <: Type h p'` for `h = 0` or `h = 1` and `p <= p'`, then a **GIANT WALL**, and then `Type (2 + h) p <: Type (2 + h') p'` for `h <= h'` and `p <= p'`.
 
-For non-strict universes things are simpler, as we don't need a giant wall to avoid spilling strictness, so the rule is just `hType h p <= hType h' p'` provided that `h <= h'` and `p <= p'`.
+For non-strict universes things are simpler, as we don't need a giant wall to avoid spilling strictness, so the rule is just `hType h p <: hType h' p'` provided that `h <= h'` and `p <= p'`.
 
-Additionally we have `Type (2 + h) p <= hType (2 + h) p`, i.e. we may go from a strict universe to a non-strict one if we are at or above the set level, but not the other way around.
+Additionally we have `Type (2 + h) p <: hType (2 + h) p`, i.e. we may go from a strict universe to a non-strict one if we are at or above the set level, but not the other way around.
+
+Not very relevant papers:
+- [Subtyping dependent types](https://www.sciencedirect.com/science/article/pii/S0304397500001754)
+
+**Status: Universe cumulativity is semi-standard, as some proof assistants don't have it. Subtyping for records is standard in the languages that have "structural" record types. Subtyping of anything else in type theory is mostly wild speculations.**
 
 ### Subtyping for records and sums
 
 The basic subtyping rules for records are the same as in other languages, i.e. we have width subtyping (bigger record types are subtypes of smaller record types) and depth-subtyping (record types with subtype fields are subtypes of record types with supertype fields). Records types with manifest fields are subtypes of records types in which these fields are not manifest.
 
-As far as projections are concerned, we can't make all of them into coercions, because it would break uniqueness. For example, consider the product `A * B` (which is defined as the record `(outl : A, outr : B)`). If we made both `outl` and `outr` into coercions, then for `A * A` we have `outl : A * A <= A` and also `outr : A * A <= A`, which means uniqueness doesn't hold.
+As far as projections are concerned, we can't make all of them into coercions, because it would break uniqueness. For example, consider the product `A * B` (which is defined as the record `(outl : A, outr : B)`). If we made both `outl` and `outr` into coercions, then for `A * A` we have `outl : A * A <: A` and also `outr : A * A <: A`, which means uniqueness doesn't hold.
 
-Moreover, we can't automatically make any projection into a coercion, even if the record has only a single field, because the above problem would reappear. In such a scenario for `A * A` we would have `(outl : A, outr : A) <= (outl : A) <= A` and also `(outl : A, outr : A) <= (outr : A) <= A`, so uniqueness wouldn't hold.
+Moreover, we can't automatically make any projection into a coercion, even if the record has only a single field, because the above problem would reappear. In such a scenario for `A * A` we would have `(outl : A, outr : A) <: (outl : A) <: A` and also `(outl : A, outr : A) <: (outr : A) <: A`, so uniqueness wouldn't hold.
 
-The solution to this problem is surprisingly simple. We introduce a distinction between a non-coercion field, written `a : A` as usual, and a coercion field, written `a :> A`. The difference is that the latter field declares the field `a` a coercion from the whole record to the type `A`, whereas the former does not. So we have `a : (a :> A) <= A`, but not `(a : A) <= A`. The types `(a : A)` and `(a :> A)` are isomorphic (and thus equal, by univalence), but not computationally equal.
+The solution to this problem is surprisingly simple. We introduce a distinction between a non-coercion field, written `a : A` as usual, and a coercion field, written `a :> A`. The difference is that the latter field declares the field `a` a coercion from the whole record to the type `A`, whereas the former does not. So we have `a : (a :> A) <: A`, but not `(a : A) <: A`. The types `(a : A)` and `(a :> A)` are isomorphic (and thus equal, by univalence), but not computationally equal.
 
 Equipped with new syntax for coercion fields, all it takes to solve the previous problem is to decide which fields we want to designate as coercions and which ones we don't. The only criterion for whether our choice is valid is that uniqueness must hold.
 
-As an example, consider (a part of) the type of vector spaces `VectorSpace := (V : Type, S : Type, ...)`. `V` (the type of vectors) and `S` (the type of scalars) can't be both coercions, because then we have `VectorSpace <= Type` into two different ways. But since when writing `v : A` for `A : VectorSpace` we usually mean `v : A.V`, it makes sense to turn `V` into a coercion. So we instead define `VectorSpace := (V :> Type, S : Type, ...)`, which means that the only way to interpret a vector space as a type is to interpret it as its type of vectors.
+As an example, consider (a part of) the type of vector spaces `VectorSpace := (V : Type, S : Type, ...)`. `V` (the type of vectors) and `S` (the type of scalars) can't be both coercions, because then we have `VectorSpace <: Type` into two different ways. But since when writing `v : A` for `A : VectorSpace` we usually mean `v : A.V`, it makes sense to turn `V` into a coercion. So we instead define `VectorSpace := (V :> Type, S : Type, ...)`, which means that the only way to interpret a vector space as a type is to interpret it as its type of vectors.
 
 Subtyping rules for sums are dual to those for records. There's width subtyping (smaller sums are subtypes of bigger sums) and depth-subtyping (sums whose constructors take subtypes are subtypes of sums whose constructors take supertypes).
 
-As with record, constructors can't be coercions by default, because it would break uniqueness. Consider, for example, the sum type `A + B`, defined as `A + B := [inl : A, inr : B]`. If both `inl` and `inr` were coercions, then for `A + A` we have `inl : A <= A + A` and also `inr : A <= A + A`, so uniqueness doesn't hold.
+As with record, constructors can't be coercions by default, because it would break uniqueness. Consider, for example, the sum type `A + B`, defined as `A + B := [inl : A, inr : B]`. If both `inl` and `inr` were coercions, then for `A + A` we have `inl : A <: A + A` and also `inr : A <: A + A`, so uniqueness doesn't hold.
 
-In the other direction and analogously to what was the case for records, we can't automatically make constructors into coercions even for sums with only one constructor. If we did, then `A <= [inl : A]`, but also `A <= [inr : A]`, so that `A <= [inl : A, inr : A]` into two different ways.
+In the other direction and analogously to what was the case for records, we can't automatically make constructors into coercions even for sums with only one constructor. If we did, then `A <: [inl : A]`, but also `A <: [inr : A]`, so that `A <: [inl : A, inr : A]` into two different ways.
 
 The solution is the same as for records: we have ordinary constructors, written `[a : A]`, and coercion constructors, written `[a :> A]`, which make `a` into a coercion from `A` to `[a :> A]`. We can then manually decide which constructors are coercions and which are not, the only criterion to be satisfied being uniqueness.
 
@@ -3055,20 +3091,28 @@ TODO:
 
 Subtyping for inductive and coinductive types works similarly to that for sums and records. The details are not entirely clear to me yet, but I have a few ideas.
 
-Subtyping for coinductives needs to be more restrictive than that for records in order to guarantee that uniqueness holds in all cases. Consider the type of streams (with some coercions added), `CStream A := (hd :> A, tl :> Stream A)`. We have `CStream A <= A` through `hd`, but also `CStream A <= CStream A <= A` through `tl >> hd` and these two coercions are not equal.
+Subtyping for coinductives needs to be more restrictive than that for records in order to guarantee that uniqueness holds in all cases. Consider the type of streams (with some coercions added), `CStream A := (hd :> A, tl :> Stream A)`. We have `CStream A <: A` through `hd`, but also `CStream A <: CStream A <: A` through `tl >> hd` and these two coercions are not equal.
 
 We can probably rescue this situation if we disallow coercion fields from a coinductive type `C` to itself. For example, if `tl` is not allowed to be a coercion, then `hd` can safely be one.
 
-But this rule is not general enough. Consider a coinductive type `C`. If `C` has a field `cs : (outl :> C, outr : Bool)`, then `cs` can't be a coercion, because if it were, then we would have `C <= (outl :> C, outr : Bool) <= (outl :> C) <= C`, which is bad.
+But this rule is not general enough. Consider a coinductive type `C`. If `C` has a field `cs : (outl :> C, outr : Bool)`, then `cs` can't be a coercion, because if it were, then we would have `C <: (outl :> C, outr : Bool) <: (outl :> C) <: C`, which is bad.
 
 In general, a field whose type is a subtype of `C` can't be a coercion. Dually, a constructor whose argument is a supertype of `I` can't be a coercion from that type into `I`. As long as these conditions hold, subtyping for inductive and coinductive types coincides with subtyping for sums and records.
 
 Papers:
 - [Subtyping and Inheritance for Inductive Types](https://www.cs.ru.nl/E.Poll/papers/durham97.pdf)
-- [Structural subtyping for inductive types with functorial equality rules](https://www.researchgate.net/profile/Zhaohui-Luo-4/publication/220173612_Structural_subtyping_for_inductive_types_with_functorial_equality_rules/links/0deec52a102605dacc000000/Structural-subtyping-for-inductive-types-with-functorial-equality-rules.pdf)
+- [Structural subtyping for inductive types with functorial equality rules](https://www.cs.rhul.ac.uk/home/zhaohui/Trans2.pdf)
+- [Constructor Subtyping in the Calculus of Inductive Constructions](https://www.researchgate.net/publication/221570140_Constructor_Subtyping_in_the_Calculus_of_Inductive_Constructions)
+
+Less relevant papers:
+- [Induction, Coinduction, and Fixed Points in Programming Languages (PL) Type Theory](https://arxiv.org/pdf/1903.05126.pdf)
+- [Revisiting Iso-Recursive Subtyping](https://dl.acm.org/doi/pdf/10.1145/3428291)
+
+**Status: very speculative.**
 
 TODO:
 - Describe co-inheritance (see the first paper above).
+- If `c : A <: B` then we have `List A <: List B`, but to state the coercion here we first need to have defined `map : (A -> B) -> List A -> List B`, which is baaaad.
 
 ### Strong vs weak specifications
 
@@ -3090,7 +3134,7 @@ data Decision (P : Type)
 
 Consider the above definitions of `Answer`, `Option` and `Decision`. `Answer` is a renamed version of `Bool`, with `Yes` instead of `tt` and `No` instead of `ff`. `Option` is defined as usual in ML languages and represents the presence of a value (`Yes`) or lack of a value (`No`). `Decision P` is an analogue of Coq's `sumbool` and represents a decision procedure for the proposition `P`, where the `Yes` constructor carries a proof of `P` and the `No` constructor carries a proof of `~ P`.
 
-Thanks to our subtyping rules for inductives, we have `Decision P <= Option P <= Answer` thanks to the autogenerated coercions, which could be manually implemented as
+Thanks to our subtyping rules for inductives, we have `Decision P <: Option P <: Answer` thanks to the autogenerated coercions, which could be manually implemented as
 
 ```
 %Coercion
@@ -3116,9 +3160,11 @@ dedupConsecutive (#A : Type, eq : A -> A -> Bool) : List A -> List A
 Now let's say we have proved that some type `A` has decidable equality, i.e. we have `dec : (x y : A) -> Decision (x = y)`. Thanks to subtyping for inducive types, we can freely use `dec` in every place that requires a function `A -> A -> Bool`.
 
 ```
-// For some x y z : A
+// Assuming we have some x y z : A in the context.
 dedupConsecutive dec [x, x, y, x, y, y, z, x, z, z]
 ```
+
+**Status: this follows directly from the rules in the previous section.**
 
 ### Subtyping between inductive and coinductive types
 
@@ -3164,7 +3210,9 @@ c : Nat -> Conat
 | S n => S (c n)
 ```
 
-### Subtyping between negative and "positive" coinductives
+**Status: very speculative, but looks easy to implement provided that basic subtyping already works.**
+
+### Subtyping between negative and "positive" coinductive types
 
 "Positive" coinductive types often represent data structures that are potentially infinite, whereas negative coinductive types often represent versions of these data structures that are necessarily infinite (for completeness, inductives represent versions of these data structures that are necessarily finite).
 
@@ -3193,29 +3241,53 @@ c : (s : Stream A) -> CoList A :=
   Cons s.hd (c s.tl)
 ```
 
-### Subtype Universes
+**Status: Agda (and Coq too, I think) provide the ability to choose the constructor's names when defining records and coinductive types. If the basic subtyping rules work as expected, it shuold be easy walk from there.**
 
-We shall reify the subtyping judgement into a type. The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
+### Subtyping for (co)inductive families
+
+We should also take care of subtyping rules for (co)inductive families. There are two main kinds of subtyping here:
+- indexed families are subtypes of non-indexed types
+- families indexed by subtypes are subtypes of families indexed by supertypes
+
+As an example of the first kind of subtyping, consider the types of vectors and lists.
 
 ```
-translateX (n : Nat) (r : Sub (x : Nat)) : R :=
-  (x $=> (+ n), _ => r)
+data List (A : Type)
+| Nil
+| Cons (hd : A, tl : List)
+
+data Vec (A : Type) : Nat -> Type
+| Nil  : Vec z
+| Cons : (hd : A, #n : Nat, tl : Vec n) -> Vec (s n)
 ```
 
-Here we translate the `x`-coordinate by `n` in any record that has a field named `x`, while making sure to return a record of the same type without truncating it.
+We have `Vec A n <: List A` for all `n : Nat` due to an autogenerated coercion which could be manually implemented as
 
-Subtyping for subtype universes is very simple - if `A` is a subtype of `B`, then the universe of subtypes of `A` is a subtype of the universe of subtypes of `B`.
+```
+%Coercion
+c : (v : Vec A n) -> List A
+| Nil  => Nil
+| Cons => Cons v.hd (c v.tl)
+```
 
-Papers:
-- [Subtype Universes](http://www.cs.rhul.ac.uk/home/zhaohui/Subtype%20Universes.pdf)
-- [Luo's thesis](http://www.cs.rhul.ac.uk/home/zhaohui/ECS-LFCS-90-118.pdf) (see here for [a book version of the thesis](https://global.oup.com/academic/product/computation-and-reasoning-9780198538356?cc=gb&lang=en&)) describes the type theory on which the above paper is based. It's called ECC and is a particular presentation of the Calculus of Constructions extended with coercive subtyping, described in
-- [Coercive subtyping: Theory and implementation](https://hal.archives-ouvertes.fr/hal-01130574/document)
+As an example of the second kind of subtyping, consider additionally the type of covectors, i.e. coinductive vectors indexed by conatural numbers.
 
-**Status: Coercions have been implemented in Coq for a long time. Universe cumulativity is semi-standard, as some proof assistant don't have it. Implicit coercions between primitive types are standard. Subtyping for records is standard in the languages that have "structural" record types. Subtyping of anything else in type theory is mostly wild speculations.**
+```
+codata Covec (A : Type) : Conat -> Type
+| Nil  : Vec z
+| Cons : (hd : A, #n : Conat, tl : Covec n) -> Covec (s n)
+```
 
-TODO:
-- Find out how subtype universes interact with records.
-- Change notation from `A <= B` to `A <: B`.
+Because `Nat <: Conat` and the constructor names (and constructor's fields' names) match, we have an autogenerated coercion `c : Vec A n <: Covec A n` (or more precisely `c : Vec A n <: Covec A (c' n)`, where `c' : Nat <: Conat`. This coercion could be manually implemented as
+
+```
+%Coercion
+c : (v : Vec A n) -> Covec A n
+| Nil  => Nil
+| Cons => Cons (hd => v.hd, n => v.n, tl => c v.tl)
+```
+
+**Status: very speculative, even relative to the very speculative nature of subtyping for inductive and coinductive types.**
 
 ## [Type-level rewriting](Rewriting) <a id="type-level-rewriting"></a> [↩](#toc)
 
