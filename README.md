@@ -21,7 +21,8 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
 1. [Inductive Families](#inductive-families)
-    1. [Standard Inductive Families (TODO)](#standard-inductive-families)
+    1. [Standard Inductive Families](#standard-inductive-families)
+    1. [Nested Inductive Types](#nested-inductive-types)
     1. [Indices that Compute (TODO)](#indices-that-compute)
 1. [Advanced Inductive Types](#advanced-inductive-types)
     1. [Computational Inductive Types](#computational-inductive-types)
@@ -1566,8 +1567,9 @@ data Vec (A : Type) : Nat -> Type
 ```
 
 When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of this family with that index.
+
 ```
-head : (#n : Nat) (v : Vec (s n)) -> A
+head : (#n : Nat, v : Vec (s n)) -> A
 | .n', Cons h n' t => h
 ```
 
@@ -1578,6 +1580,86 @@ Papers:
 - [A Syntax for Mutual Inductive Families](https://drops.dagstuhl.de/opus/volltexte/2020/12345/pdf/LIPIcs-FSCD-2020-23.pdf)
 
 **Status: inductive families are standard in proof assistants and dependently-typed languages. Dependent pattern matching is semi-standard, as some languages (notably Coq) have problems with supporting it properly so it's hard to use, while some others (Idris 2 and formerly Agda) have implementations of it that entail Uniqueness of Identity Proofs, which is incompatible with Univalence. The closest implementation of what's described here is probably Agda (with the flag `--without-K`).**
+
+### Nested Inductive Types <a id="nested-inductive-types"></a> [↩](#toc)
+
+Nested inductive types are inductive families `I : Type -> Type` in which the inductive occurrences of `I A` are nested in another type family (the first kind of nested inductive types) or in which their indices are nested in another family (the second kind of nested inductive types).
+
+Nested inductives of the first kind can be defined as usual parameterized types. One of the most iconic examples is the type of rose trees, i.e. trees that have a `List` of subtrees.
+
+```
+data RoseTree (A : Type)
+| E
+| N (v : A, ts : List RoseTree)
+```
+
+Functions out of such types can be defined as usual by pattern matching and recursion, with the nested recursion (i.e. on the `List` in case of `RoseTree`) being handled just fine.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N _ [] => 1
+| N v (t :: ts) => size t + size (N v ts)
+```
+
+In the above example, we compute the `size` of a `RoseTree`. The interesting constructor, `N`, is split into two cases: if there are no subtrees, we return `1`, whereas if there are, we call `size` recursively on the first subtree `t` and then on on `N v ts`, i.e. on what remains of our original `RoseTree` after we remove the first subtree `t`.
+
+These recursive calls are perfectly legal - `t` is a subterm of `N v (t :: ts)`, so `size t` is a good recursive call. `N v ts` is not a subterm of `N v (t :: ts)`, but it is smaller in an obvious way, and the termination checker sees that.
+
+There are a few other ways to implement `size`.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N v ts with ts
+  | []       => 1
+  | t :: ts' => size t + size (N v ts')
+```
+
+The variant above is very similar to the previous one, but we use a `with`-clause to split the `N` case into two. This might come handy when the inner type (the `List` in our `RoseTree` example) has a lot of constructors.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N _ ts => 1 + sum (map size ts)
+```
+
+In the variant above, we use auxiliary functions `map : (A -> B) -> List A -> List B` and `sum : List Nt -> Nat` (implementation not shown). There are no explicit recursive calls - they are hidden in the call `map size`. This use of recursion, called _higher-order recursion_ (because unapplied/partially applied `size` is used as an argument to a higher-order function) is perfectly legal in our language.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N _ ts => 1 + List.rec 0 (fun t ts => size t + ts) ts
+```
+
+In the last variant above, instead of `sum` and `map` we use the recursor for lists `List.rec : (#A #R : Type, nil : R, cons : A -> R -> R, x : List A) -> R`. The only explicit recursive call, `size t`, occurs under the `fun`. This is also perfectly legal and the termination checker can see it.
+
+Another famous nested type is the following representation of lambda calculus terms.
+
+```
+data Lam : Type -> Type
+| Var : (#A : Type, n : Nat) -> Lam A
+| App : (#A : Type, l r : Lam A) -> Lam A
+| Abs : (#A : Type, body : Lam (Option A)) -> Lam A
+```
+
+And yet another, arguably the evilest of them all, is the type of bushes.
+
+```
+data Bush : Type -> Type
+| E : (#A : Type) -> Bush A
+| N : (#A : Type, v : A, bs : Bush (Bush A)) -> Bush A
+```
+
+Papers:
+- [Deep Induction: Induction Rules for (Truly) Nested Types](https://cs.appstate.edu/~johannp/20-fossacs.pdf)
+- [Generating Induction Principles for Nested Inductive Types in MetaCoq](https://www.ps.uni-saarland.de/~ullrich/bachelor/thesis.pdf)
+- [An induction principle for nested datatypes in intensional type theory](https://www.irit.fr/~Ralph.Matthes/papers/MatthesInductionNestedJFPCUP.pdf)
+
+**Status: implemented in Coq and Agda, but termination checking, autogeneration of elimination principles and support for proofs is lacking.**
+
+TODO:
+- All.
 
 ### [Indices that Compute](Induction/IndicesThatCompute) <a id="indices-that-compute"></a> [↩](#toc)
 
@@ -3100,7 +3182,6 @@ But this rule is not general enough. Consider a coinductive type `C`. If `C` has
 In general, a field whose type is a subtype of `C` can't be a coercion. Dually, a constructor whose argument is a supertype of `I` can't be a coercion from that type into `I`. As long as these conditions hold, subtyping for inductive and coinductive types coincides with subtyping for sums and records.
 
 Papers:
-- [Subtyping and Inheritance for Inductive Types](https://www.cs.ru.nl/E.Poll/papers/durham97.pdf)
 - [Structural subtyping for inductive types with functorial equality rules](https://www.cs.rhul.ac.uk/home/zhaohui/Trans2.pdf)
 - [Constructor Subtyping in the Calculus of Inductive Constructions](https://www.researchgate.net/publication/221570140_Constructor_Subtyping_in_the_Calculus_of_Inductive_Constructions)
 
@@ -3376,18 +3457,21 @@ maps (f : A -> B) : SnocList A -> SnocList B
 | Snoc i l => Snoc (maps i) (f l)
 ```
 
-Using multiple co-inheritance, we can reuse both `mapc` and `maps` to `mapb`. The below definition is equivalent to the previous definition of `mapb`.
+Using multiple co-inheritance, we can reuse both `mapc` and `maps` to define `mapb`. The definition of `mapb` below is equivalent to the previous one.
 
 ```
 mapb (f : A -> B) : BiList A -> BiList B
 | co-inherit (mapc f), (maps f)
 ```
 
-The only condition that needs to be satisfied for multiple co-inheritance to be legal is that overlapping cases need to have the same result. For the above definition the only overlapping case is `Nil`. For both `mapc` and `maps` the result is `Nil`, although for `mapc` the `Nil` is of type `ConsList`, whereas for `maps` the `Nil` is of type `SnocList`. This is not a problem, however, because both `Nil`s are coerced to `Nil` of type `BiList`, and so the results of `mapc` and `maps` for the `Nil` case are considered equal. Therefore our use of multiple co-inheritance is legal.
+The only condition that needs to be satisfied for multiple co-inheritance to be legal is that overlapping cases need to have the same result. For the above definition the only overlapping case is `Nil`. For both `mapc` and `maps` the result for the `Nil` case is `Nil`, although for `mapc` the `Nil` is of type `ConsList`, whereas for `maps` the `Nil` is of type `SnocList`. This is not a problem, however, because both `Nil`s are coerced to `Nil` of type `BiList`, and so the results of `mapc` and `maps` for the `Nil` case are considered equal. Therefore our use of multiple co-inheritance is legal.
 
 The only other condition on co-inheritance is that we cannot use it to extend a function `f : A -> B` to a function `g : A' -> B` (where `c : A <: A'`) if the definition of `f` uses a helper function `h : A -> R`.
 
 However, we might dodge the above condition by first co-inheriting `h : A -> R` to define `h' : A' -> R` and then co-inheriting `f : A -> B` to define `g : A' -> B`.
+
+Papers:
+- [Subtyping and Inheritance for Inductive Types](https://www.cs.ru.nl/E.Poll/papers/durham97.pdf)
 
 **Status: very speculative, even relative to the very speculative nature of subtyping for inductive and coinductive types.**
 
