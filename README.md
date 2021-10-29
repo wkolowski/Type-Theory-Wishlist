@@ -1773,7 +1773,7 @@ Inductive families are just the tip of the iceberg, as our inductive types are s
 
 We have listed the various enhancements in order from most to least wild. We take the former ones for granted when describing the latter, so as to show their synergy.
 
-### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="constructors-that-compute"></a> [↩](#toc)
+### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="computational-inductive-types"></a> [↩](#toc)
 
 The basic idea here is that in inductive type definitions constructors can pattern match on their arguments and compute (almost) like ordinary recursive functions. Let's see an example.
 
@@ -1804,13 +1804,13 @@ In the above example we want to compute the absolute value of the argument. For 
 See [this file](Induction/ComputationalInductiveTypes/Z.ttw) for a more thorough explanation and exploration of the type of integers defined using Computational Inductive Types.
 
 Papers:
-- None, this idea is brand new invention of mine.
+- ~~None, this idea is brand new invention of mine.~~
+- It turns out that the idea of Computational Inductive Types was invented almost 40 years ago in the language Miranda: [Laws in Miranda](https://sci-hub.se/https://doi.org/10.1145/319838.319839)
 
 **Status: highly experimental. It looks like if we put reasonable constraints on the kinds of computation rules associated with constructors, there isn't any abvious contradiction, nontermination or anything like that. However, there are no prototypes and no papers, except that some Computational Inductive Types can be simulated using [Self Types](https://github.com/uwu-tech/Kind/blob/master/blog/1-beyond-inductive-datatypes.md).**
 
 TODO:
 - Come up with more examples of useful Computational Inductive Types.
-- Rename this whole business to "Computational Inductive Types".
 
 ### [Higher Inductive Types](Induction/HIT) <a id="HIT"></a> [↩](#toc)
 
@@ -3196,10 +3196,6 @@ But this rule is not general enough. Consider a coinductive type `C`. If `C` has
 
 In general, a field whose type is a subtype of `C` can't be a coercion. Dually, a constructor whose argument is a supertype of `I` can't be a coercion from that type into `I`. As long as these conditions hold, subtyping for inductive and coinductive types coincides with subtyping for sums and records.
 
-#### Some formal rules
-
-Another thing is that we have a coercion from a (co)inductive type to its unfolding. In least/greatest fixpoint syntax, we can write these rules as
-
 Papers:
 - [Structural subtyping for inductive types with functorial equality rules](https://www.cs.rhul.ac.uk/home/zhaohui/Trans2.pdf)
 - [Constructor Subtyping in the Calculus of Inductive Constructions](https://www.researchgate.net/publication/221570140_Constructor_Subtyping_in_the_Calculus_of_Inductive_Constructions)
@@ -3385,6 +3381,41 @@ c : (v : Vec A n) -> Covec A n
 | Nil  => Nil
 | Cons => Cons (hd => v.hd, n => v.n, tl => c v.tl)
 ```
+
+### Subtyping for [Advanced Inductive Types](#advanced-inductive-types)
+
+The more advanced genres of inductive types also enjoy some subtyping.
+
+#### Subtyping for CITs
+
+For every CIT (Computational Inductive Type) we can define its Associated Computation-Free Type (ACFT), which is an inductive types with the same constructors, but without the additional computation rules. The subtyping rule for CITs says that every CIT is a subtype of its ACFT.
+
+For example, we have `Z <: Z'`, where `Z` is the type of integers we have seen before, defined as a computational inductive type, and `Z'` is its ACFT defined as follows.
+
+```
+data Z' : Type
+| z
+| s (pred : Z)
+| p (succ : Z)
+```
+
+Of course, we want the other subtyping rules for inductive types to also apply to Computational Inductive Types. For example, we want to have `Nat <: Z`. To derive this subtyping judgement, we need to think about subtyping of sums and inductives in reverse direction.
+
+To derive `Nat <: Z'` we can use the rule for base functor subtyping and we think of using it as "forward", i.e. `Nat` is a subtype of `Z'` because we can add the constructor `p` to `Nat` and to get `Z'`.
+
+A similar way of thinking doesn't make much sense for Computational Inductive Types, because we would also need to think about adding computation rules, but then not all computation rules added to `Z'` will result in a supertype of `Nat` (one example is the rule `s z => z`). Instead, we need to think "backwards", i.e. we need to think that `Z'` is the supertype of `Nat` because we can remove the constructor `p` from it to get `Nat`. In a similar fashion, `Z` is a supertype of `Nat` because if we remove from `Z` the constructor `p` and all the computation rules it is mentioned in, we will get `Nat`.
+
+**Status: very speculative.**
+
+#### Subtyping for HITs
+
+The subtyping
+
+Nominal Inductive Types
+
+Induction-Induction
+
+Induction-Recursion
 
 ### Co-inheritance for inductive types
 
