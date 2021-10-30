@@ -135,4 +135,3 @@ dropWhile (p : A -> Bool) : (l : Cyclic A) -> Cyclic A
 | Cons h t => if p h then dropWhile t else l 
 | Var  v   => Nil
 | Fix  l'  => Fix (ν α. dropWhile (l' @ α))
-

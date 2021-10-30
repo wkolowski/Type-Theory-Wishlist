@@ -2131,7 +2131,6 @@ Generic programming using (inductive-recursive) universes:
 - [Fully Generic Programming Over Closed Universes of Inductive-Recursive Types](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=4656&context=open_access_etds) - generic programming with universes
 - [Generic functional programming](https://gitlab.inria.fr/fpottier/mpri-2.4-public/blob/8485cc50346803d661e1ea4c5b8e485ccad18f66/agda/04-generic/Desc.lagda.rst)
 
-
 **Status: induction-recursion is implemented in Agda and in Idris 1 (or at least this is what Wiki claims), and there was an experimental branch of Coq that implemented it a long time ago. In general, however, it is not mainstream. Implementation should not be problematic.**
 
 ## [Basic Coinductive Types](Coinduction) <a id="basic-coinductive-types"></a> [↩](#toc)
@@ -3405,11 +3404,19 @@ To derive `Nat <: Z'` we can use the rule for base functor subtyping and we thin
 
 A similar way of thinking doesn't make much sense for Computational Inductive Types, because we would also need to think about adding computation rules, but then not all computation rules added to `Z'` will result in a supertype of `Nat` (one example is the rule `s z => z`). Instead, we need to think "backwards", i.e. we need to think that `Z'` is the supertype of `Nat` because we can remove the constructor `p` from it to get `Nat`. In a similar fashion, `Z` is a supertype of `Nat` because if we remove from `Z` the constructor `p` and all the computation rules it is mentioned in, we will get `Nat`.
 
+The above examples of CIT subtyping are illustrative, but not illuminating. For the latter, we need to state the appropriate rules precisely. So far, the most basic rule for subtyping of sums was that adding constructors produces a supertype. Starting from there, the rules for CITs are:
+- If we add a new computation rule to a (computational) inductive type, we get a subtype. In the other words, if we remove a computation rule, we get a supertype.
+- If we add a new constructor (possibly with some computation rules) to an inductive type, we get a supertype.
+- A slightly more powerful version of the above rule is that if we remove a constructor and all computation rules that mention it from an inductive type, we get a subtype.
+
 **Status: very speculative.**
 
-#### Subtyping for HITs
+TODO:
+- What is the relationship between computational inductive types and record types with manifest fields. Are these two dual to each other?
 
-The subtyping
+#### Subtyping for HITs, NITs, Induction-Induction and Induction-Recursion
+
+Subtyping for HITs works basically the same as for ordinary inductives, i.e. adding a path constructor produces a supertype. Note, however, that coercions into HITs no longer need to be injective. For example, the sum `A + B` is a subtype of the pushout of `f : C -> A` and `g : C -> B`, but the coercion is surjective.
 
 Nominal Inductive Types
 
