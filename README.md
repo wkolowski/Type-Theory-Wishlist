@@ -3196,10 +3196,13 @@ But this rule is not general enough. Consider a coinductive type `C`. If `C` has
 In general, a field whose type is a subtype of `C` can't be a coercion. Dually, a constructor whose argument is a supertype of `I` can't be a coercion from that type into `I`. As long as these conditions hold, subtyping for inductive and coinductive types coincides with subtyping for sums and records.
 
 Papers:
-- [Structural subtyping for inductive types with functorial equality rules](https://www.cs.rhul.ac.uk/home/zhaohui/Trans2.pdf)
+- [Subtyping and Inheritance for Inductive Types](https://www.cs.ru.nl/E.Poll/papers/durham97.pdf)
+- [Subtyping and Inheritance for Categorical Datatypes](https://www.cs.ru.nl/E.Poll/papers/kyoto97.pdf)
 - [Constructor Subtyping in the Calculus of Inductive Constructions](https://www.researchgate.net/publication/221570140_Constructor_Subtyping_in_the_Calculus_of_Inductive_Constructions)
+- Proof Reuse with Extended Inductive Types (no link)
 
 Less relevant papers:
+- [Structural subtyping for inductive types with functorial equality rules](https://www.cs.rhul.ac.uk/home/zhaohui/Trans2.pdf)
 - [Induction, Coinduction, and Fixed Points in Programming Languages (PL) Type Theory](https://arxiv.org/pdf/1903.05126.pdf)
 - [Revisiting Iso-Recursive Subtyping](https://dl.acm.org/doi/pdf/10.1145/3428291)
 
@@ -3385,8 +3388,6 @@ c : (v : Vec A n) -> Covec A n
 
 The more advanced genres of inductive types also enjoy some subtyping.
 
-#### Subtyping for CITs
-
 For every CIT (Computational Inductive Type) we can define its Associated Computation-Free Type (ACFT), which is an inductive types with the same constructors, but without the additional computation rules. The subtyping rule for CITs says that every CIT is a subtype of its ACFT.
 
 For example, we have `Z <: Z'`, where `Z` is the type of integers we have seen before, defined as a computational inductive type, and `Z'` is its ACFT defined as follows.
@@ -3407,22 +3408,17 @@ A similar way of thinking doesn't make much sense for Computational Inductive Ty
 The above examples of CIT subtyping are illustrative, but not illuminating. For the latter, we need to state the appropriate rules precisely. So far, the most basic rule for subtyping of sums was that adding constructors produces a supertype. Starting from there, the rules for CITs are:
 - If we add a new computation rule to a (computational) inductive type, we get a subtype. In the other words, if we remove a computation rule, we get a supertype.
 - If we add a new constructor (possibly with some computation rules) to an inductive type, we get a supertype.
-- A slightly more powerful version of the above rule is that if we remove a constructor and all computation rules that mention it from an inductive type, we get a subtype.
+- A slightly more powerful backwards version of the above rule is that if we remove a constructor and all computation rules that mention it from an inductive type, we get a subtype.
+
+Subtyping for Higher Inductive Types works basically the same as for ordinary inductives, i.e. adding a path constructor produces a supertype. Note, however, that coercions into HITs no longer need to be injective. For example, the sum `A + B` is a subtype of the pushout of `f : C -> A` and `g : C -> B`, but the coercion is surjective.
+
+There is nothing special going on with subtyping for Nominal Inductive Types, Inductive-Inductive Types and Inductive-Recursive Types.
 
 **Status: very speculative.**
 
 TODO:
 - What is the relationship between computational inductive types and record types with manifest fields. Are these two dual to each other?
-
-#### Subtyping for HITs, NITs, Induction-Induction and Induction-Recursion
-
-Subtyping for HITs works basically the same as for ordinary inductives, i.e. adding a path constructor produces a supertype. Note, however, that coercions into HITs no longer need to be injective. For example, the sum `A + B` is a subtype of the pushout of `f : C -> A` and `g : C -> B`, but the coercion is surjective.
-
-Nominal Inductive Types
-
-Induction-Induction
-
-Induction-Recursion
+- Make sure there's really nothing special with NITs, IIT and IRT.
 
 ### Co-inheritance for inductive types
 
@@ -3496,7 +3492,7 @@ mapb (f : A -> B) : BiList A -> BiList B
 | Snoc init last => Snoc (mapb init) (f last)
 ```
 
-Even though `mapc` above has codomain `ConsList`, this is fine because `ConsList <: BiList`, so we may freely co-inherit it when defining `mapb`.
+Even though `mapc` above has codomain `ConsList B`, this is fine because `ConsList B <: BiList B`, so we may freely co-inherit it when defining `mapb`.
 
 Now, this is still not the full power of co-inheritance, because so far we have only used single co-inheritance. But multiple co-inheritance is possible too. Consider the type `SnocList` of lists which have no `Cons`, but only a `Snoc`.
 
@@ -3521,14 +3517,9 @@ mapb (f : A -> B) : BiList A -> BiList B
 | co-inherit (mapc f), (maps f)
 ```
 
-The only condition that needs to be satisfied for multiple co-inheritance to be legal is that overlapping cases need to have the same result. For the above definition the only overlapping case is `Nil`. For both `mapc` and `maps` the result for the `Nil` case is `Nil`, although for `mapc` the `Nil` is of type `ConsList`, whereas for `maps` the `Nil` is of type `SnocList`. This is not a problem, however, because both `Nil`s are coerced to `Nil` of type `BiList`, and so the results of `mapc` and `maps` for the `Nil` case are considered equal. Therefore our use of multiple co-inheritance is legal.
+The only condition that needs to be satisfied for multiple co-inheritance to be legal is that overlapping cases need to have the same result. For the above definition the only overlapping case is `Nil`. For both `mapc` and `maps` the result for the `Nil` case is `Nil`, although for `mapc` the `Nil` is of type `ConsList B`, whereas for `maps` the `Nil` is of type `SnocList B`. This is not a problem, however, because both `Nil`s are coerced to `Nil` of type `BiList B`, and so the results of `mapc` and `maps` for the `Nil` case are considered equal. Therefore our use of multiple co-inheritance is legal. However, if the condition of computationally equal results in overlapping cases is not met, we can easily dodge it by overwriting the conflicting cases.
 
-The only other condition on co-inheritance is that we cannot use it to extend a function `f : A -> B` to a function `g : A' -> B` (where `c : A <: A'`) if the definition of `f` uses a helper function `h : A -> R`.
-
-However, we might dodge the above condition by first co-inheriting `h : A -> R` to define `h' : A' -> R` and then co-inheriting `f : A -> B` to define `g : A' -> B`.
-
-Papers:
-- [Subtyping and Inheritance for Inductive Types](https://www.cs.ru.nl/E.Poll/papers/durham97.pdf)
+The only other condition on co-inheritance is that we cannot use it to extend a function `f : A -> B` to a function `g : A' -> B` (where `c : A <: A'`) if the definition of `f` uses a helper function `h : A -> R`. However, we might dodge the above condition by first co-inheriting `h : A -> R` to define `h' : A' -> R` and then co-inheriting `f : A -> B` to define `g : A' -> B`.
 
 **Status: very speculative, even relative to the very speculative nature of subtyping for inductive and coinductive types.**
 
