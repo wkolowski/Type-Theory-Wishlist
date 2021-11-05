@@ -1,7 +1,7 @@
 Inductive Z : Type :=
     | pair : nat -> nat -> Z.
 
-Require Import Recdef.
+Require Import Recdef StrictProp.
 
 Function normalize (n m : nat) : nat * nat :=
 match n, m with

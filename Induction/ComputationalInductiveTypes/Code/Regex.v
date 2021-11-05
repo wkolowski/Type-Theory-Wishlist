@@ -18,7 +18,7 @@ Inductive Regex (A : Type) : Type :=
 Arguments Empty {A}.
 Arguments Epsilon {A}.
 
-Require Import Recdef.
+Require Import Recdef StrictProp.
 
 Fixpoint containsEpsilon
   {A : Type} (r : Regex A) : bool :=

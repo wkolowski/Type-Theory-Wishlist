@@ -1,9 +1,30 @@
-Require Import Recdef StrictProp.
+Require Import Bool Recdef StrictProp.
 
 Inductive Z : Type :=
     | z : Z
     | s : Z -> Z
     | p : Z -> Z.
+
+Function isNormal (k : Z) : bool :=
+match k with
+    | z    => true
+    | s k' =>
+        match k' with
+            | p _ => false
+            | _   => isNormal k'
+        end
+    | p k' =>
+        match k' with
+            | s _ => false
+            | _   => isNormal k'
+        end
+end.
+
+Record Z' : Type :=
+{
+    canonical : Z;
+    isNormal_canonical : Squash (isNormal canonical = true);
+}.
 
 Function normalize (k : Z) : Z :=
 match k with
@@ -20,15 +41,6 @@ match k with
         end
 end.
 
-Record Z' : Type :=
-{
-    canonical : Z;
-    normalize_canonical : Squash (normalize canonical = canonical);
-}.
-
-Compute normalize (s (s (s (p (p (p z)))))).
-(* ===> = z : Z *)
-
 Ltac inv H := inversion H; subst; clear H; auto.
 
 Inductive Canonical : Z -> Prop :=
@@ -40,7 +52,7 @@ Inductive Canonical : Z -> Prop :=
     | Canonical_p  :
         forall k : Z, Canonical (p k) -> Canonical (p (p k)).
 
-Hint Constructors Canonical : core.
+Local Hint Constructors Canonical : core.
 
 Lemma Canonical_normalize :
   forall k : Z,
@@ -73,6 +85,42 @@ Proof.
   intros.
   apply normalize_Canonical.
   apply Canonical_normalize.
+Qed.
+
+Lemma Canonical_isNormal :
+  forall k : Z, reflect (Canonical k) (isNormal k).
+Proof.
+  intro. functional induction isNormal k;
+  repeat constructor.
+    intro H; inv H.
+    inv IHb; repeat constructor.
+      inv H0; contradiction.
+      intro H1; inv H1.
+    intro H; inv H.
+    inv IHb; repeat constructor.
+      inv H0; contradiction.
+      intro H1; inv H1.
+Defined.
+
+Lemma isNormal_normalize :
+  forall k : Z,
+    isNormal (normalize k) = true.
+Proof.
+  intro. functional induction normalize k; cbn.
+    reflexivity.
+    rewrite e0 in IHz0; cbn in *. destruct k''; congruence.
+    destruct (normalize k'); cbn in *; auto.
+    rewrite e0 in IHz0; cbn in *. destruct k''; congruence.
+    destruct (normalize k'); cbn in *; auto.
+Qed.
+
+Lemma normalize_isNormal :
+  forall k : Z,
+    isNormal k = true -> normalize k = k.
+Proof.
+  intro. functional induction normalize k; cbn; intro Heq.
+    reflexivity.
+    1-4: destruct k'; cbn in *; try specialize (IHz0 Heq); congruence.
 Qed.
 
 Fixpoint abs (k : Z) : Z :=
@@ -114,33 +162,34 @@ end.
 
 Lemma sub_spec :
   forall k l : Z,
-    normalize (sub k l) = normalize (add (neg l) k).
+    isNormal k = true -> isNormal l = true -> sub k l = add (neg l) k.
 Proof.
   induction l; cbn; intros.
     reflexivity.
-    rewrite IHl. reflexivity.
-    rewrite IHl. reflexivity.
+    rewrite IHl.
+      reflexivity.
+      assumption.
+      destruct l; congruence.
+    rewrite IHl.
+      reflexivity.
+      assumption.
+      destruct l; congruence.
 Qed.
 
 Lemma abs_neg :
   forall k : Z,
-    Canonical k ->
-      normalize (abs (neg k)) = normalize (abs k).
+    isNormal k = true -> abs (neg k) = abs k.
 Proof.
   induction k; cbn; intros.
     reflexivity.
     destruct k; cbn in *.
       reflexivity.
-      rewrite IHk.
-        reflexivity.
-        inv H.
-      inv H.
+      rewrite (IHk H). reflexivity.
+      congruence.
     destruct k; cbn in *.
       reflexivity.
-      inv H.
-      rewrite IHk.
-        reflexivity.
-        inv H.
+      congruence.
+      rewrite (IHk H). reflexivity.
 Qed.
 
 Lemma add_z_r :
@@ -152,23 +201,25 @@ Qed.
 
 Lemma add_s_r :
   forall k l : Z,
-    normalize (add k (s l)) = normalize (s (add k l)).
+    isNormal k = true -> isNormal l = true -> add k (s l) = s (add k l).
 Proof.
   induction k; cbn; intros.
     reflexivity.
-    rewrite IHk. cbn. reflexivity.
-    rewrite IHk. cbn. destruct (normalize (add k l)).
+    destruct k as [| k' | k']; cbn in *.
       reflexivity.
-      destruct z0; try reflexivity.
-Admitted.
+      rewrite (IHk _ H H0). reflexivity.
+      congruence.
+Abort.
+
+Compute normalize (add (s z) (p z)).
+Compute normalize (p (add (s z) z)).
 
 Lemma add_p_r :
   forall k l : Z,
     normalize (add k (p l)) = normalize (p (add k l)).
 Proof.
-  induction k; cbn; intros.
+  induction k as [| k' | k']; cbn; intros.
     reflexivity.
-    rewrite IHk. cbn. destruct (normalize (add k l)).
 Admitted.
 
 Lemma add_comm :
@@ -177,6 +228,6 @@ Lemma add_comm :
 Proof.
   induction k; cbn; intros.
     rewrite add_z_r. reflexivity.
-    rewrite add_s_r. cbn. rewrite IHk. reflexivity.
+    rewrite add_s_r. cbn. rewrite IHk. reflexivity. admit.
     rewrite add_p_r. cbn. rewrite IHk. reflexivity.
-Qed.
+Admitted.

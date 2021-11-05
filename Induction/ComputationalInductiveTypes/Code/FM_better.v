@@ -9,6 +9,18 @@ Arguments e  {A}.
 Arguments i  {A} _.
 Arguments op {A} _ _.
 
+Function isNormal {A : Type} (x : FM A) : bool :=
+match x with
+    | e   => true
+    | i _ => true
+    | op l r =>
+        match l, r with
+            | _  , e => false
+            | i _, _ => isNormal r
+            | _  , _ => false
+        end
+end.
+
 Inductive Canonical {A : Type} : FM A -> Prop :=
     | Ce   : Canonical e
     | Ci   :
@@ -17,10 +29,25 @@ Inductive Canonical {A : Type} : FM A -> Prop :=
         forall (a : A) (y : FM A),
           Canonical y -> y <> e -> Canonical (op (i a) y).
 
+Lemma isNormal_Canonical :
+  forall {A : Type} (x : FM A),
+    reflect (Canonical x) (isNormal x).
+Proof.
+  intros.
+  functional induction isNormal x;
+  do 2 try constructor.
+    inversion 1. congruence.
+    inversion IHb; repeat constructor.
+      assumption.
+      intro. rewrite H1 in y. contradiction.
+      inversion 1. subst. contradiction.
+    inversion 1. subst. destruct r; contradiction.
+Defined.
+
 Record FM' (A : Type) : Type :=
 {
     cf : FM A;
-    Canonical_cf : Canonical cf;
+    Canonical_cf : Squash (Canonical cf);
 }.
 
 Inductive Graph {A : Type} : FM A -> FM A -> Type :=
