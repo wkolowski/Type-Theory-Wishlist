@@ -310,7 +310,7 @@ comp3 #(A @B C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 comp3' (#A : Type) (B : Type) (#C : Type) (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 ```
 
-We can omit writing implicit arguments altogether when they are easily inferable from something else. This piece of syntax is inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments). We will call it "super implicit arguments". It is used pretty often in this repo, almost always with `A` and `B` standing in for types.
+We can omit writing implicit arguments altogether when they are easily inferable from something else. This piece of syntax is inspired by [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#implicit-arguments). We will call it "very implicit arguments". It is used pretty often in this repo, almost always with `A` and `B` standing in for types.
 
 ```
 id (x : A) : A := x
@@ -1265,7 +1265,7 @@ Basic inductive types work mostly as usual, but as for functions, we want to thi
 
 The different genres of inductive types (enumerations, parameterized types, inductive families, etc.) have progressively more complete syntaxes, so that simple types can be written in a simple way and only the more complicated ones require more details.
 
-Enumerations can NOT be written in a single line and must have the initial bar. Note that we don't need to (and should not) write the return type of the constructors when it's the same in every case.
+Enumerations can NOT be written in a single line and must have the initial bar. Note that we don't need to (and should not) write the codomain the constructors when it's the same in every case.
 
 ```
 data Bool : Type
@@ -1273,7 +1273,7 @@ data Bool : Type
 | tt
 ```
 
-Definition by patterns matching are very concise.
+Definitions by pattern matching are very concise.
 
 ```
 notb : Bool -> Bool
@@ -1285,7 +1285,7 @@ We should name the argument of each constructor, as this will be used for automa
 
 ```
 data _*_ (A B : Type) : Type
-| pair (outl : A) (outr : B)
+| pair (outl : A, outr : B)
 ```
 
 This doesn't affect the ordinary way of doing pattern matching that binds names.
@@ -1295,25 +1295,25 @@ swap : A * B -> B * A
 | pair x y => pair y x
 ```
 
-But if we want, we can rely on arguments' original names in definitions by pattern matching.
+But if we want, we can name the function's argument and then rely on its constructor arguments' original names in definitions by pattern matching.
 
 ```
 swap : (x : A * B) -> B * A
 | pair => pair x.outr x.outl
 ```
 
-We can also unpack the constructor's arguments in place to use their shorter names by postfixing the constructor's name with `{..}` (this syntax is based on Haskell's [Record Wildcards](https://kodimensional.dev/recordwildcards)).
-
-```
-swap : A * B -> B * A
-| pair{..} => pair outr outl
-```
-
-Even better: we don't need to write `{..}` because records get opened/unpacked automatically.
+Things are even more comfortable: because records get opened/unpacked automatically, we don't need to name the function argument, as we may simply use the name `outl` and `outr`.
 
 ```
 swap : A * B -> B * A
 | pair => pair outr outl
+```
+
+But if there are name conflicts, we need to disambiguate by naming the arguments.
+
+```
+putTogether : (x y : A * B) -> A * B
+| pair, pair => pair x.outl y.outr
 ```
 
 As usual, the inductive type being defined can appear as argument to any of the constructors, provided that it stands in a strictly positive position.
@@ -1354,7 +1354,7 @@ data List (A : Type) : Type
 This distinction applies both to inductive and recursive definitions. It looks a bit weird at first, as that's not what people are used to, but hey, you are going to appreciate it when the definitions get more complicated!
 
 ```
-map (f : A -> B) : List A -> List B :=
+map (f : A -> B) : List A -> List B
 | []     => []
 | h :: t => f h :: map t
 ```
@@ -1362,7 +1362,7 @@ map (f : A -> B) : List A -> List B :=
 The distinction between parameters and indices has some other consequences too. For example, when defining additions of naturals, the most succinct definition forces us to do it by recursion on the second argument.
 
 ```
-add (n : Nat) : Nat -> Nat :=
+add (n : Nat) : Nat -> Nat
 | z   => n
 | s m => s (add m)
 ```
@@ -1370,7 +1370,7 @@ add (n : Nat) : Nat -> Nat :=
 For functions that are not commutative, like list append, we get a bit more headache, as we need to match two arguments even though we don't use the second one.
 
 ```
-app : (l1 l2 : List A) -> List A :=
+app : (l1 l2 : List A) -> List A
 | []    , _ => l2
 | h :: t, _ => h :: app t l2
 ```
@@ -1384,7 +1384,7 @@ filter (p : A -> Bool) : List A -> List A
   | ff => filter t
 ```
 
-The above use of a `with`-clause if equivalent to the following use of an `if-then-else` expression.
+The above use of a `with`-clause is equivalent to the following use of an `if-then-else` expression.
 
 ```
 filter (p : A -> Bool) : List A -> List A
@@ -1394,7 +1394,7 @@ filter (p : A -> Bool) : List A -> List A
 
 ### Discriminators
 
-As a slight bonus, when we define an inductive type, we get for free discriminators which check what constructors a term was made with. This feature is inspired by the F* language. They are named after the constructor, with a `?` at the end.
+As a slight bonus, when we define an inductive type, we get autogenerated discriminators which check which constructor a term was made with. This feature is inspired by the F* language. They are named after the constructor, with a `?` at the end.
 
 For `Bool`, they are
 
@@ -1446,19 +1446,70 @@ Both of the above types have constructors named `Red` and `Green`, but there is 
 
 If we need to disambiguate between the two `Red`s, we can write `TrafficLight.Red` and `Color.Red`, respectively. Here the dot syntax is the same as for records, and in fact every inductive type has its own namespace, which is a record that holds various useful things related to the inductive type, like its constructors or its elimination principle.
 
+### More on parameters vs indices
+
+As was already said, we distinguish between parameters and indices in function definitions, the consequence being that we can omit the parameters, but we must write the indices. Similarly, we can omit parameters in inductive type definitions.
+
+This is nice, but not enough to guard us from repetitiveness and boredom, as we still need to spell out all the parameters in the function's declaration and then give them to the type. Even though the former can be dodged by using the mechanism of very implicit arguments (as we often do), so far there's nothing we can do about the latter. Until now!
+
+```
+len : List -> Nat
+| []     => z
+| _ :: t => s (len t)
+```
+
+The above snippet defines `len`, the function that computes the length of a list. Note that its type is given as `List -> Nat`. Taken at face value this is not a well-formed type, because `List : Type -> Type` is a type constructor, not a type. However, `List -> Nat` is just syntax sugar which should be interpreted as `(#A : Type) -> List A -> Nat`, as shown below.
+
+```
+// With very implicit arguments.
+len : List A -> Nat
+| []     => z
+| _ :: t => s (len t)
+
+// With ordinary implicit arguments.
+len (#A : Type) : List A -> Nat
+| []     => z
+| _ :: t => s (len t)
+```
+
+In general, whenever a type constructor (like `List : Type -> Type` or `_ * _ : Type -> Type -> Type`) is used where a type is expected, we should interpret this as referring to the type's constructor _record closure_ (i.e. `(A : Type, _ : List A)` or `(A B : Type, _ : A * B)`). This syntax sugar is called **bundled parameters**.
+
+```
+app : (l1 l2 : List) -> List
+| []    , _ => l2
+| h :: t, _ => h :: app t l2
+```
+
+The above piece fo code defines the `app` function once more, this time using bundled parameters.
+
+In general, separate uses of `List` will be understood to mean `List` with different element types, unless it is inferred that the element types should be the same.
+
+For example, the type `(x : List, y : List)` should be interpreted as `(A : Type, x : List A, B : Type, y : List B)`. However, if we put `x` and `y` together in the same binder, as in `(x y : List)`, then it is understood that `x` and `y` are of the same type, so this type should be inrepreted as `(A : Type, x y : List A)`.
+
+In our `app` example above, both `l1` and `l2` appear in the same binder, so it is inferred that they must be of the same type, i.e. the binder is interpreted as `(#A : Type, l1 l2 : List A)`. But what about the codomain, which is also written as `List`? Is it interpreted as `(#B : Type, List B)` or as `List A`? The answer is that the codomain is always interpreted using parameters introduced in the domain, so it is interpreted as `List A`.
+
+```
+app (#A : Type) : (l1 l2 : List A) -> List A
+| []    , _ => l2
+| h :: t, _ => h :: app t l2
+```
+
+To sum up, the type of `app`, written as `(l1 l2 : List) -> List` is interpreted as `(#A : Type, l1 l2 : List A) -> List A`, and the definition of `app` is equivalent to the definition shown above.
+
+### Summary
+
 Papers:
 - [Inductive Types Deconstructed](https://www.iro.umontreal.ca/~monnier/itd-tyde-2019.pdf)
 - [Elaborating Inductive Definitions](https://arxiv.org/pdf/1210.6390.pdf)
 - [The Gentle Art of Levitation](https://www.irif.fr/~dagand/papers/levitation.pdf)
 - [A Cosmology of Datatypes](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.366.3635&rep=rep1&type=pdf)
 
-**Status: inductive types and pattern matching are standard, with Agda probably being the closest implementation to what has been described so far. Discriminators are not standard, but implemented in F\*, so they shouldn't pose a problem. Each inductive type being its own namespace/module is also not standard, but implemented in Lean, so it also shouldn't pose any problems.**
+**Status: inductive types and pattern matching are standard, with Agda probably being the closest implementation to what has been described so far. Discriminators are not standard, but implemented in F\*, so they shouldn't pose a problem. Each inductive type being its own namespace/module is also not standard, but implemented in Lean, so it also shouldn't pose any problems. The distinction between parameters and indices was present in Lean 2 when defining functions, but its other forms described here are novel. However, it shouldn't pose any problems.**
 
 TODO:
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments and `@` used for name concretion.
-- Describe nested inductive types.
 - Describe list notation for list-like types.
-- Describe bundled syntax for inductives (and inductive families).
+- Describe bundled syntax for inductive families. Review section on bundled syntax for ordinary inductive types.
 
 ## Pattern matching on steroids <a id="pattern-matching"></a> [↩](#toc)
 
@@ -1558,7 +1609,7 @@ Not papers:
 
 ### Standard Inductive Families <a id="standard-inductive-families"></a> [↩](#toc)
 
-For inductive families, we need to explicitly write the constructor's return type (because it depends on the index), but we still don't need to write the parameters.
+For inductive families, we need to explicitly write the constructor's codomain (because it depends on the index), but we still don't need to write the parameters.
 
 ```
 data Vec (A : Type) : Nat -> Type
