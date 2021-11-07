@@ -1212,6 +1212,44 @@ dist4-dist1 : &dist1 = dist4 := refl
 
 As for sum types, we would like to have extensible sum types, akin to OCaml's polymorphic variants. If that's not possible, then sum types are subsumed by inductive types. In theory, getting records right should be enough to get sums right, as they are dual to records.
 
+For extensible sums, we use square bracket notation.
+
+```
+sum (A B : Type) : Type := [inl : A, inr : B]
+
+x : sum Nat Bool := inl 5
+y : sum Nat Bool := inr ff
+```
+
+The dual of the record's join operator `&` is the sum's sum operator `|`.
+
+```
+sum3 : [inl : A, inr : B, orc : C] = sum A B | [orc : C]
+```
+
+For enumerations, we don't need to write the argument type.
+
+```
+color : Type := [R, G, B]
+```
+
+We have shorter syntax for multiple constructors with the same arguments.
+
+```
+leftOrRight : [ln rn : Nat] := ln 42
+```
+
+We can eliminate terms of extensible sum types using ordinary pattern matching.
+```
+extensible-abort : [ina : A, inb : B, ine : Empty] -> [ina : A, inb : B]
+| ina a => ina a
+| inb b => inb b
+| ine e => abort e
+```
+
+
+
+
 ### Summary
 
 [Here](Records/TurboRecords.ttw) you can find a wilder and more ambitious idea of what records should be.
@@ -1400,6 +1438,7 @@ Papers:
 - [Elaborating Inductive Definitions](https://arxiv.org/pdf/1210.6390.pdf)
 - [The Gentle Art of Levitation](https://www.irif.fr/~dagand/papers/levitation.pdf)
 - [A Cosmology of Datatypes](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.366.3635&rep=rep1&type=pdf)
+- [The view from the left](http://strictlypositive.org/vfl.pdf.)
 
 **Status: inductive types and pattern matching are standard, with Agda probably being the closest implementation to what has been described so far.**
 
@@ -1591,7 +1630,7 @@ Not papers:
 - [Discriminators in F* tutorial](https://fstar-lang.org/tutorial/tutorial.html#sec-discriminators)
 - [An example of the `is` syntax in SSReflect](https://coq.inria.fr/refman/proof-engine/ssreflect-proof-language.html#congruence)
 
-**Status: discriminators are not standard, but implemented in F\*, so they shouldn't pose a problem. The `is` syntax is taken from Coq's ssreflect.**
+**Status: discriminators are not standard, but implemented in F\*, so they shouldn't pose a problem. The `is` syntax is taken from Coq's SSReflect.**
 
 TODO:
 - Settle on a concrete solution and syntax.
@@ -1619,9 +1658,9 @@ Both of the above types have constructors named `Red` and `Green`, but there is 
 If we need to disambiguate between the two `Red`s, we can write `TrafficLight.Red` and `Color.Red`, respectively. Here the dot syntax is the same as for records, and in fact every inductive type has its own namespace, which is a record that holds various useful things related to the inductive type, like its constructors or its elimination principle.
 
 Not papers:
-- TODO
+- [See how this works in Lean](https://leanprover.github.io/theorem_proving_in_lean/inductive_types.html)
 
-**Status: each inductive type being its own namespace/module is not standard, but implemented in Lean 2, so it shouldn't pose any problems.**
+**Status: each inductive type being its own namespace/module is not standard, but implemented in Lean, so it shouldn't pose any problems.**
 
 ### Syntax sugar for bundled parameters <a id="bundled-parameters"></a> [↩](#toc)
 
@@ -1679,7 +1718,7 @@ To sum up, the type of `app`, written as `(l1 l2 : List) -> List` is interpreted
 
 ### Standard Inductive Families <a id="standard-inductive-families"></a> [↩](#toc)
 
-For inductive families, we need to explicitly write the constructor's codomain (because it depends on the index), but we still don't need to write the parameters.
+For inductive families, we need to explicitly write the constructors' codomains (because it depends on the index), but we still don't need to write the parameters.
 
 ```
 data Vec (A : Type) : Nat -> Type
@@ -1701,6 +1740,20 @@ Papers:
 - [A Syntax for Mutual Inductive Families](https://drops.dagstuhl.de/opus/volltexte/2020/12345/pdf/LIPIcs-FSCD-2020-23.pdf)
 
 **Status: inductive families are standard in proof assistants and dependently-typed languages. Dependent pattern matching is semi-standard, as some languages (notably Coq) have problems with supporting it properly so it's hard to use, while some others (Idris 2 and formerly Agda) have implementations of it that entail Uniqueness of Identity Proofs, which is incompatible with Univalence. The closest implementation of what's described here is probably Agda (with the flag `--without-K`).**
+
+### [Indices that Compute](Induction/IndicesThatCompute) <a id="indices-that-compute"></a> [↩](#toc)
+
+
+
+Papers:
+- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf))
+- [A simpler encoding of indexed types](https://arxiv.org/pdf/2103.15408.pdf)
+
+**Status: very wild speculations.**
+
+TODO:
+- Think about this more.
+- Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
 
 ### Nested Inductive Types <a id="nested-inductive-types"></a> [↩](#toc)
 
@@ -1784,107 +1837,6 @@ Not papers:
 
 TODO:
 - All.
-
-### [Indices that Compute](Induction/IndicesThatCompute) <a id="indices-that-compute"></a> [↩](#toc)
-
-We use the name "Indices that Compute" for a suite of ideas centered around an alternative syntax for inductive families and the idea that it would be good to "merge" recursive and inductive definitions of type families. To make this more precise, consider the two below definitions of what it means for a natural number to be even.
-
-```
-data Even : Nat -> Prop
-| Even-z  : Even z
-| Even-ss (#n : Nat, e : Even n) : Even (s (s n))
-```
-
-The first definition is a predicate defined as an inductive family. It effectively says that `z` (zero) is even and that if `n` is even, then `s (s n)` (2 + n) is also even. What are the pros and cons of this definition?
-
-Pros:
-- we can pattern match on it
-- induction principle (in a Coq-like language)
-- irrelevance - as we will see later, thanks to `Prop`, any `e1, e2 : Even n` can be proven equal using just `refl`exivity
-
-Cons:
-- quadratic proof size if there is no sharing of the implicit `n`s between constructors
-- need to implement the decision procedure manually
-- hard to prove that 1 is not even - we need a tactic like Coq's `inversion`, or some boilerplate, or very well-implemented dependent patern matching
-- no uniqueness principle - if the codomain wasn't `Prop`, we would need to prove manually that all `e1, e2 : Even n` are equal
-
-```
-Even : Nat -> Prop
-| z       => Unit
-| s z     => Empty
-| s (s n) => Even n
-```
-
-The second definition is recursive. It says that zero is even, one is not even, and that 2 + n is even when n is. What are the pros and cons of this definition?
-
-Pros:
-- constant proof size
-- very easy to prove that 1 is not even - `Even (s z)` computes to `Empty`, so the proof of `Even 1 -> Empty` is the identity function
-- irrelevance
-- uniqueness principle - even if the codomain wasn't `Prop`, all `e : Even n` compute to the same type when `n` is known
-
-Cons:
-- can't pattern match on the proof, only on the argument
-- need to implement the decision procedure manually
-- no induction principle (again, if we're hanging in Coq's vicinity)
-- non-standard shape of recursion (i.e. different from what appears in `Nat`'s definition)
-
-The idea behind the name "Indices that Compute" is to merge both of these definitiosn into one, better.
-
-```
-data EVEN : Nat -> Prop
-| z       => EVEN-z : EVEN z
-| s (s n) => EVEN-ss (e : EVEN n) : EVEN (s (s n))
-```
-
-This definition is similar to the second definition of `Even` in that it is a definition by pattern matching on the index `n`. However, the pattern matching is not exhaustive, because we omitted the case for `s z`. This means that `EVEN (s z)` will compute to `Empty`. The definition is also similar to the first definition of `Even` in that it provides two constructors, one for proving that `z` is even and the other for proving that `s (s n)` is even if `n` is.
-
-Pros:
-- constant proof size
-- easy to prove that 1 is not even
-- it computes
-- induction principle
-
-Cons:
-- need to manually implement decision procedure
-
-Q: Can we do anything nice with this?
-
-A: in such a banal case as parity of naturals probably not, but in more complicated ones I think so! Example: matching a regular expression against a string. This can't be easily implemented by recursion, so induction is needed. But even though we use induction, it would be nice if some cases of the definition could compute/simplify to help us a bit.
-
-There's also an alternative way for easy predicates like "being an even number", namely: just implement the decision procedure and declare `(= true)` as a coercion. With special computation rules `Empty`, `Unit` and `=`, this should be more than enough.
-
-```
-even : Nat -> Bool
-| z       => tt
-| s z     => ff
-| s (s n) => even n
-
-Bool-to-Prop : Bool -> Prop
-| tt => Unit
-| ff => Empty
-```
-
-Pros:
-- constant proof size
-- it is its own decision procedure
-- easy to prove that 1 is not even
-- to sum up: it computes
-
-Cons:
-- nonstandard shape of recursion
-
-Note: induction principles may be problematic in Coq or other languages where pattern matching is equivalent to eliminators, but after some thinking, using an induction principle of a type or function (functional induction) in a proof just amounts to copying that type's constructors/functions cases and pasting them in the proof.
-
-Papers:
-- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf))
-- [A simpler encoding of indexed types](https://arxiv.org/pdf/2103.15408.pdf)
-
-**Status: very wild speculations.**
-
-TODO:
-- Think about this more.
-- Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
 
 ## [Advanced Inductive Types](Induction) <a id="advanced-inductive-types"></a> [↩](#toc)
 
