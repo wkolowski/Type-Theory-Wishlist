@@ -1221,10 +1221,26 @@ x : sum Nat Bool := inl 5
 y : sum Nat Bool := inr ff
 ```
 
-The dual of the record's join operator `&` is the sum's sum operator `|`.
+The dual of the record's join operator `&` is the sum's union operator `|`. If the arguments of `|` share no fields, then the result is a disjoint sum.
 
 ```
-sum3 : [inl : A, inr : B, orc : C] = sum A B | [orc : C]
+sum3 : [inl : A, inr : B, orc : C] = sum A B | [orc : C] := refl
+```
+
+If the arguments of `|` share fields of the same name and type, they are merged in a pushout-like manner.
+
+```
+sum' (A B : Type) : Type := [inr : A, orc : B]
+
+sum3 : [inl : A, inr : B, orc : C] = sum A B | sum' B C := refl
+```
+
+If the arguments of `|` share fields of the same name but different type, this is an error.
+
+```
+// The error is something like "cannot union field `inl : A` with field `inl : B`.
+%Fail
+wut : Type := sum A B | sum B A
 ```
 
 For enumerations, we don't need to write the argument type.
@@ -1240,6 +1256,7 @@ leftOrRight : [ln rn : Nat] := ln 42
 ```
 
 We can eliminate terms of extensible sum types using ordinary pattern matching.
+
 ```
 extensible-abort : [ina : A, inb : B, ine : Empty] -> [ina : A, inb : B]
 | ina a => ina a
@@ -1247,8 +1264,17 @@ extensible-abort : [ina : A, inb : B, ine : Empty] -> [ina : A, inb : B]
 | ine e => abort e
 ```
 
+Above, we have two boring clauses `ina a => ina a` and `inb b => inb b`. This kind of thing will happen quite often in functions between extensible sum types, so we have a special syntax for it: we don't need to write these identity clauses and we only need to handle the non-identity cases.
 
+```
+extensible-abort : [ina : A, inb : B, ine : Empty] -> [ina : A, inb : B]
+| ine e => abort e
+```
 
+**Status: OCaml has polymorphic variants, but I'm not sure how close they are to what was presented above. In general, extensible sums are very rare and the above is mostly speculation.**
+
+TODO:
+- Write more about extensible sums.
 
 ### Summary
 
@@ -1292,13 +1318,14 @@ TODO:
 - Rethink whether the prototype should really go at the end of the record definition.
 - Deduplicate explanations of `open` syntax in the first three sections and then in Problem 1 section.
 - How exactly do dependent records work? We need more examples.
-- Discuss the sort of record types and how to declare record types.
+- Discuss the sort (i.e. universe) of record types and how to declare record types.
 - Discuss implicit record fields.
 - How to avoid the ugly `A setting x to x` thing? Maybe `A @x` for passing implicit arguments?
 - Rethink whether `$` is a good syntax for record type prototyping. Make sure it does not collide with `$=>` and with `$` used for complex function application.
 - Decide whether prototype copatterns should be at the beginning or at the end.
 - Rethink `RType` and how to make records first-class.
 - Add a term-level `removing` operation.
+- Make sure that copatterns and the built-in stuff make optics absolutely unneeded. Having to know profunctors just to peek at record fields is bad.
 
 ## Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
@@ -1743,10 +1770,90 @@ Papers:
 
 ### [Indices that Compute](Induction/IndicesThatCompute) <a id="indices-that-compute"></a> [↩](#toc)
 
+Consider an alternative representation of vectors, defined by recursion on the index `n`.
+
+```
+RVec (#A : Type) : Nat -> Type
+| z   => Unit
+| s n => (hd : A, tl : RVec n)
+```
+
+We can define vectors like this:
+
+```
+// The empty vector.
+x : RVec Nat 0 := unit
+
+// Singleton vector.
+y : RVec Nat 1 := (hd => 42, tl => unit)
+
+// Shorter syntax.
+y' : RVec Nat 1 := (42, unit)
+
+// A longer example.
+z : RVec Nat 5 := (0, (1, (2, (3, (4, unit)))))
+```
+
+We may now ask ourselves: which representation is better? Let's start by listing the pros and cons of each representation.
+
+| ---------------------- | Inductive types        | Recursive types        |
+| ---------------------- | ---------------------- | ---------------------- |
+| Notation               | intuitive              | less intuitive         |
+| Uniqueness principle   | no                     | inherited from records |
+| Pattern matching       | yes                    | only on the index      |
+| Structural recursion   | yes                    | only on the index      |
+| Forcing & detagging    | if the compiler has it | for free               |
+| Large indices          | no                     | yes                    |
+| Non-indexed types      | yes                    | no                     |
+| Non-positive types     | no                     | yes                    |
+
+As for the notation, the usual notation for defining inductive types is better, because people are used to it, whereas defining types by recursion is uncommon even in dependently-typed languages where it is possible. Moreover, the recursive definition has ugly consequences, like having to write `unit` instead of `Nil` and lots of parenthesis instead of `Cons`. However, I think this can be rectified by using some extensible sums.
+
+```
+RVec (#A : Type) : Nat -> Type
+| z   => [Nil]
+| s n => [Cons : (hd : A, tl : RVec n)]
+
+// Definitions of the same x, y and z as above.
+x : RVec Nat 0 := Nil
+y : RVec Nat 1 := Cons 42 Nil
+z : RVec Nat 5 := Cons 0 (Cons 1 (Cons 2 (Cons 3 (Cons 4 Nil))))
+```
+
+If we replace `Unit` by the single-constructor extensible sum `[Nil]` and in the successor case wrap the record in a single-constructor extensible sum with the constructor named `Cons`, we get an interface that is equivalent to that of the original `Vec`.
+
+Moving on, `Vec` is an inductive family and thus has no uniqueness principle, i.e. if we have `x y : Vec A 0`, then we need to match `x` and `y` to find out that they are both `Nil`. This is not the case for `RVec`, because for `RVec A 0 ≡ Unit` and `Unit` is a strict proposition, so for all `x y : RVec A 0` we have `x ≡ y`. Similarly, for `x : RVec A (s n)` we have `x ≡ Cons x.hd x.tl` (note: assuming a uniqueness principle for single-constructor extensible sums).
+
+Another difference between the two representations is the use of pattern matching and recursion to define functions on vectors. With the inductive vectors, all is as usual, with dependent pattern matching fully supported. For `RVec`, however, pattern matching and recursion is only supported for the index. To match the value itself, we have to match the index first.
+
+```
+vmap (f : A -> B) : Vec A n -> Vec B n
+| Nil      => Nil
+| Cons h t => Cons (f h) (vmap t)
+
+rmap (f : A -> B) : (#n : Nat) -> RVec A n -> RVec B n
+| z  , Nil      => Nil
+| s n, Cons h t => Cons (f h) (rmap t)
+```
+
+The difference is very small, but annoying. Thankfully, we can introduce some syntax sugar which allows us to match only on the `RVec` and omit dealing with the index. Because we can infer the index from the constructor used (`Nil` corresponds to `z` and `Cons` to `s n`), this syntax sugar can then be desugared by translating the index-omitting pattern matching as in `rmap'` below into the full pattern matching as in the original `rmap` above.
+
+```
+rmap' (f : A -> B) : RVec A n -> RVec B n
+| Nil      => Nil
+| Cons h t => Cons (f h) (rmap' t)
+```
+
+As for forcing and detagging: the inductive `Vec` needs to store its index `n` somehow, and the index also appears as one of the arguments of `Cons`. This is not a problem as long as we're only concerned with proving, but as soon as we're interested in performance or extraction to another language, it starts being problematic. The recursive `RVec`, on the other hand, doesn't have the same problems - the index is an input from which the type is computed, so we don't need to store it.
+
+As for large indices and non-strictly-positive types: inductive types have to conform to strict rules about which universe they can live in. For example, the universe of an inductive type must be at least as big as the universe of all its arguments. This is required to ensure that we can't use the mechanism of inductive definitions to lower the universe level of some other type just by wrapping it in an inductive. Inductive types also need to conform to strong rules regarding positivity - inductive arguments can't occur in negative positions (i.e. to the left of an odd number of arrows), because such types are contradictory thanks to Cantor's theorem. Occurrences which are positive but not strictly positive are also not allowed, as they may result in a proof of `Empty` in some cases. Recursive types, on the other hand, don't have to observe the same rules - we can do anything we want, as long we're doing it by recursion on the index.
+
+
+| Non-indexed types      | yes                    | no                     |
 
 
 Papers:
-- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf))
+- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)) - this is the paper on which most of this section is based
 - [A simpler encoding of indexed types](https://arxiv.org/pdf/2103.15408.pdf)
 
 **Status: very wild speculations.**
