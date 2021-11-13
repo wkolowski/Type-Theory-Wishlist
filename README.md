@@ -16,7 +16,8 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Mixed functions](#mixed-functions)
 1. [Documentation comments](#doc-comments)
 1. [Empty and Unit](#empty-and-unit)
-1. [Records (and sums)](#records)
+1. [Records](#records)
+1. [Sums (TODO)](#sums)
 1. [Basic Inductive Types](#basic-inductive-types)
 1. [Inductive Types on steroids](#inductive-steroids)
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
@@ -95,8 +96,6 @@ Papers dealing with the formal treatment of definitions and declarations in PTSs
 
 TODO:
 - Revisit the comment syntax.
-- Invent syntax for documentation comments.
-- Documentation is well known for its tendency to go out of sync with the code. So maybe it's time to make it strongly-typed? See [the Unison Language](https://www.unisonweb.org/docs/documentation) for more on typed documentation.
 
 ## Types <a id="types"></a> [↩](#toc)
 
@@ -221,7 +220,7 @@ Not papers:
 
 TODO:
 - How does it work at the level of formal rules? Do we need zillion rules for every single primitive operation and its specification?
-- Decide the details of the char type.
+- Decide the details of the `Char` type.
 - Decide the details of division by zero.
 - We may also want to have other char types, like `Ascii` and `UTF-16`.
 - Alternatively, `Char` could be made more abstract and the encoding is just its property.
@@ -585,7 +584,8 @@ doc-comment : Doc :=
 {{
   This is a doc comment. I like trains. Trains like me, too.
 
-  The basic syntax is markdown-like. We can _underline_ words, make them **bold** or ~~strike them through~~.
+  The basic syntax is markdown-like. We can _underline_ words, make them **bold** or
+  ~~strike them through~~.
 
   Here's a numbered list:
   1. First item.
@@ -1357,74 +1357,6 @@ dist1-dist4 : dist1 = &dist4 := refl
 dist4-dist1 : &dist1 = dist4 := refl
 ```
 
-### Sums
-
-As for sum types, we would like to have extensible sum types, akin to OCaml's polymorphic variants. If that's not possible, then sum types are subsumed by inductive types. In theory, getting records right should be enough to get sums right, as they are dual to records.
-
-For extensible sums, we use square bracket notation.
-
-```
-sum (A B : Type) : Type := [inl : A, inr : B]
-
-x : sum Nat Bool := inl 5
-y : sum Nat Bool := inr ff
-```
-
-The dual of the record's join operator `&` is the sum's union operator `|`. If the arguments of `|` share no fields, then the result is a disjoint sum.
-
-```
-sum3 : [inl : A, inr : B, orc : C] = sum A B | [orc : C] := refl
-```
-
-If the arguments of `|` share fields of the same name and type, they are merged in a pushout-like manner.
-
-```
-sum' (A B : Type) : Type := [inr : A, orc : B]
-
-sum3 : [inl : A, inr : B, orc : C] = sum A B | sum' B C := refl
-```
-
-If the arguments of `|` share fields of the same name but different type, this is an error.
-
-```
-// The error is something like "cannot union field `inl : A` with field `inl : B`.
-%Fail
-wut : Type := sum A B | sum B A
-```
-
-For enumerations, we don't need to write the argument type.
-
-```
-color : Type := [R, G, B]
-```
-
-We have shorter syntax for multiple constructors with the same arguments.
-
-```
-leftOrRight : [ln rn : Nat] := ln 42
-```
-
-We can eliminate terms of extensible sum types using ordinary pattern matching.
-
-```
-extensible-abort : [ina : A, inb : B, ine : Empty] -> [ina : A, inb : B]
-| ina a => ina a
-| inb b => inb b
-| ine e => abort e
-```
-
-Above, we have two boring clauses `ina a => ina a` and `inb b => inb b`. This kind of thing will happen quite often in functions between extensible sum types, so we have a special syntax for it: we don't need to write these identity clauses and we only need to handle the non-identity cases.
-
-```
-extensible-abort : [ina : A, inb : B, ine : Empty] -> [ina : A, inb : B]
-| ine e => abort e
-```
-
-**Status: OCaml has polymorphic variants, but I'm not sure how close they are to what was presented above. In general, extensible sums are very rare and the above is mostly speculation.**
-
-TODO:
-- Write more about extensible sums.
-
 ### Summary
 
 [Here](Records/TurboRecords.ttw) you can find a wilder and more ambitious idea of what records should be.
@@ -1433,7 +1365,6 @@ Papers on dependent records in type theory:
 - [Dependent Record Types Revisited](http://www.cs.rhul.ac.uk/home/zhaohui/DRT11.pdf)
 - [Typed Operational Semantics for Dependent Record Types](http://www.cs.rhul.ac.uk/home/zhaohui/TYPES09final11-01-01.pdf)
 - [Ur: Statically-Typed Metaprogramming with Type-Level Record Computation](http://adam.chlipala.net/papers/UrPLDI10/UrPLDI10.pdf)
-- [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf)
 
 Older papers:
 - [Extension of Martin-Löf 's Type Theory with Record Types and Subtyping](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.49.5862&rep=rep1&type=pdf)
@@ -1441,6 +1372,9 @@ Older papers:
 - [Dependently Typed Records for Representing Mathematical Structure](https://sci-hub.se/10.1007/3-540-44659-1_29)
 - [A Logical Framework with Dependently Typed Records](https://www.researchgate.net/publication/226374245_A_Logical_Framework_with_Dependently_Typed_Records)
 - [Algebraic Structures and Dependent Records](https://www.researchgate.net/publication/242555886_Dependent_record_types_and_algebraic_structures_in_type_theory)
+
+Papers on extensible records:
+- [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf)
 
 Papers on manifest fields:
 - [Manifest types, modules, and separate compilation](https://www.cs.tufts.edu/~nr/cs257/archive/xavier-leroy/105.pdf)
@@ -1458,7 +1392,7 @@ Papers on type classes:
 - [Modular Type Classes](https://www.cs.cmu.edu/~rwh/papers/mtc/short.pdf)
 - [Modular implicits](https://www.cl.cam.ac.uk/~jdy22/papers/modular-implicits.pdf)
 
-**Status: mostly wild speculations. The papers promise much, but no good implementations/prototypes, so probably there's something wrong with them. Sums probably won't happen.**
+**Status: mostly wild speculations. The papers promise much, but no good implementations/prototypes, so probably there's something wrong with them.**
 
 TODO:
 - Finish thinking about records.
@@ -1475,6 +1409,98 @@ TODO:
 - Rethink `RType` and how to make records first-class.
 - Add a term-level `removing` operation.
 - Make sure that copatterns and the built-in stuff make optics absolutely unneeded. Having to know profunctors just to peek at record fields is bad.
+
+## Sums <a id="sums"></a> [↩](#toc)
+
+As for sum types, we would like to have extensible sum types, akin to OCaml's polymorphic variants. If that's not possible, then sum types are subsumed by inductive types. In theory, getting records right should be enough to get sums right, as they are dual to records.
+
+For extensible sums, we use square bracket notation. Constructor are written as `name of argType`.
+
+```
+sum (A B : Type) : Type := [inl of A, inr of B]
+
+x : sum Nat Bool := inl 5
+y : sum Nat Bool := inr ff
+```
+
+Alternatively, constructors can take records as arguments, and the syntax is
+
+```
+Sum (A B : Type) : Type := [inl (l : A), inr (r : B)]
+
+// Argument given explicitly as a record.
+x : Sum Nat Bool := inl (l => 5)
+
+// Argument given positionally.
+x : Sum Nat Bool := inl 5
+```
+
+The dual of the record's join operator `&` is the sum's union operator `|`. If the arguments of `|` share no fields, then the result is a disjoint sum.
+
+```
+Sum3 : [inl of A, inr of B, orc of C] = sum A B | [orc of C] := refl
+```
+
+If the arguments of `|` share fields of the same name and type, they are merged in a pushout-like manner.
+
+```
+sum' (A B : Type) : Type := [inr of A, orc of B]
+
+sum3 : [inl of A, inr of B, orc of C] = sum A B | sum' B C := refl
+```
+
+If the arguments of `|` share fields of the same name but different type, this is an error.
+
+```
+// The error is something like "cannot union field `inl of A` with field `inl of B`.
+%Fail
+wut : Type := sum A B | sum B A
+```
+
+For enumerations, we don't need to write the argument type.
+
+```
+color : Type := [R, G, B]
+```
+
+We have a shorthand syntax for multiple constructors with the same arguments.
+
+```
+leftOrRight : [ln rn of Nat] := ln 42
+```
+
+We can eliminate terms of extensible sum types using ordinary pattern matching.
+
+```
+extensible-abort : [ina of A, inb of B, ine of Empty] -> [ina : A, inb : B]
+| ina a => ina a
+| inb b => inb b
+| ine e => abort e
+```
+
+Above, we have two boring clauses `ina a => ina a` and `inb b => inb b`. This kind of thing will happen quite often in functions between extensible sum types, so we have a special syntax for it: we don't need to write these identity clauses and we only need to handle the non-identity cases.
+
+```
+extensible-abort : [ina of A, inb of B, ine of Empty] -> [ina : A, inb : B]
+| ine e => abort e
+```
+
+Not papers:
+- [Polymorphic Variants in the OCaml manual](https://ocaml.org/manual/polyvariant.html)
+- [Polymorphic Variants in Real World OCaml](https://dev.realworldocaml.org/variants.html#scrollNav-4)
+
+Papers:
+- [Abstracting Extensible Data Types: Or, Rows by Any Other Name](https://www.pure.ed.ac.uk/ws/portalfiles/portal/87175778/Abstracting_extensible_data_types_MORRIS_DoA_tbc_VoR_CC_BY.pdf)
+- [Programming with Polymorphic Variants](https://caml.inria.fr/pub/papers/garrigue-polymorphic_variants-ml98.pdf)
+
+Less relevant papers:
+- [Extensible Algebraic Datatypes with Defaults](http://zenger.org/papers/icfp01.pdf)
+- [Extensible Programming with First-Class Cases](https://people.cs.uchicago.edu/~blume/papers/icfp06.pdf)
+
+**Status: OCaml has polymorphic variants, but I'm not sure how close they are to what was presented above. In general, extensible sums are very rare and the above is mostly speculation.**
+
+TODO:
+- Write more about extensible sums.
 
 ## Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
@@ -2238,6 +2264,9 @@ Papers:
 - [On Higher Inductive Types in Cubical Type Theory](https://arxiv.org/pdf/1802.01170.pdf)
 - [Mutual and Higher Inductive Types in Homotopy Type Theory](https://paolocapriotti.com/assets/away-day-2014/mhit.pdf)
 - [Higher Inductive Types and Internal Parametricity for Cubical Type Theory](https://kilthub.cmu.edu/articles/thesis/Higher_Inductive_Types_and_Internal_Parametricity_for_Cubical_Type_Theory/14555691)
+
+Papers that show how to use HITs for something useful:
+- [Free Commutative Monoids in Homotopy Type Theory](https://arxiv.org/pdf/2110.05412.pdf)
 
 **Status: prototype implementations include [cubicaltt](https://github.com/mortberg/cubicaltt), [Cubical Agda](https://agda.readthedocs.io/en/v2.6.0/language/cubical.html), [Arend](https://arend-lang.github.io/) and some other minor languages. No general syntax for HITs is known. Various papers describe subclasses of HITs or HITs combined with induction-induction or something like that. Probably it's very easy to get the most basic and useful HITs, but very hard to get all of them right.**
 
@@ -4262,15 +4291,12 @@ TODO:
 
 [The Unison Language](https://www.unisonweb.org/) has a very futuristic tooling and some good ideas, including:
 - codebases - Unison code is literraly stored as an AST in a nice database managed with a dedicated tool
-- everything can be referred to by its hash and names are just metadata, so its easy to rename stuff and perform other similar magic like caching tests
+- everything can be referred to by its hash and names are just metadata, so it is easy to rename stuff and perform other similar magic like caching tests
 - Unison has typed documentation which prevents it from going out of sync with the code
 
 ## Missing features <a id="missing-features"></a> [↩](#toc)
 
 This wishlist is not comprehensive. We could probably do better (i.e. have more nice things), but we have to stop somewhere, not to mention that all the interactions between all the different features blow up the complexity of the language dramatically.
-
-Other missing features:
-- Algebraic Effects
 
 ### Typed Holes
 
@@ -4288,7 +4314,13 @@ Papers:
 - [I Got Plenty o’ Nuttin’](https://personal.cis.strath.ac.uk/conor.mcbride/PlentyO-CR.pdf)
 - [Syntax and Semantics of Quantitative Type Theory](https://bentnib.org/quantitative-type-theory.pdf)
 
-### Graded Type Theory
+Prototypes:
+- [Idris2](https://idris2.readthedocs.io/en/latest/tutorial/index.html)
+
+TODO:
+- Read the papers and see if Quantitative Type Theory conflicts with anything else we want to have in the language.
+
+### Graded Modalities
 
 Papers:
 - [A Graded Dependent Type System with a Usage-Aware Semantics (extended version)](https://arxiv.org/pdf/2011.04070.pdf)
@@ -4304,3 +4336,18 @@ Tangential papers (on graded monads):
 - [Unifying graded and parameterised monads](https://arxiv.org/pdf/2001.10274.pdf)
 - [Towards a Formal Theory of Graded Monads](https://www.researchgate.net/publication/309092270_Towards_a_Formal_Theory_of_Graded_Monads)
 - [Relational Algebra by Way of Adjunctions](https://dl.acm.org/doi/pdf/10.1145/3236781) ([slides](http://www.cs.ox.ac.uk/jeremy.gibbons/publications/reladj-dbpl.pdf))
+
+TODO:
+- Read the tutorial and learn to work with graded modalities.
+- Read the paper and see if anything there conflicts with the rest of our language.
+
+### Generic programming
+
+Generic functions are functions implemented by recursion on the structure of types in the language. For example, we could implement decidable equality for all types that support it all at once. Another example would be TODO
+
+Less relevant papers:
+- [Extensible and Modular Generics for the Masses](http://www.cs.ox.ac.uk/bruno.oliveira/extensibleGM.pdf) - how to do generic programming with typeclasses in Haskell
+
+### Metaprogramming
+
+TODO
