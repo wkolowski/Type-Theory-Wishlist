@@ -14,6 +14,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Paths and the rest of Cubical Type Theory](#paths)
 1. [Names and Nominal Function Type](#names)
 1. [Mixed functions](#mixed-functions)
+1. [Documentation comments](#doc-comments)
 1. [Empty and Unit](#empty-and-unit)
 1. [Records (and sums)](#records)
 1. [Basic Inductive Types](#basic-inductive-types)
@@ -24,19 +25,23 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Constructor names and namespacing](#constructor-names)
     1. [Syntax sugar for bundled parameters](#bundled-parameters)
 1. [Inductive Families](#inductive-families)
-    1. [Standard Inductive Families](#standard-inductive-families)
-    1. [Nested Inductive Types](#nested-inductive-types)
+    1. [Standard Inductive Families (TODO)](#standard-inductive-families)
     1. [Indices that Compute (TODO)](#indices-that-compute)
+    1. [Nested Inductive Types (TODO)](#nested-inductive-types)
 1. [Advanced Inductive Types](#advanced-inductive-types)
     1. [Computational Inductive Types](#computational-inductive-types)
     1. [Higher Inductive Types](#HIT)
     1. [Nominal Inductive Types](#nominal-inductive-types)
-    1. [Induction-Induction](#induction-induction)
-    1. [Induction-Recursion](#induction-recursion)
+    1. [Inductive-Inductive Types](#induction-induction)
+    1. [Inductive-Recursive Types](#induction-recursion)
 1. [Basic Coinductive Types](#basic-coinductive-types)
 1. ["Positive" Coinductive Types](#positive-coinductive-types)
 1. [Coinductive Families](#coinductive-families)
 1. [Advanced Coinductive Types](#advanced-coinductive-types)
+    1. [Coinduction-Recursion](#coinduction-recursion)
+    1. [Coinduction-Coinduction](#coinduction-coinduction)
+    1. [Coinduction-Induction](#coinduction-induction)
+    1. [Types with inductive and coinductive components (TODO)](#mixed-induction-coinduction)
 1. [Refinement types (TODO)](#refinements)
 1. [Singleton Types (TODO)](#singletons)
 1. [Universes](#universes)
@@ -98,7 +103,7 @@ TODO:
 | Name              | Formation        | Introduction     | Elimination      |
 | ----------------- | ---------------- | ---------------- | ---------------- |
 | Primitive types   | `i8`, `i16`, `i32`, `i64` <br> `u8`, `u16`, `u32`, `u64` <br> `f32`, `f64` <br> `Char` <br> `Text` | literals         | primitive ops    |
-| Arrays            | `Array A n`      | literals <br> library functions | `A[i]`     |
+| Arrays            | `Array A n`      | literals <br> library functions | `A[i]` |
 | Function type     | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
 | Path type         | `x = y`          | `path i => e`    | `p i`            |
 | Nominal function type | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`      |
@@ -106,11 +111,11 @@ TODO:
 | Empty type        | `Empty`          | impossible       | `abort`          |
 | Unit type         | `Unit`           | `unit`           | not needed       |
 | Record types      | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
-| Sum types         | not sure         |                  |                  |
-| Inductive types   |  see below       | constructors     | pattern matching |
-| Coinductive types |  see below       | copattern matching | field selection |
+| Sum types         | `[a : A, ...]`   | constructors     | pattern matching |
+| Inductive types   | see below        | constructors     | pattern matching |
+| Coinductive types | see below        | copattern matching | field access   |
 | Refinement types  | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
-| Singleton types   | `Singleton A x`  | TODO             | TODO             |
+| Singleton types   | `Singleton A x`  | implicit (?)     | implicit (?)     |
 | Strict universes  | `Type h p`       | `Type h p`       | impossible       |
 | Non-strict universes | `hType h p`   | `hType h p`      | impossible       |
 | Subtype universes | `Sub A`          | implicit (?)     | implicit (?)     |
@@ -566,6 +571,150 @@ As for application of such mixed functions, it is written like ordinary function
 
 TODO:
 - Reconsider the syntax.
+
+## Documentation comments <a id ="doc-comments"></a> [↩](#toc)
+
+Our language has very powerful documentation comments, a feature borrowed from [the Union language](https://www.unisonweb.org/docs/documentation/).
+
+Doc comments are first class, which means that there's a type `Doc` whose values are doc comments. This type is recursive, so we can embed docs in other docs. We can also include typechecked code snippets in docs and have them evaluated inline.
+
+Docs comment blocks are enclosed between `{{` and `}}`. This syntax creates an expression of type `Doc` - remember, doc comments are first-class. The basic syntax of doc comments is Markdown-like.
+
+```
+doc-comment : Doc :=
+{{
+  This is a doc comment. I like trains. Trains like me, too.
+
+  The basic syntax is markdown-like. We can _underline_ words, make them **bold** or ~~strike them through~~.
+
+  Here's a numbered list:
+  1. First item.
+  1. Second item - note the 1. at the beginning, numeration is automatic.
+  1. Third item.
+
+  Here's an unnumbered list:
+  - The Good
+  - The Bad
+  - The Ugly
+
+  We can make tables:
+
+  | First column | Second column |
+  | ------------ | ------------- |
+  | nananananana | BATMAN        |
+
+  We can make [links](https://www.wecanmakelinks.com)
+}}
+```
+
+We don't need to bind doc comments to variables. We can create them anonymously by placing them just before the definition to which theey pertain. The code below results in two new definitions, `five : Nat` and `five.doc : Doc`.
+
+```
+{{Five is a very important number. Trust me, I'm a mathematician.}}
+five : Nat := 5
+```
+
+We can read docs in the REPL by using the command `:docs name`. This command will look for a term called `name.doc` of type `Doc` and display it if it is found.
+
+```
+> :check five
+five : Nat
+
+> :print five
+five : Nat := 5
+
+> :docs five
+
+Five is a very important number. Trust me, I'm a mathematician.
+```
+
+We can use double backticks ` `` ` to refer to a previously defined value. If there's nothing with this name or there is more than one definition with this name, we will get an error. We can use triple backticks ` ``` ` to evaluate a term. In the resulting `Doc`, this term will be replaced with its value.
+
+Moreover, we can write `@def{term}` to inline the definition of a term and `@type{term}` to inline the type of a term.
+
+```
+{{
+  @type{id}
+
+  ``id`` is the identity function which does nothing (or, at least, nothing interesting).
+
+  Full definition: @def{id}
+
+  Examples:
+  - ``id 42`` evaluates to ```id 42```
+  - ``id "WUT"`` evaluates to ```id "WUT"```
+}}
+id (#A : Type, x : A) : A := x
+```
+
+In the REPL, asking for the docs will result in
+
+```
+> :docs id
+
+id : (#A : Type, x : A) -> A
+
+`id` is the identity function which does nothing (or, at least, nothing interesting).
+
+Full definition: id := fun (#A : Type, x : A) => x
+
+Examples:
+- `id 42` evaluates to `42`
+- `id "WUT"` evaluates to `"WUT"`
+```
+
+We don't need to write one big doc comment at a time - we can split doc comments into subdocs and them include them in the main doc comment. Let's see how to write the above doc comment for `id` in this way.
+
+
+```
+{{
+  {{ id.doc.type }}
+
+  {{ id.doc.text }}
+
+  {{ id.doc.def }}
+
+  {{ id.doc.ex }}
+}}
+id (#A : Type, x : A) : A := x
+
+id.doc.type : Doc :=
+  {{ @type{id} }}
+
+id.doc.text : Doc :=
+  {{ ``id`` is the identity function which does nothing (or, at least, nothing interesting). }}
+
+id.doc.def : Doc :=
+  {{ Full definition: @def{id} }}
+
+id.doc.ex : Doc :=
+{{
+  Examples:
+  - ``id 42`` evaluates to ```id 42```
+  - ``id "WUT"`` evaluates to ```id "WUT"```
+}}
+```
+
+In the REPL, this results in the same result as before.
+
+```
+> :docs id
+
+id : (#A : Type, x : A) -> A
+
+`id` is the identity function which does nothing (or, at least, nothing interesting).
+
+Full definition: id := fun (#A : Type, x : A) => x
+
+Examples:
+- `id 42` evaluates to `42`
+- `id "WUT"` evaluates to `"WUT"`
+```
+
+**Status: Unison has it, so it's doable.**
+
+TODO:
+- I'm not yet sure whether the dot in `five.doc` is just a part of an ordinary name or whether it has something to do with namespacing. I'll decide later.
 
 ## `Empty` and `Unit` <a id="empty-and-unit"></a> [↩](#toc)
 
@@ -1473,12 +1622,11 @@ TODO:
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments and `@` used for name concretion.
 - Describe list notation for list-like types.
 - Describe bundled syntax for inductive families. Review section on bundled syntax for ordinary inductive types.
+- Come up with some syntax for explicit arguments in function applications!
 
 ## Inductive Types on steroids <a id="inductive-steroids"></a> [↩](#toc)
 
-Besides the usual pattern matching, we also allow some extensions which significantly increase its power:
-- [Overlapping and Order-Independent Patterns](#overlapping-and-order-independent-patterns)
-- [Decidable Equality Patterns](#decidable-equality-patterns)
+The basic inductive types we have seen so far are all well and good, but there are some nice enhancements so that our inductive types become even better.
 
 ### [Overlapping and Order-Independent Patterns](Induction/OverlappingPatterns) <a id="overlapping-patterns"></a> [↩](#toc)
 
@@ -1745,7 +1893,7 @@ To sum up, the type of `app`, written as `(l1 l2 : List) -> List` is interpreted
 
 ### Standard Inductive Families <a id="standard-inductive-families"></a> [↩](#toc)
 
-For inductive families, we need to explicitly write the constructors' codomains (because it depends on the index), but we still don't need to write the parameters.
+For inductive families, we need to explicitly write the constructors' codomains (because they depend on the index), but we still don't need to write the parameters.
 
 ```
 data Vec (A : Type) : Nat -> Type
@@ -1767,6 +1915,9 @@ Papers:
 - [A Syntax for Mutual Inductive Families](https://drops.dagstuhl.de/opus/volltexte/2020/12345/pdf/LIPIcs-FSCD-2020-23.pdf)
 
 **Status: inductive families are standard in proof assistants and dependently-typed languages. Dependent pattern matching is semi-standard, as some languages (notably Coq) have problems with supporting it properly so it's hard to use, while some others (Idris 2 and formerly Agda) have implementations of it that entail Uniqueness of Identity Proofs, which is incompatible with Univalence. The closest implementation of what's described here is probably Agda (with the flag `--without-K`).**
+
+TODO:
+- Explicit argument syntax urgently needed in the `head` example above.
 
 ### [Indices that Compute](Induction/IndicesThatCompute) <a id="indices-that-compute"></a> [↩](#toc)
 
@@ -1796,7 +1947,7 @@ z : RVec Nat 5 := (0, (1, (2, (3, (4, unit)))))
 
 We may now ask ourselves: which representation is better? Let's start by listing the pros and cons of each representation.
 
-| ---------------------- | Inductive types        | Recursive types        |
+|                        | Inductive types        | Recursive types        |
 | ---------------------- | ---------------------- | ---------------------- |
 | Notation               | intuitive              | less intuitive         |
 | Uniqueness principle   | no                     | inherited from records |
@@ -1848,9 +1999,7 @@ As for forcing and detagging: the inductive `Vec` needs to store its index `n` s
 
 As for large indices and non-strictly-positive types: inductive types have to conform to strict rules about which universe they can live in. For example, the universe of an inductive type must be at least as big as the universe of all its arguments. This is required to ensure that we can't use the mechanism of inductive definitions to lower the universe level of some other type just by wrapping it in an inductive. Inductive types also need to conform to strong rules regarding positivity - inductive arguments can't occur in negative positions (i.e. to the left of an odd number of arrows), because such types are contradictory thanks to Cantor's theorem. Occurrences which are positive but not strictly positive are also not allowed, as they may result in a proof of `Empty` in some cases. Recursive types, on the other hand, don't have to observe the same rules - we can do anything we want, as long we're doing it by recursion on the index.
 
-
-| Non-indexed types      | yes                    | no                     |
-
+The final difference between the two representation is that inductive types allow us to define types which are not indexed, like the natural numbers, whereas recursive types do not, because if there is no index, there is nothing to do recursion on.
 
 Papers:
 - [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)) - this is the paper on which most of this section is based
@@ -2153,7 +2302,7 @@ This makes it easy to define `subst`itution of the term `t` for the free variabl
 
 For papers, TODOs and the status, see the main section on [Names and Nominal Function Type](#names). The [code directory](Induction/NominalInductiveTypes/CNIC) has extensive examples of how to use nominal inductive types in practice, among others to implement cyclic lists. It also proves some basic properties of names and considers the property of being a `Nameless` type, which turns out to be pretty important in practice.
 
-### [Induction-Induction](Induction/Induction-Induction) <a id="induction-induction"></a> [↩](#toc)
+### [Inductive-Inductive Types](Induction/Induction-Induction) <a id="induction-induction"></a> [↩](#toc)
 
 Induction-induction allows us to simultaneously define two or more types such that the later ones can be indexed by the earlier ones.
 
@@ -2203,7 +2352,7 @@ Not papers:
 
 **Status: implemented in Agda, but absent in other mainstream languages. There are many papers which combine it with Higher Inductive Types. Probably not hard to implement. In general, looks good.**
 
-### [Induction-Recursion](Induction/Induction-Recursion) <a id="induction-recursion"></a> [↩](#toc)
+### [Inductive-Recursive Types](Induction/Induction-Recursion) <a id="induction-recursion"></a> [↩](#toc)
 
 Induction-Recursion is an enhancement of inductive types which allows us to mutually define an inductive type `I` and a recursive function of type `I -> D` for some type `D`. There are two common use cases:
 - Large induction-recursion: here `D` is `Type`. This flavour of induction-recursion is used for defining closed universes of types.
@@ -2675,7 +2824,7 @@ There are quite a few flavours of advanced coinductive types:
 - Self-referential types in which some occurrences are inductive and others are coinductive
 - Oh man, this is so hard to systematize.
 
-### Coinduction-Recursion? Not really.
+### Coinduction-Recursion? Not really. <a id="coinduction-recursion"></a> [↩](#toc)
 
 Let's try to use induction-recursion syntax together with the `codata` keyword and see what happens. For exploration purposes, we will try to define a type of infinite binary heaps.
 
@@ -2713,7 +2862,7 @@ The limits of "positive" coinduction-recursion seem to be pretty clear: we can m
 
 To sum up: there's no coinduction-recursion, but we can mutually define types coinductively and functions by pattern matching.
 
-### Coinduction-Coinduction? Not really.
+### Coinduction-Coinduction? Not really. <a id="coinduction-coinduction"></a> [↩](#toc)
 
 What about "coinduction-coinduction" or something like that? Is it possible? Let's find out by defining infinite binary heaps again, but using only induction-induction syntax.
 
@@ -2749,7 +2898,7 @@ Again, the desugaring looks pretty easy to grasp. `BHeapX` and `OKX` are defined
 
 From this example it is obvious that there really isn't any coinduction-coinduction going on - it depicts only coinduction-induction, and the "induction" part isn't really that much inductive, as its only one layer deep. But contrary to what was the case for "coinduction-recursion", I don't see why the inductive part of a coinductive-inductive definition couldn't be truly inductive. Maybe we should look for a better example. Also, coinduction-coinduction still seems possible, at least when both types are "positive" coinductives.
 
-### Coinduction-Induction? Somewhat.
+### Coinduction-Induction? Somewhat. <a id="coinduction-induction"></a> [↩](#toc)
 
 The classical example of a mixed coinductive-inductive type is the type of stream processors `SP A B`. It is a more concrete (even though still higher-order) representation of functions of type `Stream A -> Stream B`. The main purpose of it is to define stream processing functions which might not be accepted by the productivity checker.
 
@@ -2885,6 +3034,10 @@ toStream' : (g : GetSP A B) (s : Stream A) -> Stream B
 ```
 
 Since both `SP` and `GetSP` have the same base functor (or more poetically, the same "skeleton"), we don't need to duplicate it. Then we tie the know twice, first inductively to obtain an early version of `GetSP` and then coinductively to obtain `SP`. Then we define the final version of `GetSP` and smart constructors that wrap the actual constructors in `In` and `Out`. The desugaring of `toStream` and `toStream'` is somewhat ad hoc and chaotic. It looks more akin to our original definition (the one that used `head` and `tail`) and I wouldn't be very surprised if I made an error here or there...
+
+### Types with inductive and coinductive components <a id="mixed-induction-coinduction"></a> [↩](#toc)
+
+TODO
 
 ### Summary
 
