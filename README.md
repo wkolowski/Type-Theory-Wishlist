@@ -25,10 +25,11 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Discriminators](#discriminators)
     1. [Constructor names and namespacing](#constructor-names)
     1. [Syntax sugar for bundled parameters](#bundled-parameters)
+    1. [Nested Inductive Types](#nested-inductive-types)
 1. [Inductive Families](#inductive-families)
     1. [Standard Inductive Families (TODO)](#standard-inductive-families)
     1. [Indices that Compute (TODO)](#indices-that-compute)
-    1. [Nested Inductive Types (TODO)](#nested-inductive-types)
+    1. [Truly Nested Inductive Types](#truly-nested)
 1. [Advanced Inductive Types](#advanced-inductive-types)
     1. [Computational Inductive Types](#computational-inductive-types)
     1. [Higher Inductive Types](#HIT)
@@ -43,13 +44,19 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Coinduction-Coinduction](#coinduction-coinduction)
     1. [Coinduction-Induction](#coinduction-induction)
     1. [Types with inductive and coinductive components (TODO)](#mixed-induction-coinduction)
-1. [Refinement types (TODO)](#refinements)
-1. [Singleton Types (TODO)](#singletons)
+1. [Refinement types](#refinements)
 1. [Universes](#universes)
 1. [Subtyping, coercions and subtype universes](#subtyping)
 1. [Type-level rewriting](#type-level-rewriting)
-1. [Tooling (TODO)](#tooling)
-1. [Missing features (TODO)](#missing-features)
+1. [TODO: Missing features](#TODO)
+    1. [Singleton Types](#singletons)
+    1. [Generic programming](#generic)
+    1. [Quantitative Type Theory](#quantities)
+    1. [Graded Modalities](#graded-modalities)
+    1. [Typed Holes](#holes)
+    1. [Tactics](#tactics)
+    1. [Metaprogramming](#metaprogramming)
+    1. [Tooling](#tooling)
 
 ## The Guiding Principle of Syntax <a id="guiding-principle"></a> [↩](#toc)
 
@@ -1472,7 +1479,7 @@ leftOrRight : [ln rn of Nat] := ln 42
 We can eliminate terms of extensible sum types using ordinary pattern matching.
 
 ```
-extensible-abort : [ina of A, inb of B, ine of Empty] -> [ina : A, inb : B]
+extensible-abort : [ina of A, inb of B, ine of Empty] -> [ina of A, inb of B]
 | ina a => ina a
 | inb b => inb b
 | ine e => abort e
@@ -1481,9 +1488,29 @@ extensible-abort : [ina of A, inb of B, ine of Empty] -> [ina : A, inb : B]
 Above, we have two boring clauses `ina a => ina a` and `inb b => inb b`. This kind of thing will happen quite often in functions between extensible sum types, so we have a special syntax for it: we don't need to write these identity clauses and we only need to handle the non-identity cases.
 
 ```
-extensible-abort : [ina of A, inb of B, ine of Empty] -> [ina : A, inb : B]
+extensible-abort : [ina of A, inb of B, ine of Empty] -> [ina of A, inb of B]
 | ine e => abort e
 ```
+
+One last thing to mention are uniqueness principles. In general extensible sums don't have uniqueness principles, but there is an exception: extensible sums with zero or one constructor do have an uniqueness principle.
+
+```
+uniqueness-[] (x y : []) : x = y := refl
+```
+
+In case of the empty extensible sum, written `[]`, this uniqueness principle just says that any two elements of `[]` are equal.
+
+```
+Empty-[] : Empty = [] := refl
+```
+
+By the way, this shouldn't surprise us, as we may think of `[]` as being the same type as `Empty`, which is a strict proposition.
+
+```
+uniqueness-single (x : [ctor (a : A)]) : x = ctor x.a := refl
+```
+
+For single-constructor extensible sums, the uniqueness principle should look more familiar: it just says that every value `x` of the type is equal to the constructor applied to the argument from which `x` was made. Note that we can use the dot syntax to access the argument of `x`'s constructor, just like in ordinary pattern matching.
 
 Not papers:
 - [Polymorphic Variants in the OCaml manual](https://ocaml.org/manual/polyvariant.html)
@@ -1501,6 +1528,9 @@ Less relevant papers:
 
 TODO:
 - Write more about extensible sums.
+- Make sure the `[]` notation for an empty extensible sum doesn't clash with the notation for the empty list. Also make sure it doesn't clash with the `[]()` notation used in the Markdown-like link syntax used in doc comments.
+- Are there recursive extensible sums or do we need inductive types for this purpose?
+- This section reads as if it were placed after the section on basic inductive types. Change this! (Or not...)
 
 ## Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
@@ -1915,6 +1945,70 @@ To sum up, the type of `app`, written as `(l1 l2 : List) -> List` is interpreted
 
 **Status: the distinction between parameters and indices was present in Lean 2 when defining functions, but its other forms described here are novel. However, it shouldn't pose any implementation problems.**
 
+### Nested Inductive Types <a id="nested-inductive-types"></a> [↩](#toc)
+
+Nested inductive types are inductive types `I` in which the inductive occurrences of `I` appear as an argument of some type family (besides the arrow `(->) : Type -> Type -> Type`, of course). These types can be defined in our language as ordinary inductive types, but writing functions that operate on Nested Inductive Types requires some more explanation.
+
+One of the most iconic examples of Nested Inductive Types is the type of rose trees, i.e. trees that have a `List` of subtrees.
+
+```
+data RoseTree (A : Type)
+| E
+| N (v : A, ts : List RoseTree)
+```
+
+Functions out of such types can be defined as usual by pattern matching and recursion, with the nested recursion (i.e. on the `List` in case of `RoseTree`) being handled just fine.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N _ [] => 1
+| N v (t :: ts) => size t + size (N v ts)
+```
+
+In the above example, we compute the `size` of a `RoseTree`. The interesting constructor, `N`, is split into two cases: if there are no subtrees, we return `1`, whereas if there are, we call `size` recursively on the first subtree `t` and then on on `N v ts`, i.e. on what remains of our original `RoseTree` after we remove the first subtree `t`.
+
+These recursive calls are perfectly legal - `t` is a subterm of `N v (t :: ts)`, so `size t` is a good recursive call. `N v ts` is not a subterm of `N v (t :: ts)`, but it is smaller in an obvious way, and the termination checker sees that.
+
+There are a few other ways to implement `size`.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N v ts with ts
+  | []       => 1
+  | t :: ts' => size t + size (N v ts')
+```
+
+The variant above is very similar to the previous one, but we use a `with`-clause to split the `N` case into two. This might come handy when the inner type (the `List` in our `RoseTree` example) has a lot of constructors.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N _ ts => 1 + sum (map size ts)
+```
+
+In the variant above, we use auxiliary functions `map : (A -> B) -> List A -> List B` and `sum : List Nat -> Nat` (whose implementation is not shown). There are no explicit recursive calls - they are hidden in the call `map size`. This use of recursion, called _higher-order recursion_ (because unapplied/partially applied `size` is used as an argument to a higher-order function) is perfectly legal in our language.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N _ ts => 1 + List.rec 0 (fun t ts => size t + ts) ts
+```
+
+In the last variant above, instead of `sum` and `map` we use the recursor for lists `List.rec : (#A #R : Type, nil : R, cons : A -> R -> R, x : List A) -> R`. The only explicit recursive call, `size t`, occurs under the `fun`. This is also perfectly legal and the termination checker can see it.
+
+Papers:
+- [Generating Induction Principles for Nested Inductive Types in MetaCoq](https://www.ps.uni-saarland.de/~ullrich/bachelor/thesis.pdf)
+
+Not papers:
+- [Compiling nested inductive types in Lean](https://github.com/leanprover/lean/wiki/Compiling-nested-inductive-types)
+
+**Status: Nested Inductive Types can be defined in any language that supports ordinary inductive types. Coq, Agda and Lean all have them. The only problem is providing good support for termination checking of functions out of such types.**
+
+TODO:
+- Write some example code.
+
 ## Inductive Families <a id="inductive-families"></a> [↩](#toc)
 
 ### Standard Inductive Families <a id="standard-inductive-families"></a> [↩](#toc)
@@ -2031,64 +2125,16 @@ Papers:
 - [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)) - this is the paper on which most of this section is based
 - [A simpler encoding of indexed types](https://arxiv.org/pdf/2103.15408.pdf)
 
-**Status: very wild speculations.**
+**Status: very wild speculations, but it looks pretty reasonable - there's just another piece of syntax sugar. The uniqueness principle for single-constructor extensible sums may be problematic, but I think it would be doable.**
 
 TODO:
 - Think about this more.
 - Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
 
-### Nested Inductive Types <a id="nested-inductive-types"></a> [↩](#toc)
+### Truly Nested Inductive Types <a id="truly-nested"></a> [↩](#toc)
 
-Nested inductive types are inductive families `I : Type -> Type` in which the inductive occurrences of `I A` are nested in another type family (the first kind of nested inductive types) or in which their indices are nested in another family (the second kind of nested inductive types).
-
-Nested inductives of the first kind can be defined as usual parameterized types. One of the most iconic examples is the type of rose trees, i.e. trees that have a `List` of subtrees.
-
-```
-data RoseTree (A : Type)
-| E
-| N (v : A, ts : List RoseTree)
-```
-
-Functions out of such types can be defined as usual by pattern matching and recursion, with the nested recursion (i.e. on the `List` in case of `RoseTree`) being handled just fine.
-
-```
-size : RoseTree A -> Nat
-| E => 0
-| N _ [] => 1
-| N v (t :: ts) => size t + size (N v ts)
-```
-
-In the above example, we compute the `size` of a `RoseTree`. The interesting constructor, `N`, is split into two cases: if there are no subtrees, we return `1`, whereas if there are, we call `size` recursively on the first subtree `t` and then on on `N v ts`, i.e. on what remains of our original `RoseTree` after we remove the first subtree `t`.
-
-These recursive calls are perfectly legal - `t` is a subterm of `N v (t :: ts)`, so `size t` is a good recursive call. `N v ts` is not a subterm of `N v (t :: ts)`, but it is smaller in an obvious way, and the termination checker sees that.
-
-There are a few other ways to implement `size`.
-
-```
-size : RoseTree A -> Nat
-| E => 0
-| N v ts with ts
-  | []       => 1
-  | t :: ts' => size t + size (N v ts')
-```
-
-The variant above is very similar to the previous one, but we use a `with`-clause to split the `N` case into two. This might come handy when the inner type (the `List` in our `RoseTree` example) has a lot of constructors.
-
-```
-size : RoseTree A -> Nat
-| E => 0
-| N _ ts => 1 + sum (map size ts)
-```
-
-In the variant above, we use auxiliary functions `map : (A -> B) -> List A -> List B` and `sum : List Nt -> Nat` (implementation not shown). There are no explicit recursive calls - they are hidden in the call `map size`. This use of recursion, called _higher-order recursion_ (because unapplied/partially applied `size` is used as an argument to a higher-order function) is perfectly legal in our language.
-
-```
-size : RoseTree A -> Nat
-| E => 0
-| N _ ts => 1 + List.rec 0 (fun t ts => size t + ts) ts
-```
-
-In the last variant above, instead of `sum` and `map` we use the recursor for lists `List.rec : (#A #R : Type, nil : R, cons : A -> R -> R, x : List A) -> R`. The only explicit recursive call, `size t`, occurs under the `fun`. This is also perfectly legal and the termination checker can see it.
+Truly Nested Inductive Types are similar to Nested Inductive Types, ex
+are nested in another type family (the first kind of nested inductive types) or in which their indices are nested in another family (the second kind of nested inductive types).
 
 Another famous nested type is the following representation of lambda calculus terms.
 
@@ -2109,16 +2155,12 @@ data Bush : Type -> Type
 
 Papers:
 - [Deep Induction: Induction Rules for (Truly) Nested Types](https://cs.appstate.edu/~johannp/20-fossacs.pdf)
-- [Generating Induction Principles for Nested Inductive Types in MetaCoq](https://www.ps.uni-saarland.de/~ullrich/bachelor/thesis.pdf)
 - [An induction principle for nested datatypes in intensional type theory](https://www.irit.fr/~Ralph.Matthes/papers/MatthesInductionNestedJFPCUP.pdf)
 
-Not papers:
-- [Compiling nested inductive types in Lean](https://github.com/leanprover/lean/wiki/Compiling-nested-inductive-types)
-
-**Status: implemented in Coq and Agda, but termination checking, autogeneration of elimination principles and support for proofs is lacking.**
+**Status: Truly Nested Inductive Types are not legal in Coq or Agda, and I would also guess nowhere else. Usually one has to turn the positivity checker so the definition is accepted. Even then, support for termination checking, autogeneration of elimination principles and proofs is lacking.**
 
 TODO:
-- All.
+- Read the papers.
 
 ## [Advanced Inductive Types](Induction) <a id="advanced-inductive-types"></a> [↩](#toc)
 
@@ -3117,7 +3159,7 @@ s?.pred {n : Nat | s? n} -> Nat
 
 Note that the type `{n : Nat | s? n}` is treated just like `Nat`, so we can pattern match on terms of this type, but it also gives us (and the typechecker) some additional knowledge, so that we don't need to consider the case `z`, because the refinement guarantees that the argument can't be `z`.
 
-For lists, the projection are
+For lists, the projections are
 
 ```
 ::?.hd : {l : List A | ::? l} -> A
@@ -3170,33 +3212,6 @@ TODO:
 - Figure out the precise relationship between refinement types and dependent records with fields in `Prop`.
 - Figure out relationship between refinement types and inductive/coinductive types. Hint: looks like there is no relationship for coinductives, but for inductives, the refinements should distribute over the constructors.
 - Figure out the relationship between refinement types and ornaments.
-
-## Singleton Types <a id="singletons"></a> [↩](#toc)
-
-A singleton type is a type that has exactly one value. We can already express this with in our type theory with the following type.
-
-```
-Sad-Singleton : RType
-& A : Type
-& c : A
-& p : (x : A) -> c = x
-```
-
-The thing is, the above type has exactly one value only up to a path, whereas we want true singleton types to have exactly one value up to computational equality.
-
-When `A : Type` and `x : A`, we can form the type `Singleton A x` (also written `{x}` and more explicitly `{x}_A`) which represents the type whose only value is `x` and which is a strict proposition.
-
-Papers:
-- [Subtyping with Singleton Types](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.5.8740&rep=rep1&type=pdf)
-- [Singleton types here, Singleton types there, Singleton types everywhere](https://www.iro.umontreal.ca/~monnier/comp-deptypes.pdf)
-- [Strong Normalization with Singleton Types](https://www.doc.ic.ac.uk/~svb/ITRS02/ENTCS/entcs75105.pdf)
-- [Singleton Kinds and Singleton Types](https://apps.dtic.mil/sti/pdfs/ADA387141.pdf)
-- [A MODULAR TYPE-CHECKING ALGORITHM FOR TYPE THEORY WITH SINGLETON TYPES AND PROOF IRRELEVANCE](https://arxiv.org/pdf/1102.2405.pdf)
-
-**Status: TODO**
-
-TODO:
-- TODO
 
 ## [Universes](Universes/Universes.md) <a id="universes"></a> [↩](#toc)
 
@@ -4287,47 +4302,72 @@ TODO:
 - Revisit "paths between paths are squares".
 - Write a section on general rewriting in type theory.
 
-## Tooling <a id="tooling"></a> [↩](#toc)
-
-[The Unison Language](https://www.unisonweb.org/) has a very futuristic tooling and some good ideas, including:
-- codebases - Unison code is literraly stored as an AST in a nice database managed with a dedicated tool
-- everything can be referred to by its hash and names are just metadata, so it is easy to rename stuff and perform other similar magic like caching tests
-- Unison has typed documentation which prevents it from going out of sync with the code
-
-## Missing features <a id="missing-features"></a> [↩](#toc)
+# TODO: Missing features <a id="TODO"></a> [↩](#toc)
 
 This wishlist is not comprehensive. We could probably do better (i.e. have more nice things), but we have to stop somewhere, not to mention that all the interactions between all the different features blow up the complexity of the language dramatically.
 
-### Typed Holes
+## Singleton Types <a id="singletons"></a> [↩](#toc)
 
-Holes are a way of leaving a part of a term unfilled as a kind of local "axiom". They can be later revisited with the help of the language's type inference, filled automatically or serve as names for goals in the proving mode. More ambitious works try to use holes for accomodating ill-typed, ill-formed and incomplete (yet unwritten) programs into the semantics.
+A singleton type is a type that has exactly one value. We can already express this with in our type theory with the following type.
+
+```
+Sad-Singleton : RType
+& A : Type
+& c : A
+& p : (x : A) -> c = x
+```
+
+The thing is, the above type has exactly one value only up to a path, whereas we want true singleton types to have exactly one value up to computational equality.
+
+When `A : Type` and `x : A`, we can form the type `Singleton A x` (also written `{x}` and more explicitly `{x}_A`) which represents the type whose only value is `x` and which is a strict proposition.
 
 Papers:
-- [Live Functional Programming with Typed Holes](https://dl.acm.org/doi/pdf/10.1145/3290327)
+- [Subtyping with Singleton Types](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.5.8740&rep=rep1&type=pdf)
+- [Singleton types here, Singleton types there, Singleton types everywhere](https://www.iro.umontreal.ca/~monnier/comp-deptypes.pdf)
+- [Strong Normalization with Singleton Types](https://www.doc.ic.ac.uk/~svb/ITRS02/ENTCS/entcs75105.pdf)
+- [Singleton Kinds and Singleton Types](https://apps.dtic.mil/sti/pdfs/ADA387141.pdf)
+- [A Modular Type-checking algorithm for Type Theory with Singleton Types and Proof Irrelevance](https://arxiv.org/pdf/1102.2405.pdf)
+
+**Status: some kind of singleton types are present in Scala and Typescript, and HoTT has "homotopy singletons", but true singleton types in type theory have not been researched.**
 
 TODO:
-- Typed Holes have something to do with First-Class Patterns. And what if we could make typed holes first-class?
+- Read the papers.
+- Write something.
 
-### Quantitative Type Theory
+## Generic programming <a id ="generic"></a> [↩](#toc)
+
+Generic functions are functions implemented by recursion on the structure of types in the language. For example, we could implement decidable equality for all types that support it all at once.
+
+Less relevant papers:
+- [Extensible and Modular Generics for the Masses](http://www.cs.ox.ac.uk/bruno.oliveira/extensibleGM.pdf) - how to do generic programming with typeclasses in Haskell
+
+**Status: generic programming is rare. Haskell can do it using typeclasses and Idris 2 allows typecase, but the prospects are meek.**
+
+TODO:
+- Search for papers.
+- Read the papers and see how generic programming and typecase fit into the language.
+- Write something about typeclasses.
+
+## Quantitative Type Theory <a id ="quantities"></a> [↩](#toc)
 
 Papers:
 - [I Got Plenty o’ Nuttin’](https://personal.cis.strath.ac.uk/conor.mcbride/PlentyO-CR.pdf)
 - [Syntax and Semantics of Quantitative Type Theory](https://bentnib.org/quantitative-type-theory.pdf)
+- [Idris 2: Quantitative Type Theory in Practice](https://arxiv.org/pdf/2104.00480.pdf)
 
 Prototypes:
-- [Idris2](https://idris2.readthedocs.io/en/latest/tutorial/index.html)
+- [Idris 2](https://idris2.readthedocs.io/en/latest/tutorial/index.html)
 
 TODO:
 - Read the papers and see if Quantitative Type Theory conflicts with anything else we want to have in the language.
 
-### Graded Modalities
+## Graded Modalities <a id ="graded-modalities"></a> [↩](#toc)
 
 Papers:
 - [A Graded Dependent Type System with a Usage-Aware Semantics (extended version)](https://arxiv.org/pdf/2011.04070.pdf)
 - [Graded Modal Dependent Type Theory](https://arxiv.org/pdf/2010.13163.pdf)
 - [Combining Effects and Coeffects via Grading](https://cs-people.bu.edu/gaboardi/publication/GaboardiEtAlIicfp16.pdf)
 - [Quantitative Program Reasoning with Graded Modal Types](https://metatheorem.org/includes/pubs/ICFP19.pdf)
-- [Idris 2: Quantitative Type Theory in Practice](https://arxiv.org/pdf/2104.00480.pdf)
 
 Prototypes:
 - [Granule](https://github.com/granule-project/granule/blob/main/examples/intro.gr.md) (this link leads to a nice intro with actual code)
@@ -4340,14 +4380,25 @@ Tangential papers (on graded monads):
 TODO:
 - Read the tutorial and learn to work with graded modalities.
 - Read the paper and see if anything there conflicts with the rest of our language.
+- Find out the relationship between graded modalities and Quantitative Type Theory. Idris 2 is nice because structural typing is default and linear typing is optional, whereas Granule seems to have mandatory linear typing. Can anything be done about this?
 
-### Generic programming
+## Typed Holes <a id ="holes"></a> [↩](#toc)
 
-Generic functions are functions implemented by recursion on the structure of types in the language. For example, we could implement decidable equality for all types that support it all at once. Another example would be TODO
+Holes are a way of leaving a part of a term unfilled as a kind of local "axiom". They can be later revisited with the help of the language's type inference, filled automatically or serve as names for goals in the proving mode. More ambitious works try to use holes for accomodating ill-typed, ill-formed and incomplete (yet unwritten) programs into the semantics.
 
-Less relevant papers:
-- [Extensible and Modular Generics for the Masses](http://www.cs.ox.ac.uk/bruno.oliveira/extensibleGM.pdf) - how to do generic programming with typeclasses in Haskell
+Papers:
+- [Live Functional Programming with Typed Holes](https://dl.acm.org/doi/pdf/10.1145/3290327)
 
-### Metaprogramming
+TODO:
+- Typed Holes have something to do with First-Class Patterns. And what if we could make typed holes first-class?
 
-TODO
+## Tactics <a id ="tactics"></a> [↩](#toc)
+
+## Metaprogramming <a id ="meta"></a> [↩](#toc)
+
+## Tooling <a id="tooling"></a> [↩](#toc)
+
+[The Unison Language](https://www.unisonweb.org/) has a very futuristic tooling and some good ideas, including:
+- codebases - Unison code is literraly stored as an AST in a nice database managed with a dedicated tool
+- everything can be referred to by its hash and names are just metadata, so it is easy to rename stuff and perform other similar magic like caching tests
+- Unison has typed documentation which prevents it from going out of sync with the code
