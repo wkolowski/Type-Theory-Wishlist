@@ -18,28 +18,27 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Empty and Unit](#empty-and-unit)
 1. [Records](#records)
 1. [Sums (TODO)](#sums)
-1. [Basic Inductive Types](#basic-inductive-types)
-1. [Inductive Types on steroids](#inductive-steroids)
+1. [Inductive Types (TODO)](#inductive-types)
+    1. [Basic Inductive Types](#basic-inductive-types)
+    1. [Constructor names, namespacing and discriminators](#constructors)
+    1. [Syntax sugar for bundled parameters](#bundled-parameters)
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
-    1. [Discriminators](#discriminators)
-    1. [Constructor names and namespacing](#constructor-names)
-    1. [Syntax sugar for bundled parameters](#bundled-parameters)
     1. [Nested Inductive Types](#nested-inductive-types)
-1. [Inductive Families](#inductive-families)
-    1. [Standard Inductive Families (TODO)](#standard-inductive-families)
-    1. [Indices that Compute (TODO)](#indices-that-compute)
-    1. [Truly Nested Inductive Types](#truly-nested)
-1. [Advanced Inductive Types](#advanced-inductive-types)
     1. [Computational Inductive Types](#computational-inductive-types)
-    1. [Higher Inductive Types](#HIT)
+    1. [Higher Inductive Types](#higher-inductive-types)
     1. [Nominal Inductive Types](#nominal-inductive-types)
+    1. [Inductive Families](#inductive-families)
+    1. [Nested Inductive Families (TODO)](#nested-families)
     1. [Inductive-Inductive Types](#induction-induction)
     1. [Inductive-Recursive Types](#induction-recursion)
-1. [Basic Coinductive Types](#basic-coinductive-types)
-1. ["Positive" Coinductive Types](#positive-coinductive-types)
-1. [Coinductive Families](#coinductive-families)
-1. [Advanced Coinductive Types](#advanced-coinductive-types)
+1. [Recursive Families (TODO)](#recursive-families)
+1. [Coinductive Types (TODO)](#coinductive-types)
+    1. [Basic Coinductive Types](#basic-coinductive-types)
+    1. [Field names and namespacing](#coinductive-namespacing)
+    1. ["Positive" Coinductive Types](#positive-coinductive-types)
+    1. [Namespacing and discriminators for "Positive" Coinductive Types](#constructors-positive-coinductive)
+    1. [Coinductive Families](#coinductive-families)
     1. [Coinduction-Recursion](#coinduction-recursion)
     1. [Coinduction-Coinduction](#coinduction-coinduction)
     1. [Coinduction-Induction](#coinduction-induction)
@@ -56,6 +55,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Typed Holes](#holes)
     1. [Tactics](#tactics)
     1. [Metaprogramming](#metaprogramming)
+    1. [Mixfix operators and notation mechanism](#notation)
     1. [Tooling](#tooling)
 
 ## The Guiding Principle of Syntax <a id="guiding-principle"></a> [↩](#toc)
@@ -549,7 +549,7 @@ Papers:
 
 Note: so far, our nominal features are based on the first of these papers, i.e. the Calculus of Nominal Inductive Constructions. There are some reasons to think that the second paper may present a better system, but so far I haven't been able to decipher it on an intuitive level.
 
-**Status: prototype implemented for CNIC, but long ago (and with Lisp syntax, lol). Prototype implemented for FreshMLTT, but it looks like shit. No proof whether FreshMLTT has decidable typechecking.**
+**Status: prototype implemented for CNIC, but long ago (and with Lisp syntax, lol). Prototype implemented for FreshMLTT, but it looks bad. No proof whether FreshMLTT has decidable typechecking.**
 
 TODO:
 - Find a better name for the nominal function type. Maybe "nominal abstraction type".
@@ -1532,7 +1532,11 @@ TODO:
 - Are there recursive extensible sums or do we need inductive types for this purpose?
 - This section reads as if it were placed after the section on basic inductive types. Change this! (Or not...)
 
-## Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
+## Inductive Types <a id="inductive-types"></a> [↩](#toc)
+
+TODO
+
+### Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
 Basic inductive types work mostly as usual, but as for functions, we want to think that all constructors take just one argument which is a (possibly dependent) record.
 
@@ -1672,7 +1676,7 @@ Papers:
 - [A Cosmology of Datatypes](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.366.3635&rep=rep1&type=pdf)
 - [The view from the left](http://strictlypositive.org/vfl.pdf.)
 
-**Status: inductive types and pattern matching are standard, with Agda probably being the closest implementation to what has been described so far.**
+**Status: inductive types, pattern matching and structural recursion are standard, with Agda probably being the closest implementation to what has been described so far.**
 
 TODO:
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments and `@` used for name concretion.
@@ -1680,99 +1684,28 @@ TODO:
 - Describe bundled syntax for inductive families. Review section on bundled syntax for ordinary inductive types.
 - Come up with some syntax for explicit arguments in function applications!
 
-## Inductive Types on steroids <a id="inductive-steroids"></a> [↩](#toc)
+### Constructor names, namespacing and discriminators <a id="constructors"></a> [↩](#toc)
 
-The basic inductive types we have seen so far are all well and good, but there are some nice enhancements so that our inductive types become even better.
-
-### [Overlapping and Order-Independent Patterns](Induction/OverlappingPatterns) <a id="overlapping-patterns"></a> [↩](#toc)
-
-Consider the usual definitions of addition of natural numbers.
+Names of inductive type constructors do NOT need to be globally unique, unlike in many other languages.
 
 ```
-add : (n m : Nat) -> Nat
-| z   , m => m
-| s n', m => s (add n' m)
+data TrafficLight
+| Red
+| Orange
+| Green
+
+data Color
+| Red
+| Green
+| Blue
+| RGBA (r : u8, g : u8, b : u8, a : u8)
 ```
 
-It's all right and good, but even though `add n z` equals `n`, it does not compute to `n`. Similarly, even though `add n (s m')` equals `s (add n m')`, it doesn't compute to `s (add n m')`. Overlapping patterns are a way to make this happen.
+Both of the above types have constructors named `Red` and `Green`, but there is no confusion between them. For example, if we apply a function `canDrive : TrafficLight -> Bool` to `Red`, i.e. `canDrive Red`, then `Red` is interpreted as `Red : TrafficLight`. If a color is expected, e.g. in `isPretty Red` for `isPretty : Color -> Bool`, `Red` is interpreted as `Red : Color`.
 
-```
-add : (n m : Nat) -> Nat
-| z   , m    => m
-| s n', m    => s (add n' m)
-| n   , z    => n
-| n   , s m' => s (add n m')
-```
+If we need to disambiguate between the two `Red`s, we can write `TrafficLight.Red` and `Color.Red`, respectively. Here the dot syntax is the same as for records, and in fact every inductive type has its own namespace, which is a record that holds various useful things related to the inductive type, like its constructors or its elimination principle.
 
-Here besides the two clauses from the previous definitions, we have two more clauses which amount to saying that "additionally, `add n z` computes to `z` and `add n (s m')` computes to `s (add n m')`".
-
-For the definition to be accepted, all the clauses need to be confluent, i.e. they must return the same result when they overlap. In our example, the overlapping cases are `add z z` and `add (s n') (s m')`. But `add z z` computes to `z` both using clause 1 and 3, so it's ok. Similarly, `add (s n') (s m')` computes to `s (s (add n' m'))` using first clause 2 and then clause 4, and it computes to the same result using first clause 4 and then clause 2, so it's ok.
-
-These new computational equalities greatly reduce the number of rewrites needed in proofs, but it also and makes dependently-typed programming much easier in some cases. For example, for vectors the terms `v ++ []` used to have the problematic type `Vec A (add n z)`, whereas now it has the less problematic type `Vec A n`. Yay!
-
-Of course, there are some problems with this new kind of pattern matching. The foremost of them is that the catch-all pattern `_` starts being problematic. Consider the decision function for equality of naturals:
-
-```
-%Fail
-dec : (n m : Nat) -> Bool
-| z   , z    => tt
-| s n', s m' => dec n' m'
-| _   , _    => ff
-```
-
-This definition is illegal, because `dec z z` computes to `tt` according to the first clause, but it computes to `ff` according to the third clause.
-
-To remedy this, we have to keep the old semantics of pattern matching (which we call _first-match semantics_). So from now on we have two kinds of pattern matching: the usual one with first-match semantics and the new one, in which patterns can be _overlapping_ and whose semantics don't depend on the _order_ in which the patterns appear in code. We can use the pragmas `%FirstMatch` and `%OverlappingPatterns` to specify, which kind of pattern matching we use.
-
-```
-%FirstMatch
-dec : (n m : Nat) -> Bool
-| z   , z    => tt
-| s n', s m' => dec n' m'
-| _   , _    => ff
-```
-
-Now the definition is ok, because we explicitly mark the fact that it uses the first-match semantics.
-
-Note that allowing overlapping patterns has some deep metatheoretical consequences, namely that definitions by pattern matching can no longer be translated into definitions with eliminators. However, we consider this price to be worth paying.
-
-Papers:
-- [Overlapping and Order-Independent Patterns: Definitional Equality for All](https://link.springer.com/content/pdf/10.1007%2F978-3-642-54833-8_6.pdf)
-
-**Status: prototype implemented in Agda 2.6.1.**
-
-TODO:
-- Invent a blend of first-match patterns and overlapping patterns which subsumes both of them.
-
-### Decidable Equality Patterns <a id="decidable-equality-patterns"></a> [↩](#toc)
-
-For types which have decidable equality, while pattern matching we can use non-linear patterns and get them desugared into uses of the corresponding decision procedure for equality.
-
-```
-dedupConsecutive (#A : EqType) : List A -> List A
-| []          => []
-| h :: h :: t => dedupConsecutive (h :: t)
-| h :: t      => h :: dedupConsecutive t
-```
-
-For example, we can use this feature to implement the above function which removes adjacent duplicates from a list, provided that the type of elements has decidable equality. This will be automatically desugared to the definition below.
-
-```
-dedupConsecutive (#A : EqType) : List A -> List A
-| [] => []
-| x :: y :: t with x =? y
-  | tt =>      dedupConsecutive (y :: t)
-  | ff => x :: dedupConsecutive (y :: t)
-```
-
-Note that the semantics of the non-linear matches are the classical first-match semantics and it looks like it'd be hard to transplant this into the setting of overlapping and order-independent patterns. 
-
-Not papers:
-- [mailing list with discussion on why non-linear patterns are not allowed in Haskell](https://www.mail-archive.com/haskell@haskell.org/msg03721.html)
-
-**Status: no papers and nowhere implemented, but looks very easy to get right.**
-
-### Discriminators <a id="discriminators"></a> [↩](#toc)
+#### Discriminators
 
 As a slight bonus, when we define an inductive type, we get autogenerated discriminators. A **discriminator** is a function which checks whether a term was made with a particular constructor. They are named after the constructor, with a `?` at the end.
 
@@ -1858,40 +1791,15 @@ s? (n : Nat) : Bool := n is s _ // Or alternatively: `n is s`, without the _ at 
 However, given the `is` syntax, we no longer need a separate notion of discriminators.
 
 Not papers:
+- [How inductive type namespacing works in Lean](https://leanprover.github.io/theorem_proving_in_lean/inductive_types.html#enumerated-types)
 - [Discriminators in F* tutorial](https://fstar-lang.org/tutorial/tutorial.html#sec-discriminators)
 - [An example of the `is` syntax in SSReflect](https://coq.inria.fr/refman/proof-engine/ssreflect-proof-language.html#congruence)
 
-**Status: discriminators are not standard, but implemented in F\*, so they shouldn't pose a problem. The `is` syntax is taken from Coq's SSReflect.**
+**Status: each inductive type being its own namespace/module is not standard, but implemented in Lean, so it shouldn't pose any problems. Discriminators are not standard, but implemented in F\*, so they shouldn't pose a problem. The `is` syntax is taken from Coq's SSReflect, so it too is unproblematic.**
 
 TODO:
 - Settle on a concrete solution and syntax.
 - Mention that `I` is automatically a subtype of `IConstr`.
-
-### Constructor names and namespacing <a id="constructor-names"></a> [↩](#toc)
-
-Names of inductive type constructors do NOT need to be globally unique, unlike in many other languages.
-
-```
-data TrafficLight
-| Red
-| Orange
-| Green
-
-data Color
-| Red
-| Green
-| Blue
-| RGBA (r : u8, g : u8, b : u8, a : u8)
-```
-
-Both of the above types have constructors named `Red` and `Green`, but there is no confusion between them. For example, if we apply a function `canDrive : TrafficLight -> Bool` to `Red`, i.e. `canDrive Red`, then `Red` is interpreted as `Red : TrafficLight`. If a color is expected, e.g. in `isPretty Red` for `isPretty : Color -> Bool`, `Red` is interpreted as `Red : Color`.
-
-If we need to disambiguate between the two `Red`s, we can write `TrafficLight.Red` and `Color.Red`, respectively. Here the dot syntax is the same as for records, and in fact every inductive type has its own namespace, which is a record that holds various useful things related to the inductive type, like its constructors or its elimination principle.
-
-Not papers:
-- [See how this works in Lean](https://leanprover.github.io/theorem_proving_in_lean/inductive_types.html)
-
-**Status: each inductive type being its own namespace/module is not standard, but implemented in Lean, so it shouldn't pose any problems.**
 
 ### Syntax sugar for bundled parameters <a id="bundled-parameters"></a> [↩](#toc)
 
@@ -1944,6 +1852,94 @@ app (#A : Type) : (l1 l2 : List A) -> List A
 To sum up, the type of `app`, written as `(l1 l2 : List) -> List` is interpreted as `(#A : Type, l1 l2 : List A) -> List A`, and the definition of `app` is equivalent to the definition shown above.
 
 **Status: the distinction between parameters and indices was present in Lean 2 when defining functions, but its other forms described here are novel. However, it shouldn't pose any implementation problems.**
+
+### [Overlapping and Order-Independent Patterns](Induction/OverlappingPatterns) <a id="overlapping-patterns"></a> [↩](#toc)
+
+Consider a different definition of addition of natural numbers, one that matches both of its arguments.
+
+```
+add : (n m : Nat) -> Nat
+| z   , m => m
+| s n', m => s (add n' m)
+```
+
+It's all right and good, but even though `add n z` equals `n`, it does not compute to `n`. Similarly, even though `add n (s m')` equals `s (add n m')`, it doesn't compute to `s (add n m')`. Overlapping patterns are a way to make this happen.
+
+```
+add : (n m : Nat) -> Nat
+| z   , m    => m
+| s n', m    => s (add n' m)
+| n   , z    => n
+| n   , s m' => s (add n m')
+```
+
+Here besides the two clauses from the previous definitions, we have two more clauses which amount to saying that "additionally, `add n z` computes to `z` and `add n (s m')` computes to `s (add n m')`".
+
+For the definition to be accepted, all the clauses need to be confluent, i.e. they must return the same result when they overlap. In our example, the overlapping cases are `add z z` and `add (s n') (s m')`. But `add z z` computes to `z` both using clause 1 and 3, so it's ok. Similarly, `add (s n') (s m')` computes to `s (s (add n' m'))` using first clause 2 and then clause 4, and it computes to the same result using first clause 4 and then clause 2, so it's ok.
+
+These new computational equalities greatly reduce the number of rewrites needed in proofs, but it also and makes dependently-typed programming much easier in some cases. For example, for vectors the terms `v ++ []` used to have the problematic type `Vec A (add n z)`, whereas now it has the less problematic type `Vec A n`. Yay!
+
+Of course, there are some problems with this new kind of pattern matching. The foremost of them is that the catch-all pattern `_` starts being problematic. Consider the decision function for equality of naturals:
+
+```
+%Fail
+dec : (n m : Nat) -> Bool
+| z   , z    => tt
+| s n', s m' => dec n' m'
+| _   , _    => ff
+```
+
+This definition is illegal, because `dec z z` computes to `tt` according to the first clause, but it computes to `ff` according to the third clause.
+
+To remedy this, we have to keep the old semantics of pattern matching (which we call _first-match semantics_). So from now on we have two kinds of pattern matching: the usual one with first-match semantics and the new one, in which patterns can be _overlapping_ and whose semantics don't depend on the _order_ in which the patterns appear in code. We can use the pragmas `%FirstMatch` and `%OverlappingPatterns` to specify, which kind of pattern matching we use.
+
+```
+%FirstMatch
+dec : (n m : Nat) -> Bool
+| z   , z    => tt
+| s n', s m' => dec n' m'
+| _   , _    => ff
+```
+
+Now the definition is ok, because we explicitly mark the fact that it uses the first-match semantics.
+
+Note that allowing overlapping patterns has some deep metatheoretical consequences, namely that definitions by pattern matching can no longer be translated into definitions with eliminators. However, we consider this price to be worth paying.
+
+Papers:
+- [Overlapping and Order-Independent Patterns: Definitional Equality for All](https://link.springer.com/content/pdf/10.1007%2F978-3-642-54833-8_6.pdf)
+
+**Status: prototype implemented in Agda 2.6.1.**
+
+TODO:
+- Invent a blend of first-match patterns and overlapping patterns which subsumes both of them.
+
+### Decidable Equality Patterns <a id="decidable-equality-patterns"></a> [↩](#toc)
+
+For types which have decidable equality, while pattern matching we can use non-linear patterns and get them desugared into uses of the corresponding decision procedure for equality.
+
+```
+dedupConsecutive (#A : EqType) : List A -> List A
+| []          => []
+| h :: h :: t => dedupConsecutive (h :: t)
+| h :: t      => h :: dedupConsecutive t
+```
+
+For example, we can use this feature to implement the above function which removes adjacent duplicates from a list, provided that the type of elements has decidable equality. This will be automatically desugared to the definition below.
+
+```
+dedupConsecutive (#A : EqType) : List A -> List A
+| [] => []
+| x :: y :: t with x =? y
+  | tt =>      dedupConsecutive (y :: t)
+  | ff => x :: dedupConsecutive (y :: t)
+```
+
+Note that the semantics of the non-linear matches are the classical first-match semantics and it looks like it'd be hard to transplant this into the setting of overlapping and order-independent patterns. 
+
+Not papers:
+- [mailing list with discussion on why non-linear patterns are not allowed in Haskell](https://www.mail-archive.com/haskell@haskell.org/msg03721.html)
+
+**Status: no papers and nowhere implemented, but looks very easy to get right.**
 
 ### Nested Inductive Types <a id="nested-inductive-types"></a> [↩](#toc)
 
@@ -2009,170 +2005,6 @@ Not papers:
 TODO:
 - Write some example code.
 
-## Inductive Families <a id="inductive-families"></a> [↩](#toc)
-
-### Standard Inductive Families <a id="standard-inductive-families"></a> [↩](#toc)
-
-For inductive families, we need to explicitly write the constructors' codomains (because they depend on the index), but we still don't need to write the parameters.
-
-```
-data Vec (A : Type) : Nat -> Type
-| Nil  : Vec z
-| Cons : (hd : A, #n : Nat, tl : Vec n) -> Vec (s n)
-```
-
-When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of this family with that index.
-
-```
-head : (#n : Nat, v : Vec (s n)) -> A
-| .n', Cons h n' t => h
-```
-
-We call these _forced patterns_, contrary to [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns) which calls them _inaccessible patterns_.
-
-Papers:
-- [Pattern Matching Without K](https://jesper.sikanda.be/files/pattern-matching-without-K.pdf)
-- [A Syntax for Mutual Inductive Families](https://drops.dagstuhl.de/opus/volltexte/2020/12345/pdf/LIPIcs-FSCD-2020-23.pdf)
-
-**Status: inductive families are standard in proof assistants and dependently-typed languages. Dependent pattern matching is semi-standard, as some languages (notably Coq) have problems with supporting it properly so it's hard to use, while some others (Idris 2 and formerly Agda) have implementations of it that entail Uniqueness of Identity Proofs, which is incompatible with Univalence. The closest implementation of what's described here is probably Agda (with the flag `--without-K`).**
-
-TODO:
-- Explicit argument syntax urgently needed in the `head` example above.
-
-### [Indices that Compute](Induction/IndicesThatCompute) <a id="indices-that-compute"></a> [↩](#toc)
-
-Consider an alternative representation of vectors, defined by recursion on the index `n`.
-
-```
-RVec (#A : Type) : Nat -> Type
-| z   => Unit
-| s n => (hd : A, tl : RVec n)
-```
-
-We can define vectors like this:
-
-```
-// The empty vector.
-x : RVec Nat 0 := unit
-
-// Singleton vector.
-y : RVec Nat 1 := (hd => 42, tl => unit)
-
-// Shorter syntax.
-y' : RVec Nat 1 := (42, unit)
-
-// A longer example.
-z : RVec Nat 5 := (0, (1, (2, (3, (4, unit)))))
-```
-
-We may now ask ourselves: which representation is better? Let's start by listing the pros and cons of each representation.
-
-|                        | Inductive types        | Recursive types        |
-| ---------------------- | ---------------------- | ---------------------- |
-| Notation               | intuitive              | less intuitive         |
-| Uniqueness principle   | no                     | inherited from records |
-| Pattern matching       | yes                    | only on the index      |
-| Structural recursion   | yes                    | only on the index      |
-| Forcing & detagging    | if the compiler has it | for free               |
-| Large indices          | no                     | yes                    |
-| Non-indexed types      | yes                    | no                     |
-| Non-positive types     | no                     | yes                    |
-
-As for the notation, the usual notation for defining inductive types is better, because people are used to it, whereas defining types by recursion is uncommon even in dependently-typed languages where it is possible. Moreover, the recursive definition has ugly consequences, like having to write `unit` instead of `Nil` and lots of parenthesis instead of `Cons`. However, I think this can be rectified by using some extensible sums.
-
-```
-RVec (#A : Type) : Nat -> Type
-| z   => [Nil]
-| s n => [Cons : (hd : A, tl : RVec n)]
-
-// Definitions of the same x, y and z as above.
-x : RVec Nat 0 := Nil
-y : RVec Nat 1 := Cons 42 Nil
-z : RVec Nat 5 := Cons 0 (Cons 1 (Cons 2 (Cons 3 (Cons 4 Nil))))
-```
-
-If we replace `Unit` by the single-constructor extensible sum `[Nil]` and in the successor case wrap the record in a single-constructor extensible sum with the constructor named `Cons`, we get an interface that is equivalent to that of the original `Vec`.
-
-Moving on, `Vec` is an inductive family and thus has no uniqueness principle, i.e. if we have `x y : Vec A 0`, then we need to match `x` and `y` to find out that they are both `Nil`. This is not the case for `RVec`, because for `RVec A 0 ≡ Unit` and `Unit` is a strict proposition, so for all `x y : RVec A 0` we have `x ≡ y`. Similarly, for `x : RVec A (s n)` we have `x ≡ Cons x.hd x.tl` (note: assuming a uniqueness principle for single-constructor extensible sums).
-
-Another difference between the two representations is the use of pattern matching and recursion to define functions on vectors. With the inductive vectors, all is as usual, with dependent pattern matching fully supported. For `RVec`, however, pattern matching and recursion is only supported for the index. To match the value itself, we have to match the index first.
-
-```
-vmap (f : A -> B) : Vec A n -> Vec B n
-| Nil      => Nil
-| Cons h t => Cons (f h) (vmap t)
-
-rmap (f : A -> B) : (#n : Nat) -> RVec A n -> RVec B n
-| z  , Nil      => Nil
-| s n, Cons h t => Cons (f h) (rmap t)
-```
-
-The difference is very small, but annoying. Thankfully, we can introduce some syntax sugar which allows us to match only on the `RVec` and omit dealing with the index. Because we can infer the index from the constructor used (`Nil` corresponds to `z` and `Cons` to `s n`), this syntax sugar can then be desugared by translating the index-omitting pattern matching as in `rmap'` below into the full pattern matching as in the original `rmap` above.
-
-```
-rmap' (f : A -> B) : RVec A n -> RVec B n
-| Nil      => Nil
-| Cons h t => Cons (f h) (rmap' t)
-```
-
-As for forcing and detagging: the inductive `Vec` needs to store its index `n` somehow, and the index also appears as one of the arguments of `Cons`. This is not a problem as long as we're only concerned with proving, but as soon as we're interested in performance or extraction to another language, it starts being problematic. The recursive `RVec`, on the other hand, doesn't have the same problems - the index is an input from which the type is computed, so we don't need to store it.
-
-As for large indices and non-strictly-positive types: inductive types have to conform to strict rules about which universe they can live in. For example, the universe of an inductive type must be at least as big as the universe of all its arguments. This is required to ensure that we can't use the mechanism of inductive definitions to lower the universe level of some other type just by wrapping it in an inductive. Inductive types also need to conform to strong rules regarding positivity - inductive arguments can't occur in negative positions (i.e. to the left of an odd number of arrows), because such types are contradictory thanks to Cantor's theorem. Occurrences which are positive but not strictly positive are also not allowed, as they may result in a proof of `Empty` in some cases. Recursive types, on the other hand, don't have to observe the same rules - we can do anything we want, as long we're doing it by recursion on the index.
-
-The final difference between the two representation is that inductive types allow us to define types which are not indexed, like the natural numbers, whereas recursive types do not, because if there is no index, there is nothing to do recursion on.
-
-Papers:
-- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)) - this is the paper on which most of this section is based
-- [A simpler encoding of indexed types](https://arxiv.org/pdf/2103.15408.pdf)
-
-**Status: very wild speculations, but it looks pretty reasonable - there's just another piece of syntax sugar. The uniqueness principle for single-constructor extensible sums may be problematic, but I think it would be doable.**
-
-TODO:
-- Think about this more.
-- Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
-
-### Truly Nested Inductive Types <a id="truly-nested"></a> [↩](#toc)
-
-Truly Nested Inductive Types are similar to Nested Inductive Types, ex
-are nested in another type family (the first kind of nested inductive types) or in which their indices are nested in another family (the second kind of nested inductive types).
-
-Another famous nested type is the following representation of lambda calculus terms.
-
-```
-data Lam : Type -> Type
-| Var : (#A : Type, n : Nat) -> Lam A
-| App : (#A : Type, l r : Lam A) -> Lam A
-| Abs : (#A : Type, body : Lam (Option A)) -> Lam A
-```
-
-And yet another, arguably the evilest of them all, is the type of bushes.
-
-```
-data Bush : Type -> Type
-| E : (#A : Type) -> Bush A
-| N : (#A : Type, v : A, bs : Bush (Bush A)) -> Bush A
-```
-
-Papers:
-- [Deep Induction: Induction Rules for (Truly) Nested Types](https://cs.appstate.edu/~johannp/20-fossacs.pdf)
-- [An induction principle for nested datatypes in intensional type theory](https://www.irit.fr/~Ralph.Matthes/papers/MatthesInductionNestedJFPCUP.pdf)
-
-**Status: Truly Nested Inductive Types are not legal in Coq or Agda, and I would also guess nowhere else. Usually one has to turn the positivity checker so the definition is accepted. Even then, support for termination checking, autogeneration of elimination principles and proofs is lacking.**
-
-TODO:
-- Read the papers.
-
-## [Advanced Inductive Types](Induction) <a id="advanced-inductive-types"></a> [↩](#toc)
-
-Inductive families are just the tip of the iceberg, as our inductive types are supposed to be REALLY powerful. We take the usual inductive families as baseline and add:
-- [Computational Inductive Types](#computational-inductive-types)
-- [Higher Inductive Types](#higher-inductive-types)
-- [Nominal Inductive Types](#nominal-inductive-types)
-- [Induction-Induction](#induction-induction)
-- [Induction-Recursion](#induction-recursion)
-
-We have listed the various enhancements in order from most to least wild. We take the former ones for granted when describing the latter, so as to show their synergy.
-
 ### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="computational-inductive-types"></a> [↩](#toc)
 
 The basic idea here is that in inductive type definitions constructors can pattern match on their arguments and compute (almost) like ordinary recursive functions. Let's see an example.
@@ -2212,7 +2044,7 @@ Papers:
 TODO:
 - Come up with more examples of useful Computational Inductive Types.
 
-### [Higher Inductive Types](Induction/HIT) <a id="HIT"></a> [↩](#toc)
+### [Higher Inductive Types](Induction/HIT) <a id="higher-inductive-types"></a> [↩](#toc)
 
 Higher Inductive Types are inductive types which can be defined using not only point ("ordinary") constructors, but also path constructors which put additional paths into the type. This has two serious uses: the more practical one is for making all kinds of quotients and quotient-like types (and a lot of these can't be made using Computational Inductive Types, because there is no canonical form of some collection of terms) and the more theoretical one is synthetic homotopy theory.
 
@@ -2373,6 +2205,90 @@ This makes it easy to define `subst`itution of the term `t` for the free variabl
 
 For papers, TODOs and the status, see the main section on [Names and Nominal Function Type](#names). The [code directory](Induction/NominalInductiveTypes/CNIC) has extensive examples of how to use nominal inductive types in practice, among others to implement cyclic lists. It also proves some basic properties of names and considers the property of being a `Nameless` type, which turns out to be pretty important in practice.
 
+
+
+### Inductive Families <a id="inductive-families"></a> [↩](#toc)
+
+For inductive families, we need to explicitly write the constructors' codomains (because they depend on the index), but we still don't need to write the parameters.
+
+```
+data Vec (A : Type) : Nat -> Type
+| Nil  : Vec z
+| Cons : (hd : A, #n : Nat, tl : Vec n) -> Vec (s n)
+```
+
+When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of this family with that index.
+
+```
+head : (#n : Nat, v : Vec (s n)) -> A
+| .n', Cons h n' t => h
+```
+
+We call these _forced patterns_, contrary to [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns) which calls them _inaccessible patterns_.
+
+Papers:
+- [Pattern Matching Without K](https://jesper.sikanda.be/files/pattern-matching-without-K.pdf)
+- [A Syntax for Mutual Inductive Families](https://drops.dagstuhl.de/opus/volltexte/2020/12345/pdf/LIPIcs-FSCD-2020-23.pdf)
+
+**Status: inductive families are standard in proof assistants and dependently-typed languages. Dependent pattern matching is semi-standard, as some languages (notably Coq) have problems with supporting it properly so it's hard to use, while some others (Idris 2 and formerly Agda) have implementations of it that entail Uniqueness of Identity Proofs, which is incompatible with Univalence. The closest implementation of what's described here is probably Agda (with the flag `--without-K`).**
+
+TODO:
+- Explicit argument syntax urgently needed in the `head` example above.
+
+### Nested Inductive Families <a id="nested-families"></a> [↩](#toc)
+
+Nested Inductive Families (also called Truly Nested Inductive Types by some papers) are inductive families `I` in which the inductive occurrence of `I` in the indices is nested in some type constructor.
+
+A relatively mild example is the type of complete binary trees.
+
+```
+data Complete : Type -> Type
+| E : (#A : Type) -> Complete A
+| N : (#A : Type, v : A, ts : Complete (A * A)) -> Complete A
+```
+
+Pattern matching and recursion on elements of nested inductive families work, although not exactly as expected.
+
+```
+map : (#A B : Type, f : A -> B, t : Complete A) -> Complete B
+| _, E      => E
+| _, N v ts => N (f v) (map (fun (x, y) : A * A => (f x, f y)) ts)
+```
+
+Note that this time the function argument to `map` cannot be a parameter - it must an index instead - because it changes in the recursive call. This is caused by the fact that in the first place the type arguments `A` and `B` cannot be parameters either, because they too change in the recursive call.
+
+Another famous nested type is the following representation of lambda calculus terms.
+
+```
+data Lam : Type -> Type
+| Var : (#A : Type, n : Nat) -> Lam A
+| App : (#A : Type, l r : Lam A) -> Lam A
+| Abs : (#A : Type, body : Lam (Option A)) -> Lam A
+```
+
+And yet another, arguably the evilest of them all, is the type of bushes.
+
+```
+data Bush : Type -> Type
+| E : (#A : Type) -> Bush A
+| N : (#A : Type, v : A, bs : Bush (Bush A)) -> Bush A
+```
+
+```
+map : (#A B : Type, f : A -> B, b : Bush A) -> Bush B
+| E => E
+| N v bs => N (f v) (map (map f) bs)
+```
+
+Papers:
+- [Deep Induction: Induction Rules for (Truly) Nested Types](https://cs.appstate.edu/~johannp/20-fossacs.pdf)
+- [An induction principle for nested datatypes in intensional type theory](https://www.irit.fr/~Ralph.Matthes/papers/MatthesInductionNestedJFPCUP.pdf)
+
+**Status: Inductive Families are not legal in Coq or Agda, and I would also guess nowhere else. Usually one has to turn off the positivity checker so the definition is accepted. Even then, support for termination checking, autogeneration of elimination principles and proofs is lacking.**
+
+TODO:
+- Read the papers.
+
 ### [Inductive-Inductive Types](Induction/Induction-Induction) <a id="induction-induction"></a> [↩](#toc)
 
 Induction-induction allows us to simultaneously define two or more types such that the later ones can be indexed by the earlier ones.
@@ -2511,7 +2427,7 @@ and OK (R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop
 | N => R v h.v
 ```
 
-Induction-Recursion, just like induction-induction, can also be used to define data structures with complex invariants. Above we have the binary heaps again, but this time the (non-recursive) heap condition is defined by pattern matching mutually with the type of binary heaps.
+Induction-Recursion, just like Induction-Induction, can also be used to define data structures with complex invariants. Above we have the binary heaps again, but this time the (non-recursive) heap condition is defined by pattern matching mutually with the type of binary heaps.
 
 Papers:
 - [A General Formulation of Simultaneous Inductive-Recursive Definitions in Type Theory](https://www.cse.chalmers.se/~peterd/papers/Inductive_Recursive.pdf)
@@ -2526,8 +2442,8 @@ Papers:
 
 Tangentially related:
 - [Higher inductive-recursive univalence and type-directed definitions](https://homotopytypetheory.org/2014/06/08/hiru-tdd/) - see for a definition of universe with type-directed equality like the one presented above, but using higher-inductive types instead of computational inductive types
-- [Simulating Induction-Recursion for Partial Algorithms](https://members.loria.fr/DLarchey/files/papers/TYPES_2018_paper_19.pdf) - how to define complicated recursive functions without resorting to induction-recursion)
-- [A polymorphic representation of induction-recursion](https://www.researchgate.net/publication/244448805_A_polymorphic_representation_of_induction-recursion) ([slides](http://www.cs.ru.nl/dtp11/slides/capretta.pdf))
+- [Simulating Induction-Recursion for Partial Algorithms](https://members.loria.fr/DLarchey/files/papers/TYPES_2018_paper_19.pdf) - how to define complicated recursive functions without resorting to induction-recursion
+- [A polymorphic representation of induction-recursion](https://www.researchgate.net/publication/244448805_A_polymorphic_representation_of_induction-recursion) (also see the [slides](http://www.cs.ru.nl/dtp11/slides/capretta.pdf))
 - [A Formalisation of a Dependently Typed Language as an Inductive-Recursive Family](https://www.cse.chalmers.se/~nad/publications/danielsson-types2006.pdf)
 
 Generic programming using (inductive-recursive) universes:
@@ -2536,7 +2452,103 @@ Generic programming using (inductive-recursive) universes:
 
 **Status: induction-recursion is implemented in Agda and in Idris 1 (or at least this is what Wiki claims), and there was an experimental branch of Coq that implemented it a long time ago. In general, however, it is not mainstream. Implementation should not be problematic.**
 
-## [Basic Coinductive Types](Coinduction) <a id="basic-coinductive-types"></a> [↩](#toc)
+## [Recursive Families](Induction/IndicesThatCompute) <a id="recursive-families"></a> [↩](#toc)
+
+Consider an alternative representation of vectors, defined by recursion on the index `n`.
+
+```
+RVec (#A : Type) : Nat -> Type
+| z   => Unit
+| s n => (hd : A, tl : RVec n)
+```
+
+We can define vectors like this:
+
+```
+// The empty vector.
+x : RVec Nat 0 := unit
+
+// Singleton vector.
+y : RVec Nat 1 := (hd => 42, tl => unit)
+
+// Shorter syntax.
+y' : RVec Nat 1 := (42, unit)
+
+// A longer example.
+z : RVec Nat 5 := (0, (1, (2, (3, (4, unit)))))
+```
+
+We may now ask ourselves: which representation is better? Let's start by listing the pros and cons of each representation.
+
+|                        | Inductive types        | Recursive types        |
+| ---------------------- | ---------------------- | ---------------------- |
+| Notation               | intuitive              | less intuitive         |
+| Uniqueness principle   | no                     | inherited from records |
+| Pattern matching       | yes                    | only on the index      |
+| Structural recursion   | yes                    | only on the index      |
+| Forcing & detagging    | if the compiler has it | for free               |
+| Large indices          | no                     | yes                    |
+| Non-indexed types      | yes                    | no                     |
+| Non-positive types     | no                     | yes                    |
+
+As for the notation, the usual notation for defining inductive types is better, because people are used to it, whereas defining types by recursion is uncommon even in dependently-typed languages where it is possible. Moreover, the recursive definition has ugly consequences, like having to write `unit` instead of `Nil` and lots of parenthesis instead of `Cons`. However, I think this can be rectified by using some extensible sums.
+
+```
+RVec (#A : Type) : Nat -> Type
+| z   => [Nil]
+| s n => [Cons (hd : A, tl : RVec n)]
+
+// Definitions of the same x, y and z as above.
+x : RVec Nat 0 := Nil
+y : RVec Nat 1 := Cons 42 Nil
+z : RVec Nat 5 := Cons 0 (Cons 1 (Cons 2 (Cons 3 (Cons 4 Nil))))
+```
+
+If we replace `Unit` by the single-constructor extensible sum `[Nil]` and in the successor case wrap the record in a single-constructor extensible sum with the constructor named `Cons`, we get an interface that is equivalent to that of the original `Vec`.
+
+Moving on, `Vec` is an inductive family and thus has no uniqueness principle, i.e. if we have `x y : Vec A 0`, then we need to match `x` and `y` to find out that they are both `Nil`. This is not the case for `RVec`, because for `RVec A 0 ≡ Unit` and `Unit` is a strict proposition, so for all `x y : RVec A 0` we have `x ≡ y`. Similarly, for `x : RVec A (s n)` we have `x ≡ Cons x.hd x.tl` (note: assuming a uniqueness principle for single-constructor extensible sums).
+
+Another difference between the two representations is the use of pattern matching and recursion to define functions on vectors. With the inductive vectors, all is as usual, with dependent pattern matching fully supported. For `RVec`, however, pattern matching and recursion is only supported for the index. To match the value itself, we have to match the index first.
+
+```
+vmap (f : A -> B) : Vec A n -> Vec B n
+| Nil      => Nil
+| Cons h t => Cons (f h) (vmap t)
+
+rmap (f : A -> B) : (#n : Nat) -> RVec A n -> RVec B n
+| z  , Nil      => Nil
+| s n, Cons h t => Cons (f h) (rmap t)
+```
+
+The difference is very small, but annoying. Thankfully, we can introduce some syntax sugar which allows us to match only on the `RVec` and omit dealing with the index. Because we can infer the index from the constructor used (`Nil` corresponds to `z` and `Cons` to `s n`), this syntax sugar can then be desugared by translating the index-omitting pattern matching as in `rmap'` below into the full pattern matching as in the original `rmap` above.
+
+```
+rmap' (f : A -> B) : RVec A n -> RVec B n
+| Nil      => Nil
+| Cons h t => Cons (f h) (rmap' t)
+```
+
+As for forcing and detagging: the inductive `Vec` needs to store its index `n` somehow, and the index also appears as one of the arguments of `Cons`. This is not a problem as long as we're only concerned with proving, but as soon as we're interested in performance or extraction to another language, it starts being problematic. The recursive `RVec`, on the other hand, doesn't have the same problems - the index is an input from which the type is computed, so we don't need to store it.
+
+As for large indices and non-strictly-positive types: inductive types have to conform to strict rules about which universe they can live in. For example, the universe of an inductive type must be at least as big as the universe of all its arguments. This is required to ensure that we can't use the mechanism of inductive definitions to lower the universe level of some other type just by wrapping it in an inductive. Inductive types also need to conform to strong rules regarding positivity - inductive arguments can't occur in negative positions (i.e. to the left of an odd number of arrows), because such types are contradictory thanks to Cantor's theorem. Occurrences which are positive but not strictly positive are also not allowed, as they may result in a proof of `Empty` in some cases. Recursive types, on the other hand, don't have to observe the same rules - we can do anything we want, as long we're doing it by recursion on the index.
+
+The final difference between the two representation is that inductive types allow us to define types which are not indexed, like the natural numbers, whereas recursive types do not, because if there is no index, there is nothing to do recursion on.
+
+Papers:
+- [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)) - this is the paper on which most of this section is based
+- [A simpler encoding of indexed types](https://arxiv.org/pdf/2103.15408.pdf)
+
+**Status: very wild speculations, but it looks pretty reasonable - it's just another piece of syntax sugar. The uniqueness principle for single-constructor extensible sums may be problematic, but I think it would be doable.**
+
+TODO:
+- Think about this more.
+- Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
+
+## Coinductive Types <a id="coinductive-types"></a> [↩](#toc)
+
+TODO
+
+### [Basic Coinductive Types](Coinduction) <a id="basic-coinductive-types"></a> [↩](#toc)
 
 Coinductive types are "negative", i.e. they are record-like types which are defined by specifying what fields they have. Definitions of coinductive types start with the keyword `codata`. Then, in separate lines starting with `&`, we list field names and their types. Below we define a coinductive product type whose left projection is `l` and right projection is `r`.
 
@@ -2703,7 +2715,7 @@ findAndReplace (p : A -> Bool) (x : A) : (s : Stream A) -> Stream A
 & tl => findAndReplace s.tl
 ```
 
-### Field names and namespacing
+### Field names and namespacing <a id="coinductive-namespacing"></a> [↩](#toc)
 
 Note that names of fields do NOT need be globally unique, contrary to what is the case in many other languages.
 
@@ -2732,7 +2744,7 @@ TODO:
 - Invent Overlapping and Order-Independent Copatterns.
 - Another possibility for handling coinductives is for them to be just (co)recursive records, but this depends on how cool and strange records will be.
 
-## "Positive" Coinductive Types <a id="positive-coinductive-types"></a> [↩](#toc)
+### "Positive" Coinductive Types <a id="positive-coinductive-types"></a> [↩](#toc)
 
 We have special syntax for coinductive types that have only a single field, like coinductive lists, conatural numbers and so on.
 
@@ -2798,7 +2810,7 @@ app : (l1 l2 : CoList A) -> CoList A
 
 See [the file dealing with conatural numbers](Coinduction/Conat.ttw) for more details on this notation.
 
-### Discriminators and namespaces
+### Namespacing and discriminators for "Positive" Coinductive Types <a id="constructors-positive-coinductive"> [↩](#toc)
 
 Our "positive" coinductive types have their own namespaces, like ordinary inductive and coinductive types. Just like for inductive types, for every "positive" coinductive type we get for free a bunch of discriminators that allow us to check which constructor a value was made with. For `CoList`, these are
 
@@ -2822,7 +2834,7 @@ We can find these discriminators in the `CoList`s associated namespace - their f
 TODO:
 - Write some (pseudo)code that uses this to get comfortable with it.
 
-## Coinductive families <a id="coinductive-families"> [↩](#toc)
+### Coinductive families <a id="coinductive-families"> [↩](#toc)
 
 The syntax for coinductive families is somewhat similar to that for inductive families - parameters always stay the same and we must omit them, whereas indices change and we must write them explicitly. Contrary to inductive families, we must also name the indices, because that's the only way to refer to them.
 
@@ -2886,14 +2898,6 @@ Papers:
 - [Elaborating dependent (co)pattern matching](https://dl.acm.org/doi/10.1145/3236770)
 
 **Status: coinductive families are standard, even if people don't always realize this (they look nothing like inductive families).**
-
-## Advanced Coinductive Types <a id="advanced-coinductive-types"></a> [↩](#toc)
-
-There are quite a few flavours of advanced coinductive types:
-- Mixed coinductive and inductive types
-- Coinduction-Coinduction (analogous to induction-induction) using the "positive" coinductive syntax sugar
-- Self-referential types in which some occurrences are inductive and others are coinductive
-- Oh man, this is so hard to systematize.
 
 ### Coinduction-Recursion? Not really. <a id="coinduction-recursion"></a> [↩](#toc)
 
@@ -3106,12 +3110,6 @@ toStream' : (g : GetSP A B) (s : Stream A) -> Stream B
 
 Since both `SP` and `GetSP` have the same base functor (or more poetically, the same "skeleton"), we don't need to duplicate it. Then we tie the know twice, first inductively to obtain an early version of `GetSP` and then coinductively to obtain `SP`. Then we define the final version of `GetSP` and smart constructors that wrap the actual constructors in `In` and `Out`. The desugaring of `toStream` and `toStream'` is somewhat ad hoc and chaotic. It looks more akin to our original definition (the one that used `head` and `tail`) and I wouldn't be very surprised if I made an error here or there...
 
-### Types with inductive and coinductive components <a id="mixed-induction-coinduction"></a> [↩](#toc)
-
-TODO
-
-### Summary
-
 Papers:
 - There are quite a few papers on mixing coinduction with induction, but most of them are written in the old deprecated Agda-style coinduction, so they aren't that much useful. We are going to list them, nevertheless (this time in chronological order (oldest first), not in order of relevance):
 - [Continuous Functions on Final Coalgebras](https://core.ac.uk/download/pdf/82531251.pdf)
@@ -3135,6 +3133,10 @@ TODO:
 - Special syntax for (co)inductive types in which some recursive arguments are to be interpreted inductively and others coinductively.
 - Untangleable coinduction-induction?
 - Untangleable coinduction-coinduction?
+
+### Types with inductive and coinductive components <a id="mixed-induction-coinduction"></a> [↩](#toc)
+
+TODO
 
 ## Refinement types <a id="refinements"></a> [↩](#toc)
 
@@ -4334,7 +4336,7 @@ TODO:
 - Read the papers.
 - Write something.
 
-## Generic programming <a id ="generic"></a> [↩](#toc)
+## Generic programming <a id="generic"></a> [↩](#toc)
 
 Generic functions are functions implemented by recursion on the structure of types in the language. For example, we could implement decidable equality for all types that support it all at once.
 
@@ -4348,7 +4350,7 @@ TODO:
 - Read the papers and see how generic programming and typecase fit into the language.
 - Write something about typeclasses.
 
-## Quantitative Type Theory <a id ="quantities"></a> [↩](#toc)
+## Quantitative Type Theory <a id="quantities"></a> [↩](#toc)
 
 Papers:
 - [I Got Plenty o’ Nuttin’](https://personal.cis.strath.ac.uk/conor.mcbride/PlentyO-CR.pdf)
@@ -4361,7 +4363,7 @@ Prototypes:
 TODO:
 - Read the papers and see if Quantitative Type Theory conflicts with anything else we want to have in the language.
 
-## Graded Modalities <a id ="graded-modalities"></a> [↩](#toc)
+## Graded Modalities <a id="graded-modalities"></a> [↩](#toc)
 
 Papers:
 - [A Graded Dependent Type System with a Usage-Aware Semantics (extended version)](https://arxiv.org/pdf/2011.04070.pdf)
@@ -4382,7 +4384,7 @@ TODO:
 - Read the paper and see if anything there conflicts with the rest of our language.
 - Find out the relationship between graded modalities and Quantitative Type Theory. Idris 2 is nice because structural typing is default and linear typing is optional, whereas Granule seems to have mandatory linear typing. Can anything be done about this?
 
-## Typed Holes <a id ="holes"></a> [↩](#toc)
+## Typed Holes <a id="holes"></a> [↩](#toc)
 
 Holes are a way of leaving a part of a term unfilled as a kind of local "axiom". They can be later revisited with the help of the language's type inference, filled automatically or serve as names for goals in the proving mode. More ambitious works try to use holes for accomodating ill-typed, ill-formed and incomplete (yet unwritten) programs into the semantics.
 
@@ -4392,9 +4394,11 @@ Papers:
 TODO:
 - Typed Holes have something to do with First-Class Patterns. And what if we could make typed holes first-class?
 
-## Tactics <a id ="tactics"></a> [↩](#toc)
+## Tactics <a id="tactics"></a> [↩](#toc)
 
-## Metaprogramming <a id ="meta"></a> [↩](#toc)
+## Metaprogramming <a id="meta"></a> [↩](#toc)
+
+## Mixfix operators and notation mechanism <a id="notation"></a>
 
 ## Tooling <a id="tooling"></a> [↩](#toc)
 
