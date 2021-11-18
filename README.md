@@ -3136,7 +3136,31 @@ TODO:
 
 ### Types with inductive and coinductive components <a id="mixed-induction-coinduction"></a> [↩](#toc)
 
-TODO
+In the previous section we have seen two mutually defined types that looked exactly alike, `SP` and `GetSP`, the only difference being that `SP` was coinductive whereas `GetSP` was inductive. This is somewhat bad, because it leads to code duplication - for example, in our second implementation of `toStream` and `toStream'`, both these functions look identical.
+
+This leads us to consider types in which self-referring occurrences can be either inductive or coinductive. Functions operating on these types must be recursive or corecursive, depending on the particular usage.
+
+```
+data Tree (A : Type) : Type
+| E
+| N (v : A, l : Tree A, codata r : Tree A)
+```
+
+The above represents an inductive binary tree whose left subtree is also inductive, but whose right subtree is coinductive, i.e. potentially infinite.
+
+```
+map (f : A -> B) : Tree A -> Tree B
+| E       => E
+| N x l r => N (f x) (map l) (map r)
+```
+
+Papers:
+- There are some papers with the old Agda coinduction which are somewhat akin to what is described here, but no papers exist specifically on this topic, I think. In case of doubt, look at the papers from previous section.
+
+**Status: extremely speculative.**
+
+TODO:
+- Write something.
 
 ## Refinement types <a id="refinements"></a> [↩](#toc)
 
