@@ -25,6 +25,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
     1. [Nested Inductive Types](#nested-inductive-types)
+    1. [Mutual Inductive Types (TODO)](#mutual-inductive-types)
     1. [Computational Inductive Types](#computational-inductive-types)
     1. [Higher Inductive Types](#higher-inductive-types)
     1. [Nominal Inductive Types](#nominal-inductive-types)
@@ -34,15 +35,17 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Inductive-Recursive Types](#induction-recursion)
 1. [Recursive Families (TODO)](#recursive-families)
 1. [Coinductive Types (TODO)](#coinductive-types)
-    1. [Basic Coinductive Types](#basic-coinductive-types)
+    1. [Negative Coinductive Types](#negative-coinductive-types)
     1. [Positive Coinductive Types](#positive-coinductive-types)
     1. [Field names, namespacing, discriminators and bundled parameters](#coinductive-names-discriminators-bundled-params)
-    1. [Nested Coinductive Types](#nested-coinductive-types)
-    1. [Coinductive Families](#coinductive-families)
+    1. [Nested Coinductive Types (TODO)](#nested-coinductive-types)
+    1. [Mutual Coinductive Types (TODO)](#mutual-coinductive-types)
+    1. [Coinductive Families (TODO)](#coinductive-families)
     1. [Coinduction-Recursion](#coinduction-recursion)
     1. [Coinduction-Coinduction](#coinduction-coinduction)
+1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
     1. [Coinduction-Induction](#coinduction-induction)
-    1. [Types with inductive and coinductive components (TODO)](#mixed-induction-coinduction)
+    1. [Types with inductive and coinductive components (TODO)](#inductive-coinductive-components)
 1. [Refinement types](#refinements)
 1. [Universes](#universes)
 1. [Subtyping, coercions and subtype universes](#subtyping)
@@ -223,7 +226,7 @@ Not papers:
 - The workings of primitive types are borrowed from [Rust](https://doc.rust-lang.org/book/ch03-02-data-types.html)
 - [Primitive objects in Coq](https://coq.inria.fr/refman/language/core/primitive.html)
 
-**Status: implemented in Coq.**
+**Status: some primitives types are implemented in Coq, so this shouldn't be very problematic. However, no proof assistant currently has a collection of primitive types as precise as e.g. Rust, so there will be some work to do.**
 
 TODO:
 - How does it work at the level of formal rules? Do we need zillion rules for every single primitive operation and its specification?
@@ -334,7 +337,7 @@ comp (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 
 There are also other kinds of implicitness, like looking up typeclass instances, but these are dealt with by [records](#records).
 
-Names of functions are allowed to consist entirely of symbols, although this style is discouraged except for the most common functions, like the above operators borrowed from F#: pipe forward `|>`, pipe backward `<|`, forward function composition `>>` and backward function composition `<<`.
+Names of functions are allowed to consist entirely of symbols, although this style is discouraged except for the most common functions, like the operators below, which are borrowed from F#: forward function application `|>` (also called "pipe forward"), backward function application `<|` (also called pipe backward), forward function composition `>>` and backward function composition `<<`.
 
 ```
 (|>) (x : A) (f : A -> B) : B := f x
@@ -1532,9 +1535,9 @@ TODO:
 - Are there recursive extensible sums or do we need inductive types for this purpose?
 - This section reads as if it were placed after the section on basic inductive types. Change this! (Or not...)
 
-## Inductive Types <a id="inductive-types"></a> [↩](#toc)
+## [Inductive Types](Induction/) <a id="inductive-types"></a> [↩](#toc)
 
-Inductive 
+TODO 
 
 ### Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
@@ -1957,6 +1960,10 @@ Not papers:
 TODO:
 - Write some example code.
 
+### Mutual Inductive Types <a id="mutual-inductive-types"></a> [↩](#toc)
+
+TODO
+
 ### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="computational-inductive-types"></a> [↩](#toc)
 
 The basic idea here is that in inductive type definitions constructors can pattern match on their arguments and compute (almost) like ordinary recursive functions. Let's see an example.
@@ -2253,7 +2260,9 @@ data Dense (R : A -> A -> Prop) : Type
   | i0 => mid x x H
   | i1 => in x
 
-with Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
+and
+
+data Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
 | in   : #(x y : A) (H : R x y) -> Dense-R (in x) (in y)
 | midl : #(x y : Dense R) (H : Dense-R x y) -> Dense-R (mid x y H) y
 | midr : #(x y : Dense R) (H : Dense-R x y) -> Dense-R x (mid x y H)
@@ -2268,7 +2277,9 @@ data BHeap (R : A -> A -> Prop) : Type
 | E
 | N (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
 
-and OK (R : A -> A -> Prop) (v : A) : BHeap R -> Prop
+and
+
+data OK (R : A -> A -> Prop) (v : A) : BHeap R -> Prop
 | OK-E : OK E
 | OK-N : (x : A) (l r : BHeap R) -> R v x -> OK (N x l r)
 ```
@@ -2496,11 +2507,11 @@ TODO:
 - Think about this more.
 - Figure out what nonstandard techniques are allowed by having [manifest fields in constructors](Induction/IndicesThatCompute/IndicesThatCompute.ttw).
 
-## Coinductive Types <a id="coinductive-types"></a> [↩](#toc)
+## [Coinductive Types](Coinduction) <a id="coinductive-types"></a> [↩](#toc)
 
 TODO
 
-### [Basic Coinductive Types](Coinduction) <a id="basic-coinductive-types"></a> [↩](#toc)
+### Negative Coinductive Types <a id="negative-coinductive-types"></a> [↩](#toc)
 
 Coinductive types are "negative", i.e. they are record-like types which are defined by specifying what fields they have. Definitions of coinductive types start with the keyword `codata`. Then, in separate lines starting with `&`, we list field names and their types. Below we define a coinductive product type whose left projection is `l` and right projection is `r`.
 
@@ -2669,9 +2680,8 @@ findAndReplace (p : A -> Bool) (x : A) : (s : Stream A) -> Stream A
 
 Papers:
 - [Copatterns Programming Infinite Structures by Observations](https://www.researchgate.net/profile/Anton-Setzer/publication/262366004_Copatterns_Programming_Infinite_Structures_by_Observations/links/587fe0f208ae9275d4ee3ae2/Copatterns-Programming-Infinite-Structures-by-Observations.pdf)
-- [Unnesting of Copatterns](http://www2.tcs.ifi.lmu.de/~abel/rtatlca14.pdf)
+- [Unnesting of Copatterns](http://www2.tcs.ifi.lmu.de/~abel/rtatlca14.pdf) (also see the [slides](https://pdfs.semanticscholar.org/cc02/dfbc9f281ddfaea8065ca9c3ac5862979bab.pdf))
 - [Wellfounded Recursion with Copatterns and Sized Types](http://www2.tcs.ifi.lmu.de/~abel/jfp15.pdf)
-- [Elaborating dependent (co)pattern matching](https://jesper.sikanda.be/files/elaborating-dependent-copattern-matching.pdf)
 - [Copattern matching and first-class observations in OCaml, with a macro](https://hal.inria.fr/hal-01653261/document)
 
 Not papers:
@@ -2812,7 +2822,7 @@ codata CoNat : Type
 | s (pred : CoNat)
 
 len : CoList -> CoNat
-| Nil => z
+| Nil      => z
 | Cons _ t => s (len t)
 ```
 
@@ -2823,6 +2833,14 @@ Papers:
 
 TODO:
 - Revisit this at some point in the future.
+
+### Nested Coinductive Types <a id="nested-coinductive-types"></a> [↩](#toc)
+
+TODO
+
+### Mutual Coinductive Types <a id="mutual-coinductive-types"></a> [↩](#toc)
+
+TODO
 
 ### Coinductive families <a id="coinductive-families"> [↩](#toc)
 
@@ -2847,6 +2865,58 @@ Linked-nats : (n : nat) -> Linked (<=) (nats n)
 & link  => le-n-sn // Easy lemma, we won't prove it.
 & links => Linked-nats (s n)
 ```
+
+#### Another kind of coinductive families
+
+We have yet another syntax for coinductive families which are truly dual to inductive families. In this syntax, we need to write fields' codomains, dually to inductive families, where we need to write constructors' codomains. The domain refers to indices, so we might think we need to quantify over them somehow, but since they must be universally quantified anyway, we don't (also: we need to know what is the domain).
+
+```
+codata Odd : CoNat -> Prop
+& Oz  : Odd z -> Empty
+& Oss : Odd (s (s c)) -> Odd c
+```
+
+The above example defines a predicate `Odd` on conatural numbers. The definition stands in stark contrast to the inductive definition of `Odd` for natural numbers.
+
+`Odd` has two fields, `Oz` and `Oss`, but not all proofs of `Odd c` can access these fields. `Oz : Odd z -> False` can be only accessed if we have `x : Odd z`, i.e. a proof that zero is odd, and we can use this field to derive a contradiction. The other field, `Oss : Odd (s (s c)) -> Odd c` can only be used on conaturals greater than or equal to `2` to find out that the conatural smaller by two is also an odd number.
+
+```
+zero-not-Odd (x : Odd z) : Empty :=
+  x.Os
+
+Odd-one : Odd (s z)
+& Oz impossible
+& Oss impossible
+
+Odd-one' : Odd (s z)
+& _ impossible
+
+two-not-Odd (x : Odd (s (s z))) : Empty :=
+  x.Oss.Oz
+
+Odd-three : Odd (s (s (s z)))
+& Oz impossible
+& Oss
+  & Oz impossible
+  & Oss impossible
+
+Odd-three' : Odd (s (s (s z)))
+& Oz impossible
+& Oss => Odd-one
+
+Odd-three'' : Odd (s (s (s z)))
+& Oss => Odd-one
+
+omega : CoNat
+& pred => omega
+
+Odd-omega : Odd omega
+& Oss => Odd-omega
+
+
+```
+
+### Positive Coinductive Families <a id="positive-coinductive-families"></a> [↩](#toc)
 
 The syntax sugar for positive coinductive types also works for positive coinductive families. Below we define the type of conatural numbers, which are like the natural numbers, but possibly infinite. Then we define the family of "covectors", which are like vectors but possibly infinite and they are indexed by conaturals instead of naturals.
 
@@ -2885,7 +2955,7 @@ codata CoVec (A : Type) (c : Conat) : Type
 ```
 
 Papers:
-- [Elaborating dependent (co)pattern matching](https://dl.acm.org/doi/10.1145/3236770)
+- [Elaborating dependent (co)pattern matching](https://jesper.sikanda.be/files/elaborating-dependent-copattern-matching.pdf)
 
 **Status: coinductive families are standard, even if people don't always realize this (they look nothing like inductive families).**
 
@@ -2965,6 +3035,10 @@ OK #(X : Type) #(R : A -> A -> Type) (v : A) (h : BHeap R) : Prop :=
 Again, the desugaring looks pretty easy to grasp. `BHeapX` and `OKX` are defined by induction-induction, which is perfectly legal, even though there isn't a lot of induction going on and we could have used ordinary inductive families. Finally, we define `BHeap` by tying the knot and implement `OK` as a wrapper around `OKX`.
 
 From this example it is obvious that there really isn't any coinduction-coinduction going on - it depicts only coinduction-induction, and the "induction" part isn't really that much inductive, as its only one layer deep. But contrary to what was the case for "coinduction-recursion", I don't see why the inductive part of a coinductive-inductive definition couldn't be truly inductive. Maybe we should look for a better example. Also, coinduction-coinduction still seems possible, at least when both types are positive coinductives.
+
+## Mixed Inductive and Coinductive Types <a id="mixed-inductive-coinductive"></a> [↩](#toc)
+
+TODO
 
 ### Coinduction-Induction? Somewhat. <a id="coinduction-induction"></a> [↩](#toc)
 
@@ -3127,7 +3201,7 @@ TODO:
 - Untangleable coinduction-induction?
 - Untangleable coinduction-coinduction?
 
-### Types with inductive and coinductive components <a id="mixed-induction-coinduction"></a> [↩](#toc)
+### Types with inductive and coinductive components <a id="inductive-coinductive-components"></a> [↩](#toc)
 
 In the previous section we have seen two mutually defined types that looked exactly alike, `SP` and `GetSP`, the only difference being that `SP` was coinductive whereas `GetSP` was inductive. This is somewhat bad, because it leads to code duplication - for example, in our second implementation of `toStream` and `toStream'`, both these functions look identical.
 
@@ -3528,7 +3602,7 @@ Additionally we have `Type (2 + h) p <: hType (2 + h) p`, i.e. we may go from a 
 Not very relevant papers:
 - [Subtyping dependent types](https://www.sciencedirect.com/science/article/pii/S0304397500001754)
 
-**Status: Universe cumulativity is semi-standard, as some proof assistants don't have it. Subtyping for records is standard in the languages that have "structural" record types. Subtyping of anything else in type theory is mostly wild speculations.**
+**Status: Universe cumulativity is semi-standard, as some proof assistants don't have it. Subtyping for records is standard in languages that have "structural" record types. Subtyping of anything else in type theory is mostly wild speculations.**
 
 ### Subtyping for records and sums
 
@@ -4265,7 +4339,7 @@ not-Sum : ~ (A + B) = ~ A * ~ B := refl
 not-Sum' (x : ~ (A + B)) : x = (inl >> x, inr >> x) := refl
 ```
 
-Negation of a sum if a product of negations. At the term level, we use function composition `>>` to get `~ A` from `inl : A -> A + B` and `x : ~ (A + B)` and similarly for `inr`.
+Negation of a sum is a product of negations. At the term level, we use function composition `>>` to get `~ A` from `inl : A -> A + B` and `x : ~ (A + B)` and similarly for `inr`.
 
 Negating a singleton type of course gives an `Empty`.
 

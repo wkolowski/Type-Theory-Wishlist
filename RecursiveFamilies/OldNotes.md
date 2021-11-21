@@ -45,7 +45,7 @@ The idea behind the name "Indices that Compute" is to merge both of these defini
 ```
 data EVEN : Nat -> Prop
 | z       => [EVEN-z]
-| s (s n) => [EVEN-ss : (e : EVEN n)]
+| s (s n) => [EVEN-ss (e : EVEN n)]
 ```
 
 This definition is similar to the second definition of `Even` in that it is a definition by pattern matching on the index `n`. However, the pattern matching is not exhaustive, because we omitted the case for `s z`. This means that `EVEN (s z)` will compute to `Empty`. The definition is also similar to the first definition of `Even` in that it provides two constructors, one for proving that `z` is even and the other for proving that `s (s n)` is even if `n` is.
