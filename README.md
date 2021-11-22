@@ -17,8 +17,8 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Documentation comments](#doc-comments)
 1. [Empty and Unit](#empty-and-unit)
 1. [Records](#records)
-1. [Sums (TODO)](#sums)
-1. [Inductive Types (TODO)](#inductive-types)
+1. [Sums](#sums)
+1. [Inductive Types](#inductive-types)
     1. [Basic Inductive Types](#basic-inductive-types)
     1. [Constructor names, namespacing and discriminators](#constructors)
     1. [Syntax sugar for bundled parameters](#bundled-parameters)
@@ -33,7 +33,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Nested Inductive Families (TODO)](#nested-families)
     1. [Inductive-Inductive Types](#induction-induction)
     1. [Inductive-Recursive Types](#induction-recursion)
-1. [Recursive Families (TODO)](#recursive-families)
+1. [Recursive Families](#recursive-families)
 1. [Coinductive Types (TODO)](#coinductive-types)
     1. [Negative Coinductive Types](#negative-coinductive-types)
     1. [Positive Coinductive Types](#positive-coinductive-types)
@@ -1422,9 +1422,9 @@ TODO:
 
 ## Sums <a id="sums"></a> [↩](#toc)
 
-As for sum types, we would like to have extensible sum types, akin to OCaml's polymorphic variants. If that's not possible, then sum types are subsumed by inductive types. In theory, getting records right should be enough to get sums right, as they are dual to records.
+We have extensible sum types. This means that we can create sum types on the go, without having to declare them beforehand, and then we can use them as if they were ordinary sum types.
 
-For extensible sums, we use square bracket notation. Constructor are written as `name of argType`.
+Extensible sums are written in a notation similar to records, but using square brackets. Constructors are written as `name of argType`.
 
 ```
 sum (A B : Type) : Type := [inl of A, inr of B]
@@ -1445,10 +1445,10 @@ x : Sum Nat Bool := inl (l => 5)
 x : Sum Nat Bool := inl 5
 ```
 
-The dual of the record's join operator `&` is the sum's union operator `|`. If the arguments of `|` share no fields, then the result is a disjoint sum.
+The dual of the records' join operator `&` is the sums' union operator `|`. If the arguments of `|` share no fields, then the result is a disjoint sum.
 
 ```
-Sum3 : [inl of A, inr of B, orc of C] = sum A B | [orc of C] := refl
+sum3 : [inl of A, inr of B, orc of C] = sum A B | [orc of C] := refl
 ```
 
 If the arguments of `|` share fields of the same name and type, they are merged in a pushout-like manner.
@@ -1456,7 +1456,7 @@ If the arguments of `|` share fields of the same name and type, they are merged 
 ```
 sum' (A B : Type) : Type := [inr of A, orc of B]
 
-sum3 : [inl of A, inr of B, orc of C] = sum A B | sum' B C := refl
+sum3' : [inl of A, inr of B, orc of C] = sum A B | sum' B C := refl
 ```
 
 If the arguments of `|` share fields of the same name but different type, this is an error.
@@ -1497,23 +1497,23 @@ extensible-abort : [ina of A, inb of B, ine of Empty] -> [ina of A, inb of B]
 
 One last thing to mention are uniqueness principles. In general extensible sums don't have uniqueness principles, but there is an exception: extensible sums with zero or one constructor do have an uniqueness principle.
 
-```
-uniqueness-[] (x y : []) : x = y := refl
-```
-
 In case of the empty extensible sum, written `[]`, this uniqueness principle just says that any two elements of `[]` are equal.
 
 ```
-Empty-[] : Empty = [] := refl
+uniqueness-[] (x y : []) : x = y := refl
 ```
 
 By the way, this shouldn't surprise us, as we may think of `[]` as being the same type as `Empty`, which is a strict proposition.
 
 ```
-uniqueness-single (x : [ctor (a : A)]) : x = ctor x.a := refl
+Empty-[] : Empty = [] := refl
 ```
 
 For single-constructor extensible sums, the uniqueness principle should look more familiar: it just says that every value `x` of the type is equal to the constructor applied to the argument from which `x` was made. Note that we can use the dot syntax to access the argument of `x`'s constructor, just like in ordinary pattern matching.
+
+```
+uniqueness-single (x : [ctor (a : A)]) : x = ctor x.a := refl
+```
 
 Not papers:
 - [Polymorphic Variants in the OCaml manual](https://ocaml.org/manual/polyvariant.html)
@@ -1534,10 +1534,18 @@ TODO:
 - Make sure the `[]` notation for an empty extensible sum doesn't clash with the notation for the empty list. Also make sure it doesn't clash with the `[]()` notation used in the Markdown-like link syntax used in doc comments.
 - Are there recursive extensible sums or do we need inductive types for this purpose?
 - This section reads as if it were placed after the section on basic inductive types. Change this! (Or not...)
+- If extensible sums are not possible, then the are subsumed by inductive types.
+- In theory, getting records right should be enough to get sums right, as they are dual to records.
 
 ## [Inductive Types](Induction/) <a id="inductive-types"></a> [↩](#toc)
 
-TODO 
+The syntax of inductive type definitions is most similar to that of Agda, but even more convenient. We also reduce the amount of bookkeeping and boilerplate by allowing the same constructor names in multiple types and by giving each inductive type its own namespace. All the usual restrictions apply, i.e. only strictly positive types are allowed.
+
+The syntax for defining functions by pattern matching is most similar to that of Lean, but the semantics of pattern matching are more unusual. All clauses in a definition by pattern matching constitute computational equalities, the clauses may be overlapping provided that the right-hand sides are equal when the clauses do overlap, and execution is independent of the order in which the clauses are given. As usual, all functions must be terminating and pattern matching has to cover all possible cases. We also have some convenient syntax sugar that allows non-linear pattern matching for types with decidable equality. But in case you need the more usual and mundane kind of pattern matching known from Coq or Agda, you can use it too!
+
+Our inductive types are quite powerful. Besides basic inductive types, which can have parameters or be defined mutually with other inductive types, we have special support for Nested Inductive Types (the termination checker can recognize higher-order recursive calls). We also support Computational Inductive Types, in which constructors can perform some computations, Higher Inductive Types, in which constructors can create new paths in the type, and Nominal Inductive Types, which can represent abstract syntax trees of logics, calculi and programming languages.
+
+We also support Inductive Families, including Nested Inductive Families (in which the inductive occurrences in the indices are nested in some type constructor), inductive-inductive types (in which we mutually define an inductive type and an inductive family indexed by this type) and inductive-recursive types (in which we mutually define an inductive type and a recursive function whose domain is this type).
 
 ### Basic Inductive Types <a id="basic-inductive-types"></a> [↩](#toc)
 
@@ -1668,7 +1676,7 @@ The above use of a `with`-clause is equivalent to the following use of an `if-th
 
 ```
 filter (p : A -> Bool) : List A -> List A
-| [] => []
+| []     => []
 | h :: t => if p h then h :: filter t else filter t
 ```
 
@@ -2417,7 +2425,7 @@ Generic programming using (inductive-recursive) universes:
 
 ## [Recursive Families](Induction/IndicesThatCompute) <a id="recursive-families"></a> [↩](#toc)
 
-Consider an alternative representation of vectors, defined by recursion on the index `n`.
+We have previously seen how to define `Vec` as an inductive family, but this is not the only way. Consider an alternative representation of vectors, defined by recursion on the index `n`.
 
 ```
 RVec (#A : Type) : Nat -> Type
@@ -2425,7 +2433,7 @@ RVec (#A : Type) : Nat -> Type
 | s n => (hd : A, tl : RVec n)
 ```
 
-We can define vectors like this:
+We can then define vectors as follows.
 
 ```
 // The empty vector.
@@ -2441,37 +2449,24 @@ y' : RVec Nat 1 := (42, unit)
 z : RVec Nat 5 := (0, (1, (2, (3, (4, unit)))))
 ```
 
-We may now ask ourselves: which representation is better? Let's start by listing the pros and cons of each representation.
+We may now ask ourselves: which representation is better: the inductive one or the recursive one? Let's start by listing the pros and cons of each representation.
 
-|                        | Inductive types        | Recursive types        |
+|                        | Inductive families     | Recursive families     |
 | ---------------------- | ---------------------- | ---------------------- |
 | Notation               | intuitive              | less intuitive         |
 | Uniqueness principle   | no                     | inherited from records |
 | Pattern matching       | yes                    | only on the index      |
 | Structural recursion   | yes                    | only on the index      |
-| Forcing & detagging    | if the compiler has it | for free               |
+| Forcing & detagging    | if the compiler has it | yes                    |
 | Large indices          | no                     | yes                    |
 | Non-indexed types      | yes                    | no                     |
 | Non-positive types     | no                     | yes                    |
 
-As for the notation, the usual notation for defining inductive types is better, because people are used to it, whereas defining types by recursion is uncommon even in dependently-typed languages where it is possible. Moreover, the recursive definition has ugly consequences, like having to write `unit` instead of `Nil` and lots of parenthesis instead of `Cons`. However, I think this can be rectified by using some extensible sums.
+As for the notation, the usual notation for defining inductive types is better, because people are used to it, whereas defining types by recursion is uncommon even in dependently-typed languages where it is possible. Moreover, the recursive definition has ugly consequences, like having to write `unit` instead of `Nil` and lots of parenthesis instead of `Cons`.
 
-```
-RVec (#A : Type) : Nat -> Type
-| z   => [Nil]
-| s n => [Cons (hd : A, tl : RVec n)]
+Next, `Vec` is an inductive family and thus has no uniqueness principle, i.e. if we have `x y : Vec A 0`, then we need to match `x` and `y` to find out that they are both `Nil`. This is not the case for `RVec`, because for `RVec A 0 ≡ Unit` and `Unit` is a strict proposition, so for all `x y : RVec A 0` we have `x ≡ y`. Similarly, for `x : RVec A (s n)` we have `x ≡ Cons x.hd x.tl` (note: assuming a uniqueness principle for single-constructor extensible sums).
 
-// Definitions of the same x, y and z as above.
-x : RVec Nat 0 := Nil
-y : RVec Nat 1 := Cons 42 Nil
-z : RVec Nat 5 := Cons 0 (Cons 1 (Cons 2 (Cons 3 (Cons 4 Nil))))
-```
-
-If we replace `Unit` by the single-constructor extensible sum `[Nil]` and in the successor case wrap the record in a single-constructor extensible sum with the constructor named `Cons`, we get an interface that is equivalent to that of the original `Vec`.
-
-Moving on, `Vec` is an inductive family and thus has no uniqueness principle, i.e. if we have `x y : Vec A 0`, then we need to match `x` and `y` to find out that they are both `Nil`. This is not the case for `RVec`, because for `RVec A 0 ≡ Unit` and `Unit` is a strict proposition, so for all `x y : RVec A 0` we have `x ≡ y`. Similarly, for `x : RVec A (s n)` we have `x ≡ Cons x.hd x.tl` (note: assuming a uniqueness principle for single-constructor extensible sums).
-
-Another difference between the two representations is the use of pattern matching and recursion to define functions on vectors. With the inductive vectors, all is as usual, with dependent pattern matching fully supported. For `RVec`, however, pattern matching and recursion is only supported for the index. To match the value itself, we have to match the index first.
+Another difference between the two representations is the use of pattern matching and recursion to define functions on vectors. With the inductive vectors, all is as usual, with dependent pattern matching fully supported. For `RVec`, however, pattern matching and recursion is only supported for the index. To match the value itself, we have to match the index first. The difference is very small, but annoying.
 
 ```
 vmap (f : A -> B) : Vec A n -> Vec B n
@@ -2479,16 +2474,8 @@ vmap (f : A -> B) : Vec A n -> Vec B n
 | Cons h t => Cons (f h) (vmap t)
 
 rmap (f : A -> B) : (#n : Nat) -> RVec A n -> RVec B n
-| z  , Nil      => Nil
-| s n, Cons h t => Cons (f h) (rmap t)
-```
-
-The difference is very small, but annoying. Thankfully, we can introduce some syntax sugar which allows us to match only on the `RVec` and omit dealing with the index. Because we can infer the index from the constructor used (`Nil` corresponds to `z` and `Cons` to `s n`), this syntax sugar can then be desugared by translating the index-omitting pattern matching as in `rmap'` below into the full pattern matching as in the original `rmap` above.
-
-```
-rmap' (f : A -> B) : RVec A n -> RVec B n
-| Nil      => Nil
-| Cons h t => Cons (f h) (rmap' t)
+| z   , unit   => unit
+| s n', (h, t) => (f h, rmap t)
 ```
 
 As for forcing and detagging: the inductive `Vec` needs to store its index `n` somehow, and the index also appears as one of the arguments of `Cons`. This is not a problem as long as we're only concerned with proving, but as soon as we're interested in performance or extraction to another language, it starts being problematic. The recursive `RVec`, on the other hand, doesn't have the same problems - the index is an input from which the type is computed, so we don't need to store it.
@@ -2496,6 +2483,53 @@ As for forcing and detagging: the inductive `Vec` needs to store its index `n` s
 As for large indices and non-strictly-positive types: inductive types have to conform to strict rules about which universe they can live in. For example, the universe of an inductive type must be at least as big as the universe of all its arguments. This is required to ensure that we can't use the mechanism of inductive definitions to lower the universe level of some other type just by wrapping it in an inductive. Inductive types also need to conform to strong rules regarding positivity - inductive arguments can't occur in negative positions (i.e. to the left of an odd number of arrows), because such types are contradictory thanks to Cantor's theorem. Occurrences which are positive but not strictly positive are also not allowed, as they may result in a proof of `Empty` in some cases. Recursive types, on the other hand, don't have to observe the same rules - we can do anything we want, as long we're doing it by recursion on the index.
 
 The final difference between the two representation is that inductive types allow us to define types which are not indexed, like the natural numbers, whereas recursive types do not, because if there is no index, there is nothing to do recursion on.
+
+To sum up, inductive and recursive definitions are applicable mostly in different scenarios: inductives to ordinary types and type families which can't be defined by recursion on the indices, recursives to types with large indices or non-strictly-positive types. The only point of overlap are indexed families which can be defined by recursion on the indices. In this case, the comparison is kind of a draw: recursive families have more benefits, like uniqueness principle and forcing/detagging, but they suffer from bad notation for defining the type, its values and functions out of it. If only the notation wasn't so bad...
+
+This is why we introduce syntax sugar for recursive families!
+
+```
+rectype RVec (A : Type) : Nat -> Type
+| Nil  : RVec z
+| Cons : (hd : A, #n : Nat, tl : RVec n) -> RVec (s n)
+```
+
+The above is a definition of the recursive family `RVec` in a syntax very close to that of inductive families. The only difference is that we use the keyword `rectype` instead of `data`. This definition is desugared as follows.
+
+```
+RVec (#A : Type) : Nat -> Type
+| z   => [Nil]
+| s n => [Cons (hd : A, tl : RVec n)]
+```
+
+This is a recursive definition of `RVec` very close to what we have seen at the beginning of this section, but instead of the `Unit` type we use the single-constructor extensible sum type `[Nil]` and instead of using the bare record `(hd : A, tl : RVec n)` we wrap it in a single-constructor extensible sum with the constructor named `Cons`.
+
+```
+// Definitions of the same x, y and z as above.
+x : RVec Nat 0 := Nil
+y : RVec Nat 1 := Cons 42 Nil
+z : RVec Nat 5 := Cons 0 (Cons 1 (Cons 2 (Cons 3 (Cons 4 Nil))))
+```
+
+Thanks to the clever use of extensible sums, we can now define vectors in a notation that is identical to that of inductive families. But what about functions on vectors?
+
+```
+rmap' (f : A -> B) : RVec A n -> RVec B n
+| Nil      => Nil
+| Cons h t => Cons (f h) (rmap' t)
+```
+
+We can introduce another piece of syntax sugar which allows us to match only on the `RVec` and omit dealing with the index. This is desugared to the code below.
+
+```
+rmap' (f : A -> B) : (n : Nat) -> RVec A n -> RVec B n
+| z   , Nil      => Nil
+| s n', Cons h t => Cons (f h) (rmap' n' t)
+```
+
+Because we can infer the index from the constructor (`Nil` corresponds to `z` and `Cons` to `s n`), our syntax sugar can be desugared by translating the index-omitting pattern matching in `rmap'` to the full pattern matching as in the original `rmap` (with the difference being that we retain the nice constructor names `Nil` and `Cons`, instead of the ugly `unit` and `(,)`).
+
+With this syntax sugar, recursive families emerge as the clearly superior solution for defining indexed families whenever it is possible to do this by recursion on the index.
 
 Papers:
 - [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)) - this is the paper on which most of this section is based
@@ -2509,7 +2543,9 @@ TODO:
 
 ## [Coinductive Types](Coinduction) <a id="coinductive-types"></a> [↩](#toc)
 
-TODO
+The syntax of coinductive type definitions is meant to be dual to that of inductive types - as dual as possible, in fact. The closest to what we have is probably Agda. Just as for inductives, we reduce the amount of bookkeeping and boilerplate by allowing the same field names in multiple types and by giving each coinductive type its own namespace. All the usual restrictions apply, i.e. only strictly positive types are allowed.
+
+Corecursive functions are defined by copattern matching. Of course the definitions must be productive and we need to cover all possible cases.
 
 ### Negative Coinductive Types <a id="negative-coinductive-types"></a> [↩](#toc)
 
