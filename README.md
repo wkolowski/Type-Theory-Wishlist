@@ -2916,7 +2916,74 @@ TODO:
 
 ### Nested Coinductive Types <a id="nested-coinductive-types"></a> [↩](#toc)
 
-Just as inductive types can be nested, leading to higher-order recursion, so can be coinductive types, leading to higher-order corecursion.
+Just as inductive types can be nested, leading to higher-order recursion, so can be coinductive types, leading to higher-order corecursion. This applies to both negative and positive coinductive types.
+
+```
+codata StreamTree (A : Type) : Type
+& v  : A
+& ts : Stream StreamTree
+
+codata CoRoseTree (A : Type) : Type
+| Empty
+| Node (v : A, ts : CoList CoRoseTree)
+```
+
+Above we have two examples of nested coinductive types. The first, `StreamTree`, is a tree that has a value `v : A` and a `Stream` of subtrees. This type is nested, because `StreamTree` occurs as an argument to `Stream`.
+
+The second type is `CoRoseTree`, a coinductive version of `RoseTree` that we saw in the section on nested inductive types, but with a `CoList` of subtrees instead of a `List`. It is a nested type, because `CoRoseTree` occurs as an argument to `CoList`.
+
+```
+stmap (f : A -> B) : (t : StreamTree A) -> StreamTree B
+& v  => f t.v
+& ts => map stmap t.ts
+```
+
+We can define the mapping function (called `stmap` to distinguish it from mapping functions for other types) on `StreamTree`s as above. For the field `v`, we just apply `f` to `t.v`. For the subtrees `ts`, however, we can't directly make any corecursive calls - we need to `map` the function `stmap` over the `Stream` of subtrees. This is an example of higher-order corecursion.
+
+```
+stmap (f : A -> B) : (t : StreamTree A) -> StreamTree B
+& v  => f t.v
+& ts
+  & hd => stmap t.ts.hd
+  & tl => (stmap (t.v, t.ts.tl)).ts
+```
+
+Another, less nice way of defining this function is to use direct corecursion. Above, we defined the `ts` field's head using a recursive call on `t.ts.hd` and then we use another corecursive call, this time on `(t.v, t.ts.tl)`, which is a `StreamTree` with the same `v` as the original, but with a "shorter" stream, to define the `ts` field. This is ugly, but works.
+
+```
+stmap (f : A -> B) : (t : StreamTree A) -> StreamTree B
+& v  => f t.v
+& ts => smap t.ts
+
+and
+
+smap (f : A -> B) : (s : Stream (StreamTree A)) -> Stream (StreamTree B)
+& hd => stmap s.hd
+& tl => smap s.tl
+```
+
+Yet another way to define this function is to split it into two mutually corecursive functions. Above, we define `stmap` corecursively by referring to `smap`, a mapping function on `Stream`s of `StreamTree`s, and at the same time we define `smap` corecursively by referring to `stmap`.
+
+```
+crmap (f : A -> B) : CoRoseTree A -> CoRoseTree B
+| Empty     => Empty
+| Node v ts => Node (f v) (map crmap ts)
+
+cons (t : CoRoseTree A) : CoRoseTree A -> CoRoseTree A
+| Empty => t
+| Node v l with l
+  | Nil       => Node v t
+  | Cons h t' => Node v (Cons t (Cons h t'))
+
+crmap (f : A -> B) : CoRoseTree A -> CoRoseTree B
+| Empty      => Empty
+| Node v l with l =>
+  | Nil      => Node (f v) Nil
+  | Cons h t => cons (crmap h) (crmap (Node v t))
+
+```
+
+
 
 ### Mutual Coinductive Types <a id="mutual-coinductive-types"></a> [↩](#toc)
 
