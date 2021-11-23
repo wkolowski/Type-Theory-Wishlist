@@ -25,7 +25,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
     1. [Nested Inductive Types](#nested-inductive-types)
-    1. [Mutual Inductive Types (TODO)](#mutual-inductive-types)
+    1. [Mutual Inductive Types](#mutual-inductive-types)
     1. [Computational Inductive Types](#computational-inductive-types)
     1. [Higher Inductive Types](#higher-inductive-types)
     1. [Nominal Inductive Types](#nominal-inductive-types)
@@ -34,7 +34,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Inductive-Inductive Types](#induction-induction)
     1. [Inductive-Recursive Types](#induction-recursion)
 1. [Recursive Families](#recursive-families)
-1. [Coinductive Types (TODO)](#coinductive-types)
+1. [Coinductive Types](#coinductive-types)
     1. [Negative Coinductive Types](#negative-coinductive-types)
     1. [Positive Coinductive Types](#positive-coinductive-types)
     1. [Field names, namespacing, discriminators and bundled parameters](#coinductive-names-discriminators-bundled-params)
@@ -1970,7 +1970,49 @@ TODO:
 
 ### Mutual Inductive Types <a id="mutual-inductive-types"></a> [↩](#toc)
 
-TODO
+Ordinary inductive types can refer to themselves in the constructors' arguments. Mutual Inductive Types generalize this setting - now inductives can in the constructors' arguments refer to other inductive types that in turn refer to them.
+
+```
+data List' (A : Type) : Type
+| Empty
+| NonEmpty (ne : NonEmptyList)
+
+data NonEmptyList (A : Type) : Type
+| Cons (hd : A, tl : List')
+```
+
+The above code defines by mutual induction two types - the first represents lists, the other non-empty lists. Values of type `List'` are either `Empty` or they are a `NonEmptyList` wrapped in the constructor `NonEmpty`, whereas `NonEmptyList`s are just a head and a tail (which is a `List'`), wrapped in the constructor `Cons`. Note that the distinction between parameters and indices is upheld - we don't need to write the type parameter `A` neither when referring to `List'` in the `Cons` constructor, nor when referring to `NonEmptyList` in the `NonEmpty` constructor.
+
+```
+mapl (f : A -> B) : List' A -> List' B
+| Empty       => Empty
+| NonEmpty ne => mapne ne
+
+mapne (f : A -> B) : NonEmptyList A -> NonEmptyList B
+| Cons h t => Cons (f h) (mapl t)
+```
+
+Functions out of mutual inductive types can be defined by mutual recursion. Above, we define the two couterparts of what for the usual `List`s was `map`. The function `mapl`, which maps `f` over a `List'`, refers in its `NonEmpty` case to `mapne`, which maps `f` over a `NonEmptyList`. Note that the distinction between parameters and indices is also upheld here - we don't need to mention the function `f` when applying either `mapl` or `mapne`. Also note that we could have called both `mapl` and `mapne` just `map`, but we didn't do that to make the example less confusing.
+
+```
+even : Nat -> Bool
+| z    => tt
+| s n' => odd n'
+
+odd : Nat -> Bool
+| z    => ff
+| s n' => even n'
+```
+
+Mutual recursion is not restricted to mutual inductive types only. Above we have an example of functions for checking whether a `Nat`ural number is even or odd defined by mutual recursion, even though the domain of both of them is `Nat`.
+
+Papers:
+- None
+
+**Status: mutual inductive types and mutual recursion are standard in proofs assistants and in functional programming.**
+
+TODO:
+- What are the exact rules for termination checking of mutual recursion?
 
 ### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="computational-inductive-types"></a> [↩](#toc)
 
@@ -2171,8 +2213,6 @@ This makes it easy to define `subst`itution of the term `t` for the free variabl
 - `ν α. Lam (t @ α)` - `s` is a lambda, so we descend under the lambda while making sure not to confuse the variable bound by the lambda with the one we are looking for.
 
 For papers, TODOs and the status, see the main section on [Names and Nominal Function Type](#names). The [code directory](Induction/NominalInductiveTypes/CNIC) has extensive examples of how to use nominal inductive types in practice, among others to implement cyclic lists. It also proves some basic properties of names and considers the property of being a `Nameless` type, which turns out to be pretty important in practice.
-
-
 
 ### Inductive Families <a id="inductive-families"></a> [↩](#toc)
 
@@ -2543,9 +2583,13 @@ TODO:
 
 ## [Coinductive Types](Coinduction) <a id="coinductive-types"></a> [↩](#toc)
 
-The syntax of coinductive type definitions is meant to be dual to that of inductive types - as dual as possible, in fact. The closest to what we have is probably Agda. Just as for inductives, we reduce the amount of bookkeeping and boilerplate by allowing the same field names in multiple types and by giving each coinductive type its own namespace. All the usual restrictions apply, i.e. only strictly positive types are allowed.
+The syntax of coinductive type definitions is supposed to be dual to that of inductive types - as dual as possible, but not more. The closest to what we have is probably Agda. Just as for inductives, we reduce the amount of bookkeeping and boilerplate by allowing the same field names in multiple types and by giving each coinductive type its own namespace. All the usual restrictions apply, i.e. only strictly positive types are allowed.
 
-Corecursive functions are defined by copattern matching. Of course the definitions must be productive and we need to cover all possible cases.
+The basic coinductive types are negative, i.e. they are possibly self-referencing records. Corecursive functions (and also just values of coinductive types) are defined by copattern matching. They must be productive and the copattern matching needs to cover all possible cases. The semantics of copattern matching are more akin to the semantics of traditional pattern matching than to the Overlapping and Order-Independent Patterns semantics that we use as our main semantics of pattern matching. A definition by copattern matching can optionally begin by giving a prototype of the result (which must be a value of the same coinductive type) and then further fields of the result are given or fields coming from the prototype are modified.
+
+In addition to basic coinductive types, which can have parameters or be defined mutually with other coinductive types, we have special support for Nested Coinductive Types (the productivity checker can recognize productivity of higher-order corecursive calls). We also support true coinductive families, which are exactly dual to inductive families, nested coindcutive families, and other advanced forms of coinductive types.
+
+Besides negative coinductive types, we also support positive coinductive types. These are defined by giving their constructors and eliminated using pattern matching, just like inductive types. However, positive coinductive types fundamentally are just a syntax sugar that is desugared to an inductive base functor and the knot is tied with a negative coinductive types.
 
 ### Negative Coinductive Types <a id="negative-coinductive-types"></a> [↩](#toc)
 
@@ -2872,7 +2916,7 @@ TODO:
 
 ### Nested Coinductive Types <a id="nested-coinductive-types"></a> [↩](#toc)
 
-TODO
+Just as inductive types can be nested, leading to higher-order recursion, so can be coinductive types, leading to higher-order corecursion.
 
 ### Mutual Coinductive Types <a id="mutual-coinductive-types"></a> [↩](#toc)
 
