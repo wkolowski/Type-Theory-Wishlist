@@ -30,7 +30,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Higher Inductive Types](#higher-inductive-types)
     1. [Nominal Inductive Types](#nominal-inductive-types)
     1. [Inductive Families](#inductive-families)
-    1. [Nested Inductive Families (TODO)](#nested-families)
+    1. [Nested Inductive Families](#nested-families)
     1. [Inductive-Inductive Types](#induction-induction)
     1. [Inductive-Recursive Types](#induction-recursion)
 1. [Recursive Families](#recursive-families)
@@ -38,7 +38,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Negative Coinductive Types](#negative-coinductive-types)
     1. [Positive Coinductive Types](#positive-coinductive-types)
     1. [Field names, namespacing, discriminators and bundled parameters](#coinductive-names-discriminators-bundled-params)
-    1. [Nested Coinductive Types (TODO)](#nested-coinductive-types)
+    1. [Nested Coinductive Types](#nested-coinductive-types)
     1. [Mutual Coinductive Types (TODO)](#mutual-coinductive-types)
     1. [Coinductive Families (TODO)](#coinductive-families)
     1. [Coinduction-Recursion](#coinduction-recursion)
@@ -2244,9 +2244,7 @@ TODO:
 
 ### Nested Inductive Families <a id="nested-families"></a> [↩](#toc)
 
-Nested Inductive Families (also called Truly Nested Inductive Types by some papers) are inductive families `I` in which the inductive occurrence of `I` in the indices is nested in some type constructor.
-
-A relatively mild example is the type of complete binary trees.
+Nested Inductive Families are inductive families `I` in which the inductive occurrence of `I` in the indices is nested in some type constructor.
 
 ```
 data Complete : Type -> Type
@@ -2254,7 +2252,7 @@ data Complete : Type -> Type
 | N : (#A : Type, v : A, ts : Complete (A * A)) -> Complete A
 ```
 
-Pattern matching and recursion on elements of nested inductive families work, although not exactly as expected.
+A relatively mild example is the type of complete binary trees.
 
 ```
 map : (#A B : Type, f : A -> B, t : Complete A) -> Complete B
@@ -2262,9 +2260,7 @@ map : (#A B : Type, f : A -> B, t : Complete A) -> Complete B
 | _, N v ts => N (f v) (map (fun (x, y) : A * A => (f x, f y)) ts)
 ```
 
-Note that this time the function argument to `map` cannot be a parameter - it must an index instead - because it changes in the recursive call. This is caused by the fact that in the first place the type arguments `A` and `B` cannot be parameters either, because they too change in the recursive call.
-
-Another famous nested type is the following representation of lambda calculus terms.
+Pattern matching and recursion on elements of nested inductive families work as expected. Note that this time the function argument to `map` cannot be a parameter - it must an index instead - because it changes in the recursive call. This is caused by the fact that in the first place the type arguments `A` and `B` cannot be parameters either, because they too change in the recursive call.
 
 ```
 data Lam : Type -> Type
@@ -2273,28 +2269,35 @@ data Lam : Type -> Type
 | Abs : (#A : Type, body : Lam (Option A)) -> Lam A
 ```
 
-And yet another, arguably the evilest of them all, is the type of bushes.
+Another famous nested type is the following representation of lambda calculus terms.
+
+But the two above type families were not that much nested. Things become really interesting only when an occurrence of the type family `I` is nested in itself in one of the indices. Such types are sometimes called Truly Nested Inductive Types.
 
 ```
 data Bush : Type -> Type
 | E : (#A : Type) -> Bush A
-| N : (#A : Type, v : A, bs : Bush (Bush A)) -> Bush A
+| N : (#A : Type, h : A, t : Bush (Bush A)) -> Bush A
 ```
 
+The most famous example is the following type of `Bush`es. This type is to the the Truly Nested Inductive Families what `List`s are for ordinary inductive types. A `Bush` is either empty (`E`) or is a node (`N`) that consists of a head which is of type `A` and a tail which is a `Bush` of `Bush`es of elements of type `A`.
+
 ```
-map : (#A B : Type, f : A -> B, b : Bush A) -> Bush B
-| E => E
-| N v bs => N (f v) (map (map f) bs)
+bmap : (#A #B : Type, f : A -> B, b : Bush A) -> Bush B
+| E     => E
+| N h t => N (f h) (bmap (bmap f) t)
 ```
+
+As always, let's start (and end) by implementing mapping, here called `bmap`. In the `E` case, we just return `E`. In the `N` case we of course apply `f` to the head of the `Bush`, but for the tail we need to recursively `bmap` the function `bmap f` itself over `t`. This is an example of higher-order recursion in which we have both an indirect recursive call (`bmap f`) and a direct one (`bmap (bmap f)`).
 
 Papers:
 - [Deep Induction: Induction Rules for (Truly) Nested Types](https://cs.appstate.edu/~johannp/20-fossacs.pdf)
 - [An induction principle for nested datatypes in intensional type theory](https://www.irit.fr/~Ralph.Matthes/papers/MatthesInductionNestedJFPCUP.pdf)
 
-**Status: Inductive Families are not legal in Coq or Agda, and I would also guess nowhere else. Usually one has to turn off the positivity checker so the definition is accepted. Even then, support for termination checking, autogeneration of elimination principles and proofs is lacking.**
+**Status: Nested Inductive Families like `Complete` or `Lam` are supported by Coq and Agda (and probably other languages too). Problems only start with the truly nested types - they are not legal in Coq or Agda, and I would also guess nowhere else. Usually one has to turn off the positivity checker for the definition to be accepted. Even then, support for termination checking, autogeneration of elimination principles and proofs is lacking. To sum up: support for Nested Inductive Families is easy, but support for Truly Nested Inductive Families is very speculative.**
 
 TODO:
-- Read the papers.
+- Figure out how the deep induction principles can be implemented in Coq.
+- How exactly does termination checking work for truly nested types?
 
 ### [Inductive-Inductive Types](Induction/Induction-Induction) <a id="induction-induction"></a> [↩](#toc)
 
@@ -2922,15 +2925,9 @@ Just as inductive types can be nested, leading to higher-order recursion, so can
 codata StreamTree (A : Type) : Type
 & v  : A
 & ts : Stream StreamTree
-
-codata CoRoseTree (A : Type) : Type
-| Empty
-| Node (v : A, ts : CoList CoRoseTree)
 ```
 
-Above we have two examples of nested coinductive types. The first, `StreamTree`, is a tree that has a value `v : A` and a `Stream` of subtrees. This type is nested, because `StreamTree` occurs as an argument to `Stream`.
-
-The second type is `CoRoseTree`, a coinductive version of `RoseTree` that we saw in the section on nested inductive types, but with a `CoList` of subtrees instead of a `List`. It is a nested type, because `CoRoseTree` occurs as an argument to `CoList`.
+Above we have an example of nested (negative) coinductive types. `StreamTree`, is a necessarily infinite tree that has a value `v : A` at its root and a `Stream` of subtrees. This type is nested, because `StreamTree` occurs as an argument to `Stream`.
 
 ```
 stmap (f : A -> B) : (t : StreamTree A) -> StreamTree B
@@ -2948,7 +2945,7 @@ stmap (f : A -> B) : (t : StreamTree A) -> StreamTree B
   & tl => (stmap (t.v, t.ts.tl)).ts
 ```
 
-Another, less nice way of defining this function is to use direct corecursion. Above, we defined the `ts` field's head using a recursive call on `t.ts.hd` and then we use another corecursive call, this time on `(t.v, t.ts.tl)`, which is a `StreamTree` with the same `v` as the original, but with a "shorter" stream, to define the `ts` field. This is ugly, but works.
+Another, less nice way of defining this function is to use direct corecursion. Above, we defined the head of the `Stream` of subtrees using a recursive call on `t.ts.hd` and then we use another corecursive call, this time on `(t.v, t.ts.tl)`, which is a `StreamTree` with the same `v` as the original, but with a "shorter" stream, to define the tail of the `Stream` of subtrees. This is ugly, but works.
 
 ```
 stmap (f : A -> B) : (t : StreamTree A) -> StreamTree B
@@ -2965,31 +2962,62 @@ smap (f : A -> B) : (s : Stream (StreamTree A)) -> Stream (StreamTree B)
 Yet another way to define this function is to split it into two mutually corecursive functions. Above, we define `stmap` corecursively by referring to `smap`, a mapping function on `Stream`s of `StreamTree`s, and at the same time we define `smap` corecursively by referring to `stmap`.
 
 ```
+codata CoRoseTree (A : Type) : Type
+| Empty
+| Node (v : A, ts : CoList CoRoseTree)
+```
+
+`CoRoseTree`, shown above, is an example of a nested (positive) coinductive type. It is a coinductive version of `RoseTree` that we saw in the section on nested inductive types, but with a `CoList` of subtrees instead of a `List`. It is a nested type, because `CoRoseTree` occurs as an argument to `CoList`.
+
+```
 crmap (f : A -> B) : CoRoseTree A -> CoRoseTree B
 | Empty     => Empty
 | Node v ts => Node (f v) (map crmap ts)
-
-cons (t : CoRoseTree A) : CoRoseTree A -> CoRoseTree A
-| Empty => t
-| Node v l with l
-  | Nil       => Node v t
-  | Cons h t' => Node v (Cons t (Cons h t'))
-
-crmap (f : A -> B) : CoRoseTree A -> CoRoseTree B
-| Empty      => Empty
-| Node v l with l =>
-  | Nil      => Node (f v) Nil
-  | Cons h t => cons (crmap h) (crmap (Node v t))
-
 ```
 
+Implementing a mapping function (called `crmap`) for `CoRoseTree` poses more or less the same challenges as implementing it for `StreamTree`. One way to do it, shown above, is to use higher-order recursion, `map`ping the `crmap` over the colist of subtrees.
 
+```
+crmap (f : A -> B) : CoRoseTree A -> CoRoseTree B
+| Empty => Empty
+| Node v l with l =>
+  | Nil      => Node (f v) Nil
+  | Cons h t with crmap (Node v t)
+    | Empty => Node (f v) (Cons (crmap h) Nil)
+    | Node v' t' => Node v' (Cons (crmap h) t')
+```
+
+Another way, much uglier, is to kind of "inline" the `map` in the definition of `crmap`, as shown above. However, this way is a little problematic, as we also need to pattern match on the result of the corecursive call `crmap (Node v t)` so that we can properly attach the first subtree, which is `crmap h`. This is not a pleasant way to define `crmap`.
+
+```
+crmap (f : A -> B) : CoRoseTree A -> CoRoseTree B
+| Empty => Empty
+| Node v l => Node (f v) (clmap l)
+
+and
+
+clmap (f : A -> B) : CoList (CoRoseTree A) -> CoList (CoRoseTree B)
+| Nil      => Nil
+| Cons h t => Cons (crmap h) (clmap t)
+```
+
+The last possibility, just like for `StreamTree` previously, is to split the definition of `crmap` into two mutually corecursive definitions, one of `crmap` proper and the other of `clmap`, a mapping function on `CoList`s of `CoRoseTree`s.
+
+Papers:
+- None
+
+**Status: nested coinductive types are not standard. Indeed, they are not really supported in Coq, no matter how hard I try, and I guess also not in Agda nor other proof assistants.**
+
+TODO:
+- Search for papers.
+- Think more about how productivity is checked.
+- Come up with a translation of Nested Coinductive Types to Mutual Coinductive Types.
 
 ### Mutual Coinductive Types <a id="mutual-coinductive-types"></a> [↩](#toc)
 
 TODO
 
-### Coinductive families <a id="coinductive-families"> [↩](#toc)
+### Coinductive Families <a id="coinductive-families"> [↩](#toc)
 
 The syntax for coinductive families is somewhat similar to that for inductive families - parameters always stay the same and we must omit them, whereas indices change and we must write them explicitly. Contrary to inductive families, we must also name the indices, because that's the only way to refer to them.
 
@@ -3029,39 +3057,82 @@ The above example defines a predicate `Odd` on conatural numbers. The definition
 
 ```
 zero-not-Odd (x : Odd z) : Empty :=
-  x.Os
+  x.Oz
+```
 
+We begin by showing that zero is not `Odd`. This is easy - we can fetch the proof of `Empty` directly from the field `Oz`.
+
+```
 Odd-one : Odd (s z)
 & Oz impossible
 & Oss impossible
+```
 
+Next up, one is odd. To prove this, we need to provide definitions for the two fields `Oz` and `Oss`. But the index of `Oz` is `z`, whereas our proof has index `s z`, so we don't need to define this field - it is `impossible` to call `Oz` on `Odd-one : Odd (s z)`. Similarly, the `Oss` field also doesn't need to be handled, because its index is `s (s n)` for some `n`, but the index of `Odd-one` is `s z`. This is dependent copattern matching in action!
+
+```
 Odd-one' : Odd (s z)
 & _ impossible
+```
 
+Of course writing `impossible` for every field gets boring pretty fast, so we combine it with the prototype syntax to say that none of the fields are possible.
+
+```
+Odd-one'' : Odd (s z)
+```
+
+Another possibility, more experimental, is to just leave `Odd-one''` without any definition at all. Since no fields need to be defined, this is a valid definition and not just a declaration of an axiom.
+
+```
 two-not-Odd (x : Odd (s (s z))) : Empty :=
   x.Oss.Oz
+```
 
+We now prove that two is not `Odd`. This is easy - we need to grab the fact that zero is `Odd` using the field `Oss` and then we need to derive the contradiction from that using the field `Oz`.
+
+```
 Odd-three : Odd (s (s (s z)))
 & Oz impossible
 & Oss
   & Oz impossible
   & Oss impossible
+```
 
+Next, three is `Odd`. That's pretty easy - the field `Oz` is `impossible`, and we define the field `Oss` to be... well, its own `Oz` field is `impossible` and so is its `Oss`.
+
+```
 Odd-three' : Odd (s (s (s z)))
 & Oz impossible
 & Oss => Odd-one
+```
 
+Alternatively, we can define `Oss` to be `Odd-one`.
+
+```
 Odd-three'' : Odd (s (s (s z)))
 & Oss => Odd-one
+```
 
-omega : CoNat
-& pred => omega
+We also don't need to write the impossible cases, so we can do this with a one-liner.
+
+```
+omega : CoNat := s omega
 
 Odd-omega : Odd omega
 & Oss => Odd-omega
-
-
 ```
+
+Now, a proof that `omega`, the infinite number, is `Odd`. That's easy - `Oz` is `impossible` and `Oss` gets taken care of by a corecursive call.
+
+Papers:
+- None
+
+**Status: coinductive families need to be encoded using equality fields written by hand in Coq. I'm not sure about Agda, though...**
+
+TODO:
+- Polish the writing.
+- Search for papers.
+- Figure out the final notation: `of` as a short-hand when defining inductive and coinductive and the colon `:` when defining families?
 
 ### Positive Coinductive Families <a id="positive-coinductive-families"></a> [↩](#toc)
 
