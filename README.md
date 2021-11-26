@@ -24,8 +24,8 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Syntax sugar for bundled parameters](#bundled-parameters)
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
-    1. [Nested Inductive Types](#nested-inductive-types)
     1. [Mutual Inductive Types](#mutual-inductive-types)
+    1. [Nested Inductive Types](#nested-inductive-types)
     1. [Computational Inductive Types](#computational-inductive-types)
     1. [Higher Inductive Types](#higher-inductive-types)
     1. [Nominal Inductive Types](#nominal-inductive-types)
@@ -38,9 +38,9 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Negative Coinductive Types](#negative-coinductive-types)
     1. [Positive Coinductive Types](#positive-coinductive-types)
     1. [Field names, namespacing, discriminators and bundled parameters](#coinductive-names-discriminators-bundled-params)
-    1. [Nested Coinductive Types](#nested-coinductive-types)
     1. [Mutual Coinductive Types (TODO)](#mutual-coinductive-types)
-    1. [Coinductive Families (TODO)](#coinductive-families)
+    1. [Nested Coinductive Types](#nested-coinductive-types)
+    1. [Coinductive Families](#coinductive-families)
     1. [Coinduction-Recursion](#coinduction-recursion)
     1. [Coinduction-Coinduction](#coinduction-coinduction)
 1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
@@ -1904,73 +1904,9 @@ Not papers:
 
 **Status: no papers and nowhere implemented, but looks very easy to get right.**
 
-### Nested Inductive Types <a id="nested-inductive-types"></a> [↩](#toc)
-
-Nested inductive types are inductive types `I` in which the inductive occurrences of `I` appear as an argument of some type family (besides the arrow `(->) : Type -> Type -> Type`, of course). These types can be defined in our language as ordinary inductive types, but writing functions that operate on Nested Inductive Types requires some more explanation.
-
-One of the most iconic examples of Nested Inductive Types is the type of rose trees, i.e. trees that have a `List` of subtrees.
-
-```
-data RoseTree (A : Type)
-| E
-| N (v : A, ts : List RoseTree)
-```
-
-Functions out of such types can be defined as usual by pattern matching and recursion, with the nested recursion (i.e. on the `List` in case of `RoseTree`) being handled just fine.
-
-```
-size : RoseTree A -> Nat
-| E => 0
-| N _ [] => 1
-| N v (t :: ts) => size t + size (N v ts)
-```
-
-In the above example, we compute the `size` of a `RoseTree`. The interesting constructor, `N`, is split into two cases: if there are no subtrees, we return `1`, whereas if there are, we call `size` recursively on the first subtree `t` and then on on `N v ts`, i.e. on what remains of our original `RoseTree` after we remove the first subtree `t`.
-
-These recursive calls are perfectly legal - `t` is a subterm of `N v (t :: ts)`, so `size t` is a good recursive call. `N v ts` is not a subterm of `N v (t :: ts)`, but it is smaller in an obvious way, and the termination checker sees that.
-
-There are a few other ways to implement `size`.
-
-```
-size : RoseTree A -> Nat
-| E => 0
-| N v ts with ts
-  | []       => 1
-  | t :: ts' => size t + size (N v ts')
-```
-
-The variant above is very similar to the previous one, but we use a `with`-clause to split the `N` case into two. This might come handy when the inner type (the `List` in our `RoseTree` example) has a lot of constructors.
-
-```
-size : RoseTree A -> Nat
-| E => 0
-| N _ ts => 1 + sum (map size ts)
-```
-
-In the variant above, we use auxiliary functions `map : (A -> B) -> List A -> List B` and `sum : List Nat -> Nat` (whose implementation is not shown). There are no explicit recursive calls - they are hidden in the call `map size`. This use of recursion, called _higher-order recursion_ (because unapplied/partially applied `size` is used as an argument to a higher-order function) is perfectly legal in our language.
-
-```
-size : RoseTree A -> Nat
-| E => 0
-| N _ ts => 1 + List.rec 0 (fun t ts => size t + ts) ts
-```
-
-In the last variant above, instead of `sum` and `map` we use the recursor for lists `List.rec : (#A #R : Type, nil : R, cons : A -> R -> R, x : List A) -> R`. The only explicit recursive call, `size t`, occurs under the `fun`. This is also perfectly legal and the termination checker can see it.
-
-Papers:
-- [Generating Induction Principles for Nested Inductive Types in MetaCoq](https://www.ps.uni-saarland.de/~ullrich/bachelor/thesis.pdf)
-
-Not papers:
-- [Compiling nested inductive types in Lean](https://github.com/leanprover/lean/wiki/Compiling-nested-inductive-types)
-
-**Status: Nested Inductive Types can be defined in any language that supports ordinary inductive types. Coq, Agda and Lean all have them. The only problem is providing good support for termination checking of functions out of such types.**
-
-TODO:
-- Write some example code.
-
 ### Mutual Inductive Types <a id="mutual-inductive-types"></a> [↩](#toc)
 
-Ordinary inductive types can refer to themselves in the constructors' arguments. Mutual Inductive Types generalize this setting - now inductives can in the constructors' arguments refer to other inductive types that in turn refer to them.
+Ordinary inductive types can refer to themselves in the constructors' arguments. Mutual Inductive Types generalize this setting - now inductives in the constructors' arguments can refer to other inductive types that in turn refer to them.
 
 ```
 data List' (A : Type) : Type
@@ -2004,7 +1940,7 @@ odd : Nat -> Bool
 | s n' => even n'
 ```
 
-Mutual recursion is not restricted to mutual inductive types only. Above we have an example of functions for checking whether a `Nat`ural number is even or odd defined by mutual recursion, even though the domain of both of them is `Nat`.
+Mutual recursion is not restricted to mutual inductive types only. Above we have an example of functions for checking whether a `Nat`ural number is `even` or `odd` defined by mutual recursion, even though the domain of both of them is `Nat`.
 
 Papers:
 - None
@@ -2013,6 +1949,98 @@ Papers:
 
 TODO:
 - What are the exact rules for termination checking of mutual recursion?
+
+### Nested Inductive Types <a id="nested-inductive-types"></a> [↩](#toc)
+
+Nested Inductive Types are inductive types `I` in which the inductive occurrences of `I` appear as an argument of some type family (besides the arrow `(->) : Type -> Type -> Type`, of course). These types can be defined in our language as ordinary inductive types, but writing functions that operate on Nested Inductive Types requires some more explanation.
+
+One of the most iconic examples of Nested Inductive Types is the type of rose trees, i.e. trees that have a `List` of subtrees.
+
+```
+data RoseTree (A : Type)
+| E
+| N (v : A, ts : List RoseTree)
+```
+
+Functions out of such types can be defined as usual by pattern matching and recursion, with the nested recursion (i.e. on the `List` in case of `RoseTree`) being handled just fine.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N _ ts => 1 + sum (map size ts)
+```
+
+In the above example, we compute the `size` of a `RoseTree`. To do this, we use auxiliary functions `map : (A -> B) -> List A -> List B` and `sum : List Nat -> Nat` (whose implementation is not shown). There are no explicit recursive calls - they are hidden in `map size`, i.e. they happen only inside `map`. This use of recursion, called _higher-order recursion_ (because unapplied/partially applied `size` is used as an argument to a higher-order function) is perfectly legal in our language.
+
+There are a few other ways to implement `size`.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N _ [] => 1
+| N v (t :: ts) => size t + size (N v ts)
+```
+
+In the variant above we use ordinary recursion. The interesting constructor, `N`, is split into two cases: if there are no subtrees, we return `1`, whereas if there are, we call `size` recursively on the first subtree `t` and then on `N v ts`, i.e. on what remains of our original `RoseTree` after we remove the first subtree `t`.
+
+These recursive calls are perfectly legal - `t` is a subterm of `N v (t :: ts)`, so `size t` is a good recursive call. `N v ts` is not a subterm of `N v (t :: ts)`, but it is smaller in an obvious way, and the termination checker sees that.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N v ts with ts
+  | []       => 1
+  | t :: ts' => size t + size (N v ts')
+```
+
+The variant above is very similar to the previous one, but we use a `with`-clause to split the `N` case into two. This might come handy when the inner type (the `List` in our `RoseTree` example) has a lot of constructors.
+
+```
+size : RoseTree A -> Nat
+| E => 0
+| N _ ts => 1 + List.rec 0 (fun t ts => size t + ts) ts
+```
+
+In the variant above we use recursion on the list of subtrees instead of on the `RoseTree` itself. We do this by using the recursor for lists `List.rec : (#A #R : Type, nil : R, cons : A -> R -> R, x : List A) -> R`. The only explicit recursive call, `size t`, occurs under the `fun`. This is also perfectly legal and the termination checker can see it.
+
+```
+size : RoseTree A -> Nat
+| E      => 0
+| N _ ts => 1 + size' ts
+
+and
+
+size' : List (RoseTree A) -> Nat
+| []     => 0
+| h :: t => size h + size' t
+```
+
+Yet another way to implement `size` (and one that is probably the most universal, in the sense of also working in other languages and proof assistants) is to use mutual recursion: to compute the `size` of a `RoseTree` we refer to the auxiliary function `size'`, which computes the size of a `List` of `RoseTree`s, and which in turn refers to `size`.
+
+```
+data RoseTree (A : Type) : Type
+| E
+| N (v : A, ts : RoseTreeList)
+
+and
+
+data RoseTreeList (A : Type) : Type
+| Nil
+| Cons (h : RoseTree, t : RoseTreeList)
+```
+
+Last but not least, the mutually recursive implementation of `size` and `size'` points to the commonly known fact that we can represent Nested Inductive Types using Mutual Inductive Types. In fact, this kind of translation is exactly one idea how to provide full support for Nested Inductive Types in practice.
+
+Papers:
+- [Generating Induction Principles for Nested Inductive Types in MetaCoq](https://www.ps.uni-saarland.de/~ullrich/bachelor/thesis.pdf)
+
+Not papers:
+- [Compiling nested inductive types in Lean](https://github.com/leanprover/lean/wiki/Compiling-nested-inductive-types)
+
+**Status: Nested Inductive Types can be defined in any language that supports ordinary inductive types. Coq, Agda and Lean all have them. The only problem is providing good support for termination checking of functions out of such types.**
+
+TODO:
+- Write some example code.
 
 ### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="computational-inductive-types"></a> [↩](#toc)
 
@@ -2917,6 +2945,10 @@ Papers:
 TODO:
 - Revisit this at some point in the future.
 
+### Mutual Coinductive Types <a id="mutual-coinductive-types"></a> [↩](#toc)
+
+Just as we can at once define many inductive types which can refer to each other, we can also do so with coinductive types.
+
 ### Nested Coinductive Types <a id="nested-coinductive-types"></a> [↩](#toc)
 
 Just as inductive types can be nested, leading to higher-order recursion, so can be coinductive types, leading to higher-order corecursion. This applies to both negative and positive coinductive types.
@@ -3013,47 +3045,17 @@ TODO:
 - Think more about how productivity is checked.
 - Come up with a translation of Nested Coinductive Types to Mutual Coinductive Types.
 
-### Mutual Coinductive Types <a id="mutual-coinductive-types"></a> [↩](#toc)
-
-TODO
-
 ### Coinductive Families <a id="coinductive-families"> [↩](#toc)
 
-The syntax for coinductive families is somewhat similar to that for inductive families - parameters always stay the same and we must omit them, whereas indices change and we must write them explicitly. Contrary to inductive families, we must also name the indices, because that's the only way to refer to them.
-
-As an example, we define a predicate which asserts that the elements of the stream `s` appear in increasing order, where the order relation is represented by the parameter `R`.
-
-```
-codata Linked (R : A -> A -> Prop) : (s : Stream A) -> Prop
-& link  : R s.hd s.tl.hd
-& links : Linked s.tl
-```
-
-It's not hard to define the stream of natural numbers starting from `n` and prove that it is `Linked` by `<=`, the standard order on naturals (not defined in the listing). As long as we don't have any fields which are equality proofs, coinductive families are probably easier to use than inductive families.
-
-```
-nats (n : Nat) : Stream Nat
-& hd => n
-& tl => nats (s n)
-
-Linked-nats : (n : nat) -> Linked (<=) (nats n)
-& link  => le-n-sn // Easy lemma, we won't prove it.
-& links => Linked-nats (s n)
-```
-
-#### Another kind of coinductive families
-
-We have yet another syntax for coinductive families which are truly dual to inductive families. In this syntax, we need to write fields' codomains, dually to inductive families, where we need to write constructors' codomains. The domain refers to indices, so we might think we need to quantify over them somehow, but since they must be universally quantified anyway, we don't (also: we need to know what is the domain).
+Coinductive Families are the dual of Inductive Families. Syntactically, we need to explicitly specify the domain of each field, just as we need to explicitly specify codomains when defining inductive families. The domain is the family being defined applied to some indices. The variables used in the indices need not be explicitly universally quantified, because we know that they must be anyway.
 
 ```
 codata Odd : CoNat -> Prop
 & Oz  : Odd z -> Empty
-& Oss : Odd (s (s c)) -> Odd c
+& Oss : Odd (s (s n)) -> Odd n
 ```
 
-The above example defines a predicate `Odd` on conatural numbers. The definition stands in stark contrast to the inductive definition of `Odd` for natural numbers.
-
-`Odd` has two fields, `Oz` and `Oss`, but not all proofs of `Odd c` can access these fields. `Oz : Odd z -> False` can be only accessed if we have `x : Odd z`, i.e. a proof that zero is odd, and we can use this field to derive a contradiction. The other field, `Oss : Odd (s (s c)) -> Odd c` can only be used on conaturals greater than or equal to `2` to find out that the conatural smaller by two is also an odd number.
+The above example defines a predicate `Odd` on conatural numbers. `Odd` has two fields, `Oz` and `Oss`, but not all proofs of `Odd c` can access these fields. The type of `Oz` is `Odd z -> Empty`, so this field can only be accessed if we have `x : Odd z`, i.e. a proof that zero is `Odd`. The other field, `Oss`, is of type `(#n : CoNat) -> Odd (s (s n)) -> Odd c`, so it can only be accessed by proofs of `Odd` for conaturals greater than or equal to two.
 
 ```
 zero-not-Odd (x : Odd z) : Empty :=
@@ -3068,7 +3070,7 @@ Odd-one : Odd (s z)
 & Oss impossible
 ```
 
-Next up, one is odd. To prove this, we need to provide definitions for the two fields `Oz` and `Oss`. But the index of `Oz` is `z`, whereas our proof has index `s z`, so we don't need to define this field - it is `impossible` to call `Oz` on `Odd-one : Odd (s z)`. Similarly, the `Oss` field also doesn't need to be handled, because its index is `s (s n)` for some `n`, but the index of `Odd-one` is `s z`. This is dependent copattern matching in action!
+Next up, one is `Odd`. To prove this, we need to provide definitions for the two fields `Oz` and `Oss`. But the index of `Oz` is `z`, whereas our proof has index `s z`, so we don't need to define this field - it is `impossible` to apply `Oz` to `Odd-one : Odd (s z)`. Similarly, the `Oss` field also doesn't need to be defined, because its index is `s (s n)` for some `n`, but the index of `Odd-one` is `s z`. This is dependent copattern matching in action!
 
 ```
 Odd-one' : Odd (s z)
@@ -3098,7 +3100,7 @@ Odd-three : Odd (s (s (s z)))
   & Oss impossible
 ```
 
-Next, three is `Odd`. That's pretty easy - the field `Oz` is `impossible`, and we define the field `Oss` to be... well, its own `Oz` field is `impossible` and so is its `Oss`.
+Next, three is `Odd`. That's pretty easy - the field `Oz` is `impossible`, and we define the field `Oss` to be... well, its own `Oz` field is `impossible` and so is its `Oss` field.
 
 ```
 Odd-three' : Odd (s (s (s z)))
@@ -3106,14 +3108,14 @@ Odd-three' : Odd (s (s (s z)))
 & Oss => Odd-one
 ```
 
-Alternatively, we can define `Oss` to be `Odd-one`.
+Alternatively, we can define its `Oss` field to be `Odd-one`.
 
 ```
 Odd-three'' : Odd (s (s (s z)))
 & Oss => Odd-one
 ```
 
-We also don't need to write the impossible cases, so we can do this with a one-liner.
+We also don't need to write the `impossible` cases, so we can do this with a one-liner.
 
 ```
 omega : CoNat := s omega
@@ -3124,29 +3126,23 @@ Odd-omega : Odd omega
 
 Now, a proof that `omega`, the infinite number, is `Odd`. That's easy - `Oz` is `impossible` and `Oss` gets taken care of by a corecursive call.
 
-Papers:
-- None
+```
+codata Odd : CoNat -> Prop
+| Osz : Odd (s z)
+| Oss : (#n : CoNat) -> Odd n -> Odd (s (s n))
+```
 
-**Status: coinductive families need to be encoded using equality fields written by hand in Coq. I'm not sure about Agda, though...**
+Coinductive Families need not be negative - they can also be positive! In such a case, the syntax is the same as for inductive families. The above example shows how to define the predicate `Odd` as a positive coinductive family.
 
-TODO:
-- Polish the writing.
-- Search for papers.
-- Figure out the final notation: `of` as a short-hand when defining inductive and coinductive and the colon `:` when defining families?
-
-### Positive Coinductive Families <a id="positive-coinductive-families"></a> [↩](#toc)
-
-The syntax sugar for positive coinductive types also works for positive coinductive families. Below we define the type of conatural numbers, which are like the natural numbers, but possibly infinite. Then we define the family of "covectors", which are like vectors but possibly infinite and they are indexed by conaturals instead of naturals.
 
 ```
-codata Conat : Type
-| z
-| s (pred : Conat)
-
 codata CoVec (A : Type) : Conat -> Type
 | CoNil  : CoVec z
 | CoCons : (hd : A, #c : Conat, tl : CoVec c) -> CoVec (s c)
 ```
+
+Last but not least, it would be nice to know how the syntax for positive coinductive families desugars. Below we define the family of "covectors", which are like vectors but possibly infinite and they are indexed by conaturals instead of naturals.
+
 
 The whole thing desugars as follows.
 
@@ -3165,20 +3161,46 @@ s (n : Conat) : Conat
 & out => sX n
 
 data CoVecF (F : Conat -> Type) (A : Type) : Conat -> Type
-| CoNilF : CoVecF z
-| CoConsF (h : A, #c : Conat, t : F c) : CoVecF (s c)
+| CoNilF  : CoVecF z
+| CoConsF : (h : A, #c : Conat, t : F c) -> CoVecF (s c)
 
 codata CoVec (A : Type) (c : Conat) : Type
 & out : CoVecF (CoVec A) A c
 ```
 
+#### OLD
+
+The syntax for coinductive families is somewhat similar to that for inductive families - parameters always stay the same and we must omit them, whereas indices change and we must write them explicitly. Contrary to inductive families, we must also name the indices, because that's the only way to refer to them.
+
+As an example, we define a predicate which asserts that the elements of the stream `s` appear in increasing order, where the order relation is represented by the parameter `R`.
+
+```
+codata Linked (R : A -> A -> Prop) : (s : Stream A) -> Prop
+& link  : R s.hd s.tl.hd
+& links : Linked s.tl
+```
+
+It's not hard to define the stream of natural numbers starting from `n` and prove that it is `Linked` by `<=`, the standard order on naturals (not defined in the listing). As long as we don't have any fields which are equality proofs, coinductive families are probably easier to use than inductive families.
+
+```
+nats (n : Nat) : Stream Nat
+& hd => n
+& tl => nats (s n)
+
+Linked-nats : (n : nat) -> Linked (<=) (nats n)
+& link  => le-n-sn // Easy lemma, we won't prove it.
+& links => Linked-nats (s n)
+```
+
 Papers:
 - [Elaborating dependent (co)pattern matching](https://jesper.sikanda.be/files/elaborating-dependent-copattern-matching.pdf)
 
-**Status: coinductive families are standard, even if people don't always realize this (they look nothing like inductive families).**
+**Status: coinductive families need to be encoded using equality fields written by hand in Coq. I'm not sure about Agda, though. Implementing coinductive families as presented here probably wouldn't pose much of a problem.**
 
 TODO:
-- Describe proper coinductive families in which we need to write fields' codomains. This would be a nice syntax sugar for fields which are paths.
+- Polish the writing.
+- Search for papers.
+- Figure out the final notation: `of` as a short-hand when defining inductive and coinductive and the colon `:` when defining families?
 
 ### Coinduction-Recursion? Not really. <a id="coinduction-recursion"></a> [↩](#toc)
 
