@@ -2244,7 +2244,67 @@ For papers, TODOs and the status, see the main section on [Names and Nominal Fun
 
 ### Inductive Families <a id="inductive-families"></a> [↩](#toc)
 
-For inductive families, we need to explicitly write the constructors' codomains (because they depend on the index), but we still don't need to write the parameters.
+Up until now we were only able to define a single type at a time, or a parameterized family of types in which all the types had the same "structure", just different parameters.
+
+Inductive Families allow us to define an (indexed) family of types in which different types in the family can have different structure, and types with different indices can depend on each other.
+
+```
+data Even : Nat -> Prop
+| Ez  : Even z
+| Ess : (#n : Nat, e : Even n) -> Even (s (s n))
+```
+
+The syntax for Inductive Families is similar to that for ordinary inductive types, but with some differences. First, _parameters_ of the family are written before the final colon and they must not be mentioned by constructors, which means they can't vary. **Indices**, on the other hand, are written after the final colon and they may vary between constructors. This means that different constructors' codomains' are potentially different types, which forces us to write them explicitly. The indices (if they are variables) need to be explicitly quantified in every constructor.
+
+The above example shows how to define the predicate `Even` on natural numbers. `Even` has no parameters and one index which is of type `Nat`. There are two constructors: `Ez`, whose type is `Even z`, certifies that zero is an even number, whereas `Ess`, whose type is `(#n : Nat, e : Even n) -> Even (s (s n))`, says that the successor of the successor of an even number is also an even number.
+
+```
+add-Even : #(n m : Nat, en : Even n, em : Even m) -> Even (add n m)
+| Ez     , _ => em
+| Ess en', _ => Ess (add-Even en' em)
+```
+
+Functions out of inductive families can be defined as usual, using pattern matching and recursion. The kind of pattern matching we are dealing with here is called **dependent pattern matching**. Note that when we match on something whose type belongs to an inductive family, the index of this thing also "gets matched".
+
+The above example shows how to prove that the sum of two even numbers is even. We match on `en`, the proof of `Even n`. When `en` is matched with `Ez`, we learn that `n`, the index of `en`, **must be** `z`. This means that the goal is computationally equal to `Even (add z m)`, which is computationally equal to `Even m`. Therefore it suffices to use `em` to finish this case of the proof. In the other case, when `en` matches `Ess en'`, we know that the index `n` must be `s (s n')` for some `n'`, so that the goal is `Even (add (s (s n')) m)`, which is computationall equal to `Even (s (s (add n' m)))`, so it suffices to use the constructor `Ess` on the recursive call/inductive hypothesis.
+
+```
+add-Even : (n m : Nat, en : Even n, em : Even m) -> Even (add n m)
+| .z         , _, Ez     , _ => em
+| .(s (s n')), _, @Ess n' en', _ => Ess (add-Even n' m en' em)
+```
+
+Above we see the same proof, but this time the arguments `n` and `m` are not implicit. This leads us to notice a new phenomenon that can occur during dependent pattern matching: matching one value can determine another value. To mark the occurence of this phenomenon, we use **forced patterns**, which consist of a dot followed by an ordinary pattern (possibly in parentheses).
+
+In the above example we match on all four arguments. When `en` matches `Ez`, we know that `n` must be `z`. We mark this by setting the first pattern to be `.z`. Similarly, when `en` matches `Ess n' en'` (we use the `@` syntax so that we can explicitly name the `n'`), we know that `n` must be `s (s n')` and we mark this by setting the first pattern to be `.(s (s n'))`. Note that for this to be interpreted as a forced pattern, the `s (s n')` must be put in parentheses.
+
+```
+One-not-Even : Even (s z) -> Empty
+| Ez  impossible
+| Ess impossible
+```
+
+Another new phenomenon that can occur when we're dealing with dependent pattern matching is that a value might not possibly match a pattern because it has the wrong index. In such a case, we need not provide the right-hand side of the clause - it suffices to use the keyword `impossible`. In the example above, we show that one is not an even number. To do this, we match on the proof of `Even (s z)`. But this proof can't match `Ez`, because its index is `s z`, whereas `Ez` has index `z` which is different from `s z`. Similarly, the proof can't possibly match `Ess`, because the index of `Ess` is `s (s n)` for some `n`, which is different from `s z`. In both cases it suffices to state that this particular case is `impossible`.
+
+```
+One-not-Even' : Even (s z) -> Empty
+| impossible
+```
+
+If we had more impossible cases, writing `impossible` every single time could get boring pretty quickly. If all cases are impossible, we can use the special pattern `| impossible`.
+
+```
+Three-not-Even : Even (s (s (s z))) -> Empty
+| Ez impossible
+| Ess e => One-not-Even' e
+
+Three-not-Even' : Even (s (s (s z))) -> Empty
+| Ess e => One-not-Even' e
+```
+
+Alternatively, we can also simply omit `impossible` cases when doing pattern matching. The above example shows a proof of the fact that the number three is not even. In the first proof we just say that the `Ez` case is `impossible` and in the `Ess` case we get that one is even, which we already know to be a contradiction. In the second proof, the `Ess` case is the same, but the `Ez` case was omitted - we don't need to handle it.
+
+#### OLD
 
 ```
 data Vec (A : Type) : Nat -> Type
@@ -2333,7 +2393,7 @@ Induction-induction allows us to simultaneously define two or more types such th
 
 ```
 data Dense (R : A -> A -> Prop) : Type
-| in   (x : A)
+| in   (x   : A)
 | mid #(x y : Dense) (H : Dense-R R x y)
 | eq  #(x   : Dense) (H : Dense-R R x x) with (i : I)
   | i0 => mid x x H
@@ -2804,6 +2864,7 @@ TODO:
 - Maybe if we start with patterns, then the definition should still be interpreted as legal corecursive definition?
 - Invent Overlapping and Order-Independent Copatterns.
 - Another possibility for handling coinductives is for them to be just (co)recursive records, but this depends on how cool and strange records will be.
+- Mention the usage of `@` to name subcopatterns. This should be dual to using `@` in pattern matching to name subpatterns.
 
 ### Positive Coinductive Types <a id="positive-coinductive-types"></a> [↩](#toc)
 
@@ -3126,7 +3187,7 @@ Odd-omega : Odd omega
 
 Now, a proof that `omega`, the infinite number, is `Odd`. That's easy - `Oz` is `impossible` and `Oss` gets taken care of by a corecursive call.
 
-This is the end of the example, but the last word about Coinductive Families has not yet been spoken! This is because so far we have only seen negative Coinductive Families, but Coinductive Families need not be negative - they can also be positive! In such a case, the syntax is the same as for inductive families. 
+This is the end of the example, but the last word about Coinductive Families has not yet been spoken! This is because so far we have only seen negative Coinductive Families, but Coinductive Families need not be negative - they can also be positive! In such a case, the syntax is the same as for inductive families.
 
 ```
 codata Odd : CoNat -> Prop
@@ -3212,53 +3273,50 @@ g : (#n : CoNat, x : POdd n) -> NOdd n
 | Oss x'
   & Oz impossible
   & Oss => g x'
-
-fg : (n : CoNat, x : NOdd n) -> g (f n x) = x
-| z      , _ => abirt x.Os
-| s z    , _ => ...
-| s (s n), _ => //g (Oss (f n x.Oss)) = x
-
 ```
 
+As we can see, the negative and positive definitions of `Odd` are logically equivalent (and thus equal, because they are both propositions). But the question of which is better remains.
 
+In short: the `CoNat`ural numbers are a positive coinductive type and when we think about the usual `Nat`ural numbers being even or odd, we also prefer the inductive, i.e. positive, definition. Moreover, the positive definition seems very natural (it tells us which numbers are `Odd`; pun intended), whereas the negative definition seems very odd (it basically tells us which numbers are not even, and thus odd; pun intended). Therefore, the positive definition of `Odd` is better. However, for other predicates or type families, negative definitions may turn out to be better.
 
-Last but not least, it would be nice to know how the syntax for positive coinductive families desugars. Below we define the family of "covectors", which are like vectors but possibly infinite and they are indexed by conaturals instead of naturals.
+Last but not least, it would be nice to know how the syntax for positive coinductive families desugars. Below we define the family of "covectors", which are like vectors but possibly infinite and indexed by conaturals instead of naturals.
 
 ```
-codata CoVec (A : Type) : Conat -> Type
+codata CoVec (A : Type) : CoNat -> Type
 | CoNil  : CoVec z
-| CoCons : (hd : A, #c : Conat, tl : CoVec c) -> CoVec (s c)
+| CoCons : (hd : A, #c : CoNat, tl : CoVec c) -> CoVec (s c)
 ```
 
 The whole thing desugars as follows.
 
 ```
-data ConatX (X : Type) : Type
-| zX
-| sX (x : X)
-
-codata Conat : Type
-& out : ConatX Conat
-
-z : Conat
-& out => zX
-
-s (n : Conat) : Conat
-& out => sX n
-
-data CoVecF (F : Conat -> Type) (A : Type) : Conat -> Type
+data CoVecF (A : Type) (F : CoNat -> Type) : CoNat -> Type
 | CoNilF  : CoVecF z
-| CoConsF : (h : A, #c : Conat, t : F c) -> CoVecF (s c)
-
-codata CoVec (A : Type) (c : Conat) : Type
-& out : CoVecF (CoVec A) A c
+| CoConsF : (h : A, #c : CoNat, t : F c) -> CoVecF (s c)
 ```
 
-#### OLD
+First, we define `CoVecF`, the base functor of `CoVec`, defined inductively. It is like `CoVec` but with self-references replaced with arguments of type `F c` which is a parameter.
 
-The syntax for coinductive families is somewhat similar to that for inductive families - parameters always stay the same and we must omit them, whereas indices change and we must write them explicitly. Contrary to inductive families, we must also name the indices, because that's the only way to refer to them.
+```
+codata CoVec (A : Type) (c : CoNat) : Type
+& out : CoVecF A (CoVec A) c
+```
 
-As an example, we define a predicate which asserts that the elements of the stream `s` appear in increasing order, where the order relation is represented by the parameter `R`.
+Then we coinductively "tie the knot" of the base functor to get the desired family `CoVec`.
+
+```
+CoNil (#A : Type) : CoVec A z
+& out => CoNilF
+
+CoCons (h : A) (#c : CoNat) (t : CoVec A c) : CoVec A (s c)
+& out => CoConsF h t
+```
+
+Finally, the constructors of `CoVec` are just wrappers around the constructors of `CoVec`.
+
+#### Some more syntax sugar, possibly...
+
+One last thing to mention is another piece of syntax sugar which makes defining coinductive families. This syntax sugar applies when domain indices are the same in all fields of the coinductive family. In such a case we may omit the domain.
 
 ```
 codata Linked (R : A -> A -> Prop) : (s : Stream A) -> Prop
@@ -3266,7 +3324,7 @@ codata Linked (R : A -> A -> Prop) : (s : Stream A) -> Prop
 & links : Linked s.tl
 ```
 
-It's not hard to define the stream of natural numbers starting from `n` and prove that it is `Linked` by `<=`, the standard order on naturals (not defined in the listing). As long as we don't have any fields which are equality proofs, coinductive families are probably easier to use than inductive families.
+As an example, we define a predicate which asserts that the elements of the stream `s` appear in increasing order, where the order relation is represented by the parameter `R`.
 
 ```
 nats (n : Nat) : Stream Nat
@@ -3278,6 +3336,8 @@ Linked-nats : (n : nat) -> Linked (<=) (nats n)
 & links => Linked-nats (s n)
 ```
 
+It is not hard to define the stream of natural numbers starting from `n` and prove that it is `Linked` by `<=`, the standard order on naturals (not defined in the listing).
+
 Papers:
 - [Elaborating dependent (co)pattern matching](https://jesper.sikanda.be/files/elaborating-dependent-copattern-matching.pdf)
 
@@ -3285,8 +3345,9 @@ Papers:
 
 TODO:
 - Polish the writing.
-- Search for papers.
+- Search for more papers.
 - Figure out the final notation: `of` as a short-hand when defining inductive and coinductive and the colon `:` when defining families?
+- Decide if the last piece of syntax sugar should be included.
 
 ### Coinduction-Recursion? Not really. <a id="coinduction-recursion"></a> [↩](#toc)
 
@@ -3501,7 +3562,7 @@ toStream' : (g : GetSP A B) (s : Stream A) -> Stream B
 | Get', _ => toStream' (g.g s.hd) s.tl
 ```
 
-Since both `SP` and `GetSP` have the same base functor (or more poetically, the same "skeleton"), we don't need to duplicate it. Then we tie the know twice, first inductively to obtain an early version of `GetSP` and then coinductively to obtain `SP`. Then we define the final version of `GetSP` and smart constructors that wrap the actual constructors in `In` and `Out`. The desugaring of `toStream` and `toStream'` is somewhat ad hoc and chaotic. It looks more akin to our original definition (the one that used `head` and `tail`) and I wouldn't be very surprised if I made an error here or there...
+Since both `SP` and `GetSP` have the same base functor (or more poetically, the same "skeleton"), we don't need to duplicate it. Then we tie the knot twice, first inductively to obtain an early version of `GetSP` and then coinductively to obtain `SP`. Then we define the final version of `GetSP` and smart constructors that wrap the actual constructors in `In` and `Out`. The desugaring of `toStream` and `toStream'` is somewhat ad hoc and chaotic. It looks more akin to our original definition (the one that used `head` and `tail`) and I wouldn't be very surprised if I made an error here or there...
 
 Papers:
 - There are quite a few papers on mixing coinduction with induction, but most of them are written in the old deprecated Agda-style coinduction, so they aren't that much useful. We are going to list them, nevertheless (this time in chronological order (oldest first), not in order of relevance):
@@ -4092,16 +4153,16 @@ data Nat
 | Z
 | S (pred : Nat)
 
-codata Conat
+codata CoNat
 | Z
-| S (pred : Conat)
+| S (pred : CoNat)
 ```
 
 with the coercion being
 
 ```
 %Coercion
-c : Nat -> Conat
+c : Nat -> CoNat
 | Z   => Z
 | S n => S (c n)
 ```
@@ -4169,12 +4230,12 @@ c : (v : Vec A n) -> List A
 As an example of the second kind of subtyping, consider additionally the type of covectors, i.e. coinductive vectors indexed by conatural numbers.
 
 ```
-codata Covec (A : Type) : Conat -> Type
+codata Covec (A : Type) : CoNat -> Type
 | Nil  : Vec z
-| Cons : (hd : A, #n : Conat, tl : Covec n) -> Covec (s n)
+| Cons : (hd : A, #n : CoNat, tl : Covec n) -> Covec (s n)
 ```
 
-Because `Nat <: Conat` and the constructor names (and constructors' fields' names) match, we have an autogenerated coercion `c : Vec A n <: Covec A n` (or more precisely `c : Vec A n <: Covec A (c' n)`, where `c' : Nat <: Conat`). This coercion could be manually implemented as
+Because `Nat <: CoNat` and the constructor names (and constructors' fields' names) match, we have an autogenerated coercion `c : Vec A n <: Covec A n` (or more precisely `c : Vec A n <: Covec A (c' n)`, where `c' : Nat <: CoNat`). This coercion could be manually implemented as
 
 ```
 %Coercion

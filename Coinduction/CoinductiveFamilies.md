@@ -1,11 +1,3 @@
-data List (A : Type) : Type
-| Nil  : List
-| Cons : (hd : A, tl : List) -> List
-
-codata Stream (A : Type) : Type
-& hd : Stream -> A
-& tl : Stream -> Stream
-
 data IList (A : Type) : Nat -> Type
 | Nil  : List 0
 | Cons : (hd : A, #n : Nat, tl : IList n) -> IList (s n)
@@ -41,6 +33,19 @@ and
 
 codata Odd : CoNat -> Prop
 | Os : (#n : CoNat) -> Even n -> Odd (s n)
+```
+
+```
+codata Odd : CoNat -> Prop
+& Oz : Odd z -> Empty
+& Os : (#n : CoNat) -> Odd (s n) -> Even n
+
+and
+
+codata Even : CoNat -> Prop
+& Osz : Even (s z) -> Empty
+& Es  : (#n : CoNat) -> Even (s n) -> Odd n
+
 ```
 
 ```
