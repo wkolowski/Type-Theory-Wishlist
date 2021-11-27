@@ -3126,23 +3126,109 @@ Odd-omega : Odd omega
 
 Now, a proof that `omega`, the infinite number, is `Odd`. That's easy - `Oz` is `impossible` and `Oss` gets taken care of by a corecursive call.
 
+This is the end of the example, but the last word about Coinductive Families has not yet been spoken! This is because so far we have only seen negative Coinductive Families, but Coinductive Families need not be negative - they can also be positive! In such a case, the syntax is the same as for inductive families. 
+
 ```
 codata Odd : CoNat -> Prop
 | Osz : Odd (s z)
 | Oss : (#n : CoNat) -> Odd n -> Odd (s (s n))
 ```
 
-Coinductive Families need not be negative - they can also be positive! In such a case, the syntax is the same as for inductive families. The above example shows how to define the predicate `Odd` as a positive coinductive family.
+The above example shows how to define the predicate `Odd` as a positive coinductive family. Let's prove all the above theorems again with this new positive definition.
 
+```
+zero-not-Odd : Odd z -> Empty
+| Osz impossible
+| Oss impossible
+```
+
+Zero is not `Odd`, because when matching on a supposed proof of `Odd z`, neither the constructor `Osz` nor `Oss` has the right index - both are `impossible`.
+
+```
+zero-not-Odd' : Odd z -> Empty
+| _ impossible
+```
+
+We can make this proof shorter by saying that all pattern are `impossible`.
+
+```
+zero-not-Odd'' : Odd z -> Empty
+```
+
+An even shorter possibility is to just write no clauses at all. This is not interpreted as a declaration of an axiom, but rather as a definition - no clauses are possible, so none need to be provided.
+
+```
+Odd-one : Odd (s z) :=
+  Osz
+```
+
+Next, one is `Odd`. This "theorem" is exactly the constructor `Osz`.
+
+```
+two-not-Odd : Odd (s (s z)) -> Empty
+| Osz impossible
+| Oss e with e
+  | Osz impossible
+  | Oss impossible
+```
+
+We now prove that two is not `Odd`, which requires quite some writing. First, the `Osz` constructor is `impossible` because the index doesn't match. The second possibility is that our proof of `Odd (s (s z))` was constructed from `Oss e` where `e : Odd z`. But when we match on `e` using a `with`-clause, we get two more `impossible` clauses whose constructor index doesn't match.
+
+```
+two-not-Odd' : Odd (s (s z)) -> Empty
+| Oss e => zero-not-Odd e
+```
+
+An alternative way to prove this fact is to skip the first `impossible` case (as in general we don't need to handle `impossible` cases) and then use the already proven fact that zero is not `Odd` in the `Oss` case.
+
+```
+Odd-three : Odd (s (s (s z))) :=
+  Oss Osz
+```
+
+Proving that three is `Odd` is again very easy - first we use the constructor for the `s (s n)` case and then the one for the `s z` case.
+
+```
+omega : CoNat := s omega
+
+Odd-omega : Odd omega :=
+  Oss Odd-omega
+```
+
+Proving that `omega` is `Odd` is just as easy as with the negative definition.
+
+In general, the duality between the negative and the positive definition is crystal clear. For the negative definition, the "contradictory" theorems for even numbers are easy - we just need to project the contradiction out of the purported proof - whereas the "true" theorems for odd numbers require somewhat more work, as we need to mark all the `impossible` cases. For the positive definition, on the other hand, the "true" odd cases are easily provable by direct use of constructors, whereas the "contradictory" even cases require more work to mark all the `impossible` cases.
+
+Which of these two definitions is better? Are they even equivalent? Let's find out (in the code that follows, we refer to the negative `Odd` as `NOdd` and to the positive `Odd` as `POdd`).
+
+```
+f : (n : CoNat, x : NOdd n) -> POdd n
+| z      , _ => abort x.Os
+| s z    , _ => Osz
+| s (s n), _ => Oss (f n x.Oss)
+
+g : (#n : CoNat, x : POdd n) -> NOdd n
+| Osz => Odd-one
+| Oss x'
+  & Oz impossible
+  & Oss => g x'
+
+fg : (n : CoNat, x : NOdd n) -> g (f n x) = x
+| z      , _ => abirt x.Os
+| s z    , _ => ...
+| s (s n), _ => //g (Oss (f n x.Oss)) = x
+
+```
+
+
+
+Last but not least, it would be nice to know how the syntax for positive coinductive families desugars. Below we define the family of "covectors", which are like vectors but possibly infinite and they are indexed by conaturals instead of naturals.
 
 ```
 codata CoVec (A : Type) : Conat -> Type
 | CoNil  : CoVec z
 | CoCons : (hd : A, #c : Conat, tl : CoVec c) -> CoVec (s c)
 ```
-
-Last but not least, it would be nice to know how the syntax for positive coinductive families desugars. Below we define the family of "covectors", which are like vectors but possibly infinite and they are indexed by conaturals instead of naturals.
-
 
 The whole thing desugars as follows.
 

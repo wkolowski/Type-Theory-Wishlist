@@ -54,7 +54,7 @@ codata CoDense (R : A -> A -> Prop) : Type
 
 and
 
-data CoDense-R (R : A -> A -> Prop) : CoDense R -> CoDense R -> Prop
+codata CoDense-R (R : A -> A -> Prop) : CoDense R -> CoDense R -> Prop
 | in   : #(x y : A) (H : R x y) -> CoDense-R (in x) (in y)
 | midl : #(x y : CoDense R) (H : CoDense-R x y) -> CoDense-R (mid x y H) y
 | midr : #(x y : CoDense R) (H : CoDense-R x y) -> CoDense-R x (mid x y H)
