@@ -41,6 +41,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Mutual Coinductive Types (TODO)](#mutual-coinductive-types)
     1. [Nested Coinductive Types](#nested-coinductive-types)
     1. [Coinductive Families](#coinductive-families)
+    1. [Nested Coinductive Families (TODO)](#nested-coinductive-families)
     1. [Coinduction-Recursion](#coinduction-recursion)
     1. [Coinduction-Coinduction](#coinduction-coinduction)
 1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
@@ -2266,17 +2267,17 @@ add-Even : #(n m : Nat, en : Even n, em : Even m) -> Even (add n m)
 
 Functions out of inductive families can be defined as usual, using pattern matching and recursion. The kind of pattern matching we are dealing with here is called **dependent pattern matching**. Note that when we match on something whose type belongs to an inductive family, the index of this thing also "gets matched".
 
-The above example shows how to prove that the sum of two even numbers is even. We match on `en`, the proof of `Even n`. When `en` is matched with `Ez`, we learn that `n`, the index of `en`, **must be** `z`. This means that the goal is computationally equal to `Even (add z m)`, which is computationally equal to `Even m`. Therefore it suffices to use `em` to finish this case of the proof. In the other case, when `en` matches `Ess en'`, we know that the index `n` must be `s (s n')` for some `n'`, so that the goal is `Even (add (s (s n')) m)`, which is computationall equal to `Even (s (s (add n' m)))`, so it suffices to use the constructor `Ess` on the recursive call/inductive hypothesis.
+The above example shows how to prove that the sum of two even numbers is even. We match on `en`, the proof of `Even n`. When `en` is matched with `Ez`, we learn that `n`, the index of `en`, **must** be `z`. This means that the goal is computationally equal to `Even (add z m)`, which is computationally equal to `Even m`. Therefore it suffices to use `em` to finish this case of the proof. In the other case, when `en` matches `Ess en'`, we know that the index `n` must be `s (s n')` for some `n'`, so that the goal is `Even (add (s (s n')) m)`, which is computationally equal to `Even (s (s (add n' m)))`, so it suffices to use the constructor `Ess` on the inductive hypothesis (i.e. on the recursive call).
 
 ```
 add-Even : (n m : Nat, en : Even n, em : Even m) -> Even (add n m)
-| .z         , _, Ez     , _ => em
+| .z         , _, Ez         , _ => em
 | .(s (s n')), _, @Ess n' en', _ => Ess (add-Even n' m en' em)
 ```
 
-Above we see the same proof, but this time the arguments `n` and `m` are not implicit. This leads us to notice a new phenomenon that can occur during dependent pattern matching: matching one value can determine another value. To mark the occurence of this phenomenon, we use **forced patterns**, which consist of a dot followed by an ordinary pattern (possibly in parentheses).
+Above we see the same proof, but this time the arguments `n` and `m` are not implicit. This leads us to notice a new phenomenon that can occur during dependent pattern matching: if a value matches some pattern, this can provide information about what pattern is matched by this value's index. To mark the occurence of this phenomenon, we use **forced patterns** (which in Agda are called [inaccessible patterns](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns)), which consist of a dot followed by an ordinary pattern (possibly in parentheses).
 
-In the above example we match on all four arguments. When `en` matches `Ez`, we know that `n` must be `z`. We mark this by setting the first pattern to be `.z`. Similarly, when `en` matches `Ess n' en'` (we use the `@` syntax so that we can explicitly name the `n'`), we know that `n` must be `s (s n')` and we mark this by setting the first pattern to be `.(s (s n'))`. Note that for this to be interpreted as a forced pattern, the `s (s n')` must be put in parentheses.
+In the above example we match on all four arguments. When `en` matches `Ez`, we know that `n` must be `z`. We mark this by setting the first pattern to be `.z`. Similarly, when `en` matches `@Ess n' en'` (we use the `@` syntax so that we can explicitly name the `n'`), we know that `n` must be `s (s n')` and we mark this by setting the first pattern to be `.(s (s n'))`. Note that for this to be interpreted as a forced pattern, the `s (s n')` must be put in parentheses.
 
 ```
 One-not-Even : Even (s z) -> Empty
@@ -2304,7 +2305,7 @@ Three-not-Even' : Even (s (s (s z))) -> Empty
 
 Alternatively, we can also simply omit `impossible` cases when doing pattern matching. The above example shows a proof of the fact that the number three is not even. In the first proof we just say that the `Ez` case is `impossible` and in the `Ess` case we get that one is even, which we already know to be a contradiction. In the second proof, the `Ess` case is the same, but the `Ez` case was omitted - we don't need to handle it.
 
-#### OLD
+#### Some problems with indices
 
 ```
 data Vec (A : Type) : Nat -> Type
@@ -2312,14 +2313,49 @@ data Vec (A : Type) : Nat -> Type
 | Cons : (hd : A, #n : Nat, tl : Vec n) -> Vec (s n)
 ```
 
-When doing dependent pattern matching, the shape of an earlier pattern may be determined by the shape of a later pattern, for example when we are matching on the index on an inductive family and then on an element of this family with that index.
+Before we finish this section, let's see the most popular example of an inductive family and the most common problem encountered when dealing with inductive families. This inductive family is `Vec` (short for "vector"), shown above, which represents lists of elements of statically known length.
 
 ```
-head : (#n : Nat, v : Vec (s n)) -> A
-| .n', Cons h n' t => h
+app : #(n1 n2 : Nat) (v1 : Vec A n1) (v2 : Vec A n2) -> Vec A (add n1 n2)
+| Nil     , _ => v2
+| Cons h t, _ => Cons h (app t v2)
 ```
 
-We call these _forced patterns_, contrary to [Agda](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns) which calls them _inaccessible patterns_.
+The above function, called `app`, concatenates two vectors. It is no big deal - it is almost the same as the `app` we have seen for lists. If it works the same, then appending an empty vector on the right should not change the vector, right? Let's find out.
+
+```
+% Fail
+app-Nil-r : (#n : Nat) (v : Vec A n) -> app v Nil = v
+```
+
+Sadly, we cannot even _state_ the theorem saying that the desired property holds. The reason is a type error: the left-hand side of `app v Nil` has type `Vec A (add n z)`, whereas the right-hand side is of type `Vec A n`. Since the terms `add n z` and `n` are not _computationally_ equal, the types too are not computationally equal, and so we get a type error.
+
+```
+add : (n m : Nat) -> Nat
+| z   , _ => m
+| s n', _ => s (add n' m)
+```
+
+The main culprit of this situation (the fact that `add n z` does not compute to `n`) stems from the definition of `add`ition on natural numbers, shown above. But luckily for us, we can get rid of it (and of many other similar problems) using Overlapping and Order-Independent Patterns, mentioned in one of the previous sections.
+
+```
+%OverlappingPatterns
+add' : (n m : Nat) -> Nat
+| z   , _    => m
+| s n', _    => s (add n' m)
+| _   , z    => n
+| _   , s m' => s (add n m')
+```
+
+The above definition of `add'` DOES have the property that `add' n z` computes to `n`. Using this definition, we can state (and prove!) our theorems without any problems.
+
+```
+app-Nil-r : (#n : Nat) (v : Vec A n) -> app v Nil = v
+| Nil      => refl
+| Cons h t => path i => Cons h (app-Nil-r t i)
+```
+
+The moral of this story is simple: the indices of Inductive Families can often give us a lot of trouble, but in many situations we can make our lives easier with Overlapping and Order-Independent Patterns.
 
 Papers:
 - [Pattern Matching Without K](https://jesper.sikanda.be/files/pattern-matching-without-K.pdf)
@@ -2377,6 +2413,29 @@ bmap : (#A #B : Type, f : A -> B, b : Bush A) -> Bush B
 
 As always, let's start (and end) by implementing mapping, here called `bmap`. In the `E` case, we just return `E`. In the `N` case we of course apply `f` to the head of the `Bush`, but for the tail we need to recursively `bmap` the function `bmap f` itself over `t`. This is an example of higher-order recursion in which we have both an indirect recursive call (`bmap f`) and a direct one (`bmap (bmap f)`).
 
+#### Some more syntax sugar, possibly...
+
+We have some special syntax sugar which makes defining Inductive Families easier. It is most useful for nested families, but we can use it for any inductive family for which the indices in the codomain are the same for all constructors. In such a case, we might move the indices to the left of the final colon and we also don't need to quantify them in the constructors.
+
+Let's see how this simplifies the definitions of the types we have seen above.
+
+```
+data Complete (A : Type) : Type
+| E
+| N of (v : A, ts : Complete (A * A))
+
+data Lam (A : Type) : Type
+| Var of (n : Nat)
+| App of (l r : Lam A)
+| Abs of (body : Lam (Option A))
+
+data Bush (A : Type) : Type
+| E
+| N of (h : A, t : Bush (Bush A))
+```
+
+As you can see, we no longer need to quantify the `A : Type` in each constructor and also we don't need to write `-> Complete A` (or `-> Lam A` or `-> Bush A`) to mark the codomain of each constructor. However, one serious drawback of this notation is that it breaks the separation of parameters and indices that we tried so hard to enforce. For this reason I'm still not sure whether this notation should be allowed.
+
 Papers:
 - [Deep Induction: Induction Rules for (Truly) Nested Types](https://cs.appstate.edu/~johannp/20-fossacs.pdf)
 - [An induction principle for nested datatypes in intensional type theory](https://www.irit.fr/~Ralph.Matthes/papers/MatthesInductionNestedJFPCUP.pdf)
@@ -2386,6 +2445,7 @@ Papers:
 TODO:
 - Figure out how the deep induction principles can be implemented in Coq.
 - How exactly does termination checking work for truly nested types?
+- Decide whether the syntax sugar for families in which codomain indices don't vary should be included in the language.
 
 ### [Inductive-Inductive Types](Induction/Induction-Induction) <a id="induction-induction"></a> [↩](#toc)
 
@@ -3135,10 +3195,10 @@ Next up, one is `Odd`. To prove this, we need to provide definitions for the two
 
 ```
 Odd-one' : Odd (s z)
-& _ impossible
+& impossible
 ```
 
-Of course writing `impossible` for every field gets boring pretty fast, so we combine it with the prototype syntax to say that none of the fields are possible.
+Of course writing `impossible` for every field gets boring pretty fast, so we can use the special copattern `& impossible` to mark the fact that none of fields needs to be defined.
 
 ```
 Odd-one'' : Odd (s z)
@@ -3207,10 +3267,10 @@ Zero is not `Odd`, because when matching on a supposed proof of `Odd z`, neither
 
 ```
 zero-not-Odd' : Odd z -> Empty
-| _ impossible
+| impossible
 ```
 
-We can make this proof shorter by saying that all pattern are `impossible`.
+We can make this proof shorter by saying that no cases are possible, using the pattern `| impossible` that we have already met when discussing Inductive Families.
 
 ```
 zero-not-Odd'' : Odd z -> Empty
@@ -3258,7 +3318,7 @@ Odd-omega : Odd omega :=
 
 Proving that `omega` is `Odd` is just as easy as with the negative definition.
 
-In general, the duality between the negative and the positive definition is crystal clear. For the negative definition, the "contradictory" theorems for even numbers are easy - we just need to project the contradiction out of the purported proof - whereas the "true" theorems for odd numbers require somewhat more work, as we need to mark all the `impossible` cases. For the positive definition, on the other hand, the "true" odd cases are easily provable by direct use of constructors, whereas the "contradictory" even cases require more work to mark all the `impossible` cases.
+In general, the duality between the negative and the positive definition is crystal clear. For the negative definition, the "contradictory" theorems for even numbers are easy - we just need to project the contradiction out of the purported proof - whereas the true theorems for odd numbers require somewhat more work, as we need to mark all the `impossible` cases. For the positive definition, on the other hand, the true odd cases are easily provable by direct use of constructors, whereas the "contradictory" even cases require more work to mark all the `impossible` cases.
 
 Which of these two definitions is better? Are they even equivalent? Let's find out (in the code that follows, we refer to the negative `Odd` as `NOdd` and to the positive `Odd` as `POdd`).
 
@@ -3275,7 +3335,7 @@ g : (#n : CoNat, x : POdd n) -> NOdd n
   & Oss => g x'
 ```
 
-As we can see, the negative and positive definitions of `Odd` are logically equivalent (and thus equal, because they are both propositions). But the question of which is better remains.
+As we can see, the negative and positive definitions of `Odd` are logically equivalent (and thus, by univalence, equal, because they are both propositions). But the question of which is better remains.
 
 In short: the `CoNat`ural numbers are a positive coinductive type and when we think about the usual `Nat`ural numbers being even or odd, we also prefer the inductive, i.e. positive, definition. Moreover, the positive definition seems very natural (it tells us which numbers are `Odd`; pun intended), whereas the negative definition seems very odd (it basically tells us which numbers are not even, and thus odd; pun intended). Therefore, the positive definition of `Odd` is better. However, for other predicates or type families, negative definitions may turn out to be better.
 
@@ -3319,24 +3379,24 @@ Finally, the constructors of `CoVec` are just wrappers around the constructors o
 One last thing to mention is another piece of syntax sugar which makes defining coinductive families. This syntax sugar applies when domain indices are the same in all fields of the coinductive family. In such a case we may omit the domain.
 
 ```
-codata Linked (R : A -> A -> Prop) : (s : Stream A) -> Prop
-& link  : R s.hd s.tl.hd
-& links : Linked s.tl
+codata Sorted (R : A -> A -> Prop) : (s : Stream A) -> Prop
+& Shds : R s.hd s.tl.hd
+& Stl  : Sorted s.tl
 ```
 
-As an example, we define a predicate which asserts that the elements of the stream `s` appear in increasing order, where the order relation is represented by the parameter `R`.
+As an example, we define a predicate which asserts that the elements of the stream `s` are sorted, where the order relation is represented by the parameter `R`.
 
 ```
 nats (n : Nat) : Stream Nat
 & hd => n
 & tl => nats (s n)
 
-Linked-nats : (n : nat) -> Linked (<=) (nats n)
-& link  => le-n-sn // Easy lemma, we won't prove it.
-& links => Linked-nats (s n)
+Sorted-nats : (n : nat) -> Sorted (<=) (nats n)
+& Shds => le-n-sn // Easy lemma, we won't prove it.
+& Stl  => Sorted-nats (s n)
 ```
 
-It is not hard to define the stream of natural numbers starting from `n` and prove that it is `Linked` by `<=`, the standard order on naturals (not defined in the listing).
+It is not hard to define the stream of natural numbers starting from `n` and prove that it is `Sorted` according to `<=`, the standard order on naturals (not defined in the listing).
 
 Papers:
 - [Elaborating dependent (co)pattern matching](https://jesper.sikanda.be/files/elaborating-dependent-copattern-matching.pdf)
@@ -3348,6 +3408,10 @@ TODO:
 - Search for more papers.
 - Figure out the final notation: `of` as a short-hand when defining inductive and coinductive and the colon `:` when defining families?
 - Decide if the last piece of syntax sugar should be included.
+
+### Nested Coinductive Families <a id="nested-coinductive-families"></a> [↩](#toc)
+
+TODO
 
 ### Coinduction-Recursion? Not really. <a id="coinduction-recursion"></a> [↩](#toc)
 
