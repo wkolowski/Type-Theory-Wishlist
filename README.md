@@ -41,9 +41,9 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Nested Coinductive Types](#nested-coinductive-types)
     1. [Mutual Coinductive Types](#mutual-coinductive-types)
     1. [Coinductive Families](#coinductive-families)
-    1. [Nested Coinductive Families (TODO)](#nested-coinductive-families)
-    1. [Coinduction-Recursion](#coinduction-recursion)
-    1. [Coinduction-Coinduction](#coinduction-coinduction)
+    1. [Nested Coinductive Families](#nested-coinductive-families)
+    1. [Coinduction-Recursion (TODO)](#coinduction-recursion)
+    1. [Coinduction-Coinduction (TODO)](#coinduction-coinduction)
 1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
     1. [Coinduction-Induction](#coinduction-induction)
     1. [Types with inductive and coinductive components (TODO)](#inductive-coinductive-components)
@@ -3468,30 +3468,6 @@ CoCons (h : A) (#c : CoNat) (t : CoVec A c) : CoVec A (s c)
 
 Finally, the constructors of `CoVec` are just wrappers around the constructors of `CoVec`.
 
-#### Some more syntax sugar, possibly...
-
-One last thing to mention is another piece of syntax sugar which makes defining coinductive families. This syntax sugar applies when domain indices are the same in all fields of the coinductive family. In such a case we may omit the domain.
-
-```
-codata Sorted (R : A -> A -> Prop) : (s : Stream A) -> Prop
-& Shds : R s.hd s.tl.hd
-& Stl  : Sorted s.tl
-```
-
-As an example, we define a predicate which asserts that the elements of the stream `s` are sorted, where the order relation is represented by the parameter `R`.
-
-```
-nats (n : Nat) : Stream Nat
-& hd => n
-& tl => nats (s n)
-
-Sorted-nats : (n : nat) -> Sorted (<=) (nats n)
-& Shds => le-n-sn // Easy lemma, we won't prove it.
-& Stl  => Sorted-nats (s n)
-```
-
-It is not hard to define the stream of natural numbers starting from `n` and prove that it is `Sorted` according to `<=`, the standard order on naturals (not defined in the listing).
-
 Papers:
 - [Elaborating dependent (co)pattern matching](https://jesper.sikanda.be/files/elaborating-dependent-copattern-matching.pdf)
 
@@ -3501,7 +3477,6 @@ TODO:
 - Polish the writing.
 - Search for more papers.
 - Figure out the final notation: `of` as a short-hand when defining inductive and coinductive and the colon `:` when defining families?
-- Decide if the last piece of syntax sugar should be included.
 
 ### Nested Coinductive Families <a id="nested-coinductive-families"></a> [↩](#toc)
 
@@ -3509,17 +3484,37 @@ Nested Conductive Families are the dual of Nested Inductive Families, i.e. they 
 
 ```
 codata Complete : Type -> Type
-& v  : (#A : Type) -> Complete A -> A
-& ts : (#A : Type) -> Complete A -> Complete (A * A)
-```
-
-```
-codata Complete : Type -> Type
 | E : (#A : Type) -> Complete A
 | N : (#A : Type, v : A, ts : Complete (A * A)) -> Complete A
 ```
 
-TODO
+The simplest example is a coinductive version of the `Complete` binary trees we have seen when discussing Nested Inductive Families. The only difference is that now our complete trees can potentially be infinite.
+
+```
+cmap : (#A #B : Type, f : A -> B, t : Complete A) -> Complete B
+| _, E      => E
+| _, N v ts => N (f v) (cmap (fun (x, y) => (f x, f y)) ts)
+```
+
+Let's define a mapping function, as usual. Just as for NIFs, we now need to treat `A`, `B` and `f` as indices and not parameters. In the corecursive call to `cmap`, we need to lift `f` to a function `A * A -> B * B`, which we do inline. There isn't much difference from the inductive version. In fact, the code is exactly the same.
+
+```
+codata Complete' : Type -> Type
+& v  : (#A : Type) -> Complete' A -> A
+& ts : (#A : Type) -> Complete' A -> Complete' (A * A)
+```
+
+Nested Coinductive Families can be negative too. Above, we see a variant of `Complete` for which all binary trees are necessarily infinite.
+
+```
+cmap' : (#A #B : Type, f : A -> B, t : Complete' A) -> Complete' B
+& v  => f t.v
+& ts => cmap' (fun (x, y) => (f x, f y)) t.ts
+```
+
+To define `cmap'`, we need the same trick as for positive nested types - we need to lift `f : A -> B` to a function `A * A -> B * B`.
+
+But just as in the inductive case, the above examples are just the tip of the iceberg.
 
 ```
 codata Obama : Type -> Type
@@ -3527,10 +3522,17 @@ codata Obama : Type -> Type
 & tl : (#A : Type) -> Obama A -> Obama (Obama A)
 ```
 
-TODO
+The most obvious example of a truly nested coinductive family is shown above. The field names `hd` and `tl` were used because this type is quite similar to `Stream`, just more nested.
 
+Note: we call this type `Obama`, because it is to nested coinductive families what `Bush` is to nested inductive families. I hope you can see the pun...
 
-Note: we call this most obvious example of a (truly) nested coinductive family `Obama`, because the most famous example of a truly nested inductive family is called `Bush`. I hope you can see the pun...
+```
+omap : (#A #B : Type, f : A -> B, s : Obama A) -> Obama B
+& hd => f s.hd
+& tl => omap (omap f) s.tl
+```
+
+To define the mapping function for `Obama`s, for the `tl` field we need to use the scary self-referring higher-order corecursive call `omap (omap f) s.tl`. Something like it is supported absolutely nowhere, except in our language of course... or so I wish.
 
 ```
 codata CoBush : Type -> Type
@@ -3538,7 +3540,7 @@ codata CoBush : Type -> Type
 | Cons : (#A : Type, hd : A, tl : CoBush (CoBush A)) -> CoBush A
 ```
 
-TODO
+We also have truly nested positive coinductive families. The simplest among them is `CoBush`, the coinductive version of `Bush` that we have seen previously.
 
 ```
 bmap : (#A #B : Type, f : A -> B, b : CoBush A) -> CoBush B
@@ -3546,7 +3548,33 @@ bmap : (#A #B : Type, f : A -> B, b : CoBush A) -> CoBush B
 | Cons h t => Cons (f h) (bmap (bmap f) t)
 ```
 
-TODO
+Defining `bmap` for `CoBush` is as easy (or as hard, depending on how you look at it) as defining it for `Bush`. Yet again, we need to use a scary higher-order corecursive call, `bmap (bmap f)`.
+
+#### Some more syntax sugar, possibly...
+
+Coinductive Families enjoy an analogous kind of syntax sugar to what we have seen for Inductive Families. For negative coinductive types, if all codomains of a coinductive family are the same, we may treat indices as parameters and we don't need to quantify over the indices in fields. For positive coinductive types, if all domains of a coinductive family are the same, we may treat indices as parameters and we don't need to quantify over the indices in constructors.
+
+This syntax sugar is particularly well-suited for nested coinductive families, because they always fulfill the criteria. Let's see how the syntax sugar simplifies the definitions of the types we have seen above.
+
+```
+codata Complete (A : Type) : Type
+| E
+| N of (v : A, ts : Complete (A * A))
+
+codata Complete' (A : Type) : Type
+& v  of A
+& ts of Complete' (A * A)
+
+codata Obama (A : Type) : Type
+& hd of A
+& tl of Obama (Obama A)
+
+codata CoBush (A : Type) : Type
+| Nil
+| Cons of (hd : A, tl : CoBush (CoBush A))
+```
+
+As you can see, we no longer need to quantify the `A : Type` in each constructor and also we don't need to write the domains/codomains of the fields/constructors, respectively.
 
 Papers:
 - None
@@ -3554,28 +3582,12 @@ Papers:
 **Status: extremely speculative.**
 
 TODO:
-- Everything.
+- Search for papers.
+- Write some code dealing with truly nested coinductive families.
+- Decide if the last piece of syntax sugar should be included.
+- Change syntax of basic (co)inductives to use `of`.
 
-#### Some more syntax sugar, possibly...
-
-Coinductive Families enjoy an analogous kind of syntax sugar to what we have seen for Inductive Families. For negative coinductive types, if all codomains of a coinductive family are the same, we may treat indices as parameters and we don't need to quantify over the indices in fields. For positive coinductive types, if all domains of a coinductive family are the same, we may treat indices as parameters and we don't need to quantify over the indices in constructors.
-
-Let's see how this simplifies the definitions of the types we have seen above.
-
-```
-codata Obama (A : Type) : Type
-& hd of A
-& tl of Obama (Obama A)
-```
-
-```
-codata CoBush (A : Type) : Type
-| Nil
-| Cons of (hd : A, tl : CoBush (CoBush A))
-```
-
-
-### Coinduction-Recursion? Not really. <a id="coinduction-recursion"></a> [↩](#toc)
+### Coinduction-Recursion <a id="coinduction-recursion"></a> [↩](#toc)
 
 Let's try to use induction-recursion syntax together with the `codata` keyword and see what happens. For exploration purposes, we will try to define a type of infinite binary heaps.
 
@@ -3584,7 +3596,9 @@ codata BHeap (R : A -> A -> Prop) : Type
 | E
 | N (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
 
-and OK #(R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop
+and
+
+OK #(R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop
 | E => Unit
 | N => R v h.v
 ```
@@ -3596,7 +3610,9 @@ data BHeapX (X : Type) (R : A -> A -> Prop) : Type
 | E
 | N (v : A, l r : X, okl : OKX v l, okr : OKX v r)
 
-and OKX #(X : Type) #(R : A -> A -> Prop) (v : A) : (h : BHeapX X R) -> Prop
+and
+
+OKX #(X : Type) #(R : A -> A -> Prop) (v : A) : (h : BHeapX X R) -> Prop
 | E => Unit
 | N => R v h.v
 
@@ -3613,7 +3629,16 @@ The limits of positive coinduction-recursion seem to be pretty clear: we can mut
 
 To sum up: there's no coinduction-recursion, but we can mutually define types coinductively and functions by pattern matching.
 
-### Coinduction-Coinduction? Not really. <a id="coinduction-coinduction"></a> [↩](#toc)
+Papers:
+- [Wander types : A formalization of coinduction-recursion](https://www.nii.ac.jp/pi/n10/10_47.pdf)
+
+**Status: very speculative.**
+
+TODO:
+- Search for papers.
+- Find a good example of coinduction-corecursion.
+
+### Coinduction-Coinduction <a id="coinduction-coinduction"></a> [↩](#toc)
 
 What about "coinduction-coinduction" or something like that? Is it possible? Let's find out by defining infinite binary heaps again, but using only induction-induction syntax.
 
@@ -3622,7 +3647,9 @@ codata BHeap (R : A -> A -> Prop) : Type
 | E
 | N (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
 
-and OK (R : A -> A -> Prop) (v : A) : BHeap R -> Prop
+and
+
+codata OK (R : A -> A -> Prop) (v : A) : BHeap R -> Prop
 | OK-E : OK E
 | OK-N : (x : A) (l r : BHeap R) -> R v x -> OK (N x l r)
 ```
@@ -3634,7 +3661,9 @@ data BHeapX (X : Type) (R : A -> A -> Prop) : Type
 | E
 | N (v : A, l r : X, okl : OKX v l, okr : OKX v r)
 
-and OKX #(X : Type) #(R : A -> A -> Prop) (v : A) : BHeapX X R -> Prop
+and
+
+data OKX (#X : Type) (#R : A -> A -> Prop) (v : A) : BHeapX X R -> Prop
 | OKX-E : OKX E
 | OKX-N : (x : A) (l r : BHeapX X R) -> R v x -> OKX (N x l r)
 
@@ -3648,6 +3677,15 @@ OK #(X : Type) #(R : A -> A -> Type) (v : A) (h : BHeap R) : Prop :=
 Again, the desugaring looks pretty easy to grasp. `BHeapX` and `OKX` are defined by induction-induction, which is perfectly legal, even though there isn't a lot of induction going on and we could have used ordinary inductive families. Finally, we define `BHeap` by tying the knot and implement `OK` as a wrapper around `OKX`.
 
 From this example it is obvious that there really isn't any coinduction-coinduction going on - it depicts only coinduction-induction, and the "induction" part isn't really that much inductive, as its only one layer deep. But contrary to what was the case for "coinduction-recursion", I don't see why the inductive part of a coinductive-inductive definition couldn't be truly inductive. Maybe we should look for a better example. Also, coinduction-coinduction still seems possible, at least when both types are positive coinductives.
+
+Papers:
+- None
+
+**Status: very speculative.**
+
+TODO:
+- Search for papers.
+- Find a good example of coinduction-coinduction.
 
 ## Mixed Inductive and Coinductive Types <a id="mixed-inductive-coinductive"></a> [↩](#toc)
 
