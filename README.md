@@ -38,8 +38,8 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Negative Coinductive Types](#negative-coinductive-types)
     1. [Positive Coinductive Types](#positive-coinductive-types)
     1. [Field names, namespacing, discriminators and bundled parameters](#coinductive-names-discriminators-bundled-params)
-    1. [Mutual Coinductive Types (TODO)](#mutual-coinductive-types)
     1. [Nested Coinductive Types](#nested-coinductive-types)
+    1. [Mutual Coinductive Types](#mutual-coinductive-types)
     1. [Coinductive Families](#coinductive-families)
     1. [Nested Coinductive Families (TODO)](#nested-coinductive-families)
     1. [Coinduction-Recursion](#coinduction-recursion)
@@ -2720,7 +2720,7 @@ rmap' (f : A -> B) : (n : Nat) -> RVec A n -> RVec B n
 
 Because we can infer the index from the constructor (`Nil` corresponds to `z` and `Cons` to `s n`), our syntax sugar can be desugared by translating the index-omitting pattern matching in `rmap'` to the full pattern matching as in the original `rmap` (with the difference being that we retain the nice constructor names `Nil` and `Cons`, instead of the ugly `unit` and `(,)`).
 
-With this syntax sugar, recursive families emerge as the clearly superior solution for defining indexed families whenever it is possible to do this by recursion on the index.
+With this syntax sugar, recursive families emerge as the clearly superior solution for defining indexed families whenever it is possible to do this by recursion on the indices.
 
 Papers:
 - [Vectors are records, too](https://jesper.sikanda.be/files/vectors-are-records-too.pdf) (also see [the slides](https://jesper.sikanda.be/files/TYPES2018-presentation.pdf)) - this is the paper on which most of this section is based
@@ -3066,10 +3066,6 @@ Papers:
 TODO:
 - Revisit this at some point in the future.
 
-### Mutual Coinductive Types <a id="mutual-coinductive-types"></a> [↩](#toc)
-
-Just as we can at once define many inductive types which can refer to each other, we can also do so with coinductive types.
-
 ### Nested Coinductive Types <a id="nested-coinductive-types"></a> [↩](#toc)
 
 Just as inductive types can be nested, leading to higher-order recursion, so can be coinductive types, leading to higher-order corecursion. This applies to both negative and positive coinductive types.
@@ -3144,7 +3140,7 @@ Another way, much uglier, is to kind of "inline" the `map` in the definition of 
 
 ```
 crmap (f : A -> B) : CoRoseTree A -> CoRoseTree B
-| Empty => Empty
+| Empty    => Empty
 | Node v l => Node (f v) (clmap l)
 
 and
@@ -3165,6 +3161,104 @@ TODO:
 - Search for papers.
 - Think more about how productivity is checked.
 - Come up with a translation of Nested Coinductive Types to Mutual Coinductive Types.
+
+### Mutual Coinductive Types <a id="mutual-coinductive-types"></a> [↩](#toc)
+
+In the previous section we have seen that we can translate higher-order corecursion on `StreamTree` and `CoRoseTree` into mutual recursion. This translation is justified by the fact that we could have just as well defined these types as Mutual Coinductive Types. The mechanism of Mutual Coinductive Types allows us to simultaneously define many coinductive types which can refer to each other, analogously to how Mutual Inductive Types work.
+
+```
+codata StreamTree (A : Type) : Type
+& v  : A
+& ts : StreamOfStreamTree
+
+and
+
+codata StreamOfStreamTree (A : Type) : Type
+& hd : StreamTree
+& tl : StreamOfStreamTree
+```
+
+The above code shows how to mutually define the type of `StreamTree`s and `StreamOfStreamTree`, which is just `Stream` specialized to hold `StreamTree`s.
+
+```
+stmap (f : A -> B) : (t : StreamTree A) -> StreamTree B
+& v  => f t.v
+& ts => smap t.ts
+
+and
+
+smap (f : A -> B) : (s : StreamOfStreamTree A) -> StreamOfStreamTree B
+& hd => stmap s.hd
+& tl => smap s.tl
+```
+
+We can now define `stmap` and `smap` by mutual corecursion. The code is identical to what we have seen in the previous section.
+
+```
+codata CoRoseTree (A : Type) : Type
+| Empty
+| Node (v : A, ts : CoListOfCoRoseTree)
+
+and
+
+codata CoListOfCoRoseTree (A : Type) : Type
+| Nil
+| Cons (hd : CoRoseTree, tl : CoListOfCoRoseTree)
+```
+
+Similarly, we mutually define the type of `CoRoseTree`s together and `CoListOfCoRoseTree`, which is just `CoList` specialized to `CoRoseTree`.
+
+```
+crmap (f : A -> B) : CoRoseTree A -> CoRoseTree B
+| Empty    => Empty
+| Node v l => Node (f v) (clmap l)
+
+and
+
+clmap (f : A -> B) : CoListOfCoRoseTree A -> CoListOfCoRoseTree B
+| Nil      => Nil
+| Cons h t => Cons (crmap h) (clmap t)
+```
+
+The code for `crmap` and `clmap` again is exactly identical to what we have seen previously.
+
+```
+codata CoListTree (A : Type) : Type
+& v  : A
+& ts : CoListTree
+
+codata CoListOfCoListTree (A : Type) : Type
+| Nil
+| Cons (hd : CoListTree, tl : CoListOfCoListTree)
+```
+
+Mutual Coinductive Types need not both be negative or both be positive - they can also be mixed, i.e. some may be negative while others are positive. An example of such types is shown above. We define `CoListTree`, which is a necessarily infinite tree that has a value of type `A` at the root and a potentially infinite sequence of subtrees, which is represented as `CoListOfCoListTree`, the type of `CoList`s specialized to `CoListTree`. Both types are defined simultaneously.
+
+```
+cltmap (f : A -> B) : (t : CoListTree A) -> CoListTree B
+& v  => f t.v
+& ts => clomap t.ts
+
+and
+
+clomap (f : A -> B) : CoListOfCoListTree A -> CoListOfCoListTree B
+| Nil      => Nil
+| Cons t ts => Cons (cltmap t) (clomap ts)
+```
+
+We can define functions for map over these types by mutual corecursion. `cltmap`, which works on `CoListTree`s, applies `f` to the value stored at the root and calls `clomap`, which deals with mapping over `CoListOfCoListTree`. This latter function, when it deals with the `Cons` case, uses `cltmap` to map over the tree `t` and corecursively calls itself to deal with `ts`, the rest of subtrees.
+
+Are Mutually Coinductive Types good for anything besides encoding Nested Coinductive Types? As of now probably not, but they become a lot more useful once we have Coinductive Families at our disposal...
+
+Papers:
+- None
+
+**Status: Mutual Coinductive Types are supported by Coq (and probably also by Agda, but I need to check), so they shouldn't be problematic. However, other proof assistants like Lean or Idris I think, don't directly support Mutual Coinductive Types or coinductive types at all for that matter.**
+
+TODO:
+- Search for papers.
+- Learn which languages (Agda?) support Mutual Coinductive Types.
+- Learn what's up with the criterion that each coinductive type in a mutual definition must have the same parameters. Coq has this and it's sometimes annoying.
 
 ### Coinductive Families <a id="coinductive-families"> [↩](#toc)
 
@@ -3411,7 +3505,75 @@ TODO:
 
 ### Nested Coinductive Families <a id="nested-coinductive-families"></a> [↩](#toc)
 
+Nested Conductive Families are the dual of Nested Inductive Families, i.e. they are coinductive families `C` in which the coinductive occurrence of `C` in the indices is nested in some type constructor.
+
+```
+codata Complete : Type -> Type
+& v  : (#A : Type) -> Complete A -> A
+& ts : (#A : Type) -> Complete A -> Complete (A * A)
+```
+
+```
+codata Complete : Type -> Type
+| E : (#A : Type) -> Complete A
+| N : (#A : Type, v : A, ts : Complete (A * A)) -> Complete A
+```
+
 TODO
+
+```
+codata Obama : Type -> Type
+& hd : (#A : Type) -> Obama A -> A
+& tl : (#A : Type) -> Obama A -> Obama (Obama A)
+```
+
+TODO
+
+
+Note: we call this most obvious example of a (truly) nested coinductive family `Obama`, because the most famous example of a truly nested inductive family is called `Bush`. I hope you can see the pun...
+
+```
+codata CoBush : Type -> Type
+| Nil  : (#A : Type) -> CoBush A
+| Cons : (#A : Type, hd : A, tl : CoBush (CoBush A)) -> CoBush A
+```
+
+TODO
+
+```
+bmap : (#A #B : Type, f : A -> B, b : CoBush A) -> CoBush B
+| Nil      => Nil
+| Cons h t => Cons (f h) (bmap (bmap f) t)
+```
+
+TODO
+
+Papers:
+- None
+
+**Status: extremely speculative.**
+
+TODO:
+- Everything.
+
+#### Some more syntax sugar, possibly...
+
+Coinductive Families enjoy an analogous kind of syntax sugar to what we have seen for Inductive Families. For negative coinductive types, if all codomains of a coinductive family are the same, we may treat indices as parameters and we don't need to quantify over the indices in fields. For positive coinductive types, if all domains of a coinductive family are the same, we may treat indices as parameters and we don't need to quantify over the indices in constructors.
+
+Let's see how this simplifies the definitions of the types we have seen above.
+
+```
+codata Obama (A : Type) : Type
+& hd of A
+& tl of Obama (Obama A)
+```
+
+```
+codata CoBush (A : Type) : Type
+| Nil
+| Cons of (hd : A, tl : CoBush (CoBush A))
+```
+
 
 ### Coinduction-Recursion? Not really. <a id="coinduction-recursion"></a> [↩](#toc)
 
