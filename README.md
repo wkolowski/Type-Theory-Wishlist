@@ -2474,16 +2474,16 @@ Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `D
 ```
 data BHeap (R : A -> A -> Prop) : Type
 | E
-| N (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
+| N (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
 
 and
 
-data OK (R : A -> A -> Prop) (v : A) : BHeap R -> Prop
+data OK (R : A -> A -> Prop) : A -> BHeap -> Prop
 | OK-E : OK E
-| OK-N : (x : A) (l r : BHeap R) -> R v x -> OK (N x l r)
+| OK-N : (v x : A) (l r : BHeap R) (okl : OK x l) (okr : OK x r) -> R v x -> OK v (N x l r)
 ```
 
-Another classic use of induction-induction is to define data structures with non-trivial invariants. Above, we define the type of binary heaps (ordered by the relation `R`), which can be either `E`mpty, or consist of a `N`ode that holds a `v`alue and two subheaps `l` and `r`, which are `OK`, i.e. satisfy the (one-layer, non-recursive) heap condition, which holds for empty heaps and for nodes whose value is smaller than the values in their subheaps.
+Another classic use of induction-induction is to define data structures with non-trivial invariants (like sorted lists or BSTs). Above, we define the type of binary heaps (ordered by the relation `R`), which can be either `E`mpty, or consist of a `N`ode that holds a `v`alue and two subheaps `l` and `r`, which are `OK`, i.e. satisfy the (one-layer) heap condition, which holds for empty heaps and for nodes whose value is smaller than the values in their subheaps.
 
 Binary heaps could be easily defined even without induction-induction, by first defining binary trees inductively, then the heap condition as an inductive family and finally by putting them together in a dependent record and lifting all binary tree operations to binary heaps. Note, however, that an inductive-inductive definition is so much simpler and more elegant.
 
@@ -3612,7 +3612,7 @@ data BHeapX (X : Type) (R : A -> A -> Prop) : Type
 
 and
 
-OKX #(X : Type) #(R : A -> A -> Prop) (v : A) : (h : BHeapX X R) -> Prop
+OKX (#X : Type, #R : A -> A -> Prop, v : A) : (h : BHeapX X R) -> Prop
 | E => Unit
 | N => R v h.v
 
@@ -3630,7 +3630,7 @@ The limits of positive coinduction-recursion seem to be pretty clear: we can mut
 To sum up: there's no coinduction-recursion, but we can mutually define types coinductively and functions by pattern matching.
 
 Papers:
-- [Wander types : A formalization of coinduction-recursion](https://www.nii.ac.jp/pi/n10/10_47.pdf)
+- [Wander types: A formalization of coinduction-recursion](https://www.nii.ac.jp/pi/n10/10_47.pdf)
 
 **Status: very speculative.**
 
@@ -3640,7 +3640,9 @@ TODO:
 
 ### Coinduction-Coinduction <a id="coinduction-coinduction"></a> [↩](#toc)
 
-What about "coinduction-coinduction" or something like that? Is it possible? Let's find out by defining infinite binary heaps again, but using only induction-induction syntax.
+In one of the previous sections we have seen induction-induction, which is a mechanism for mutually defining an inductive type and an inductive family indexed by this type. What about "coinduction-coinduction" or something like that, which would be the dual thing in the world of coinduction? Is it possible?
+
+Let's find out by defining binary heaps again, but this time they will possibly be infinite.
 
 ```
 codata BHeap (R : A -> A -> Prop) : Type
@@ -3649,34 +3651,14 @@ codata BHeap (R : A -> A -> Prop) : Type
 
 and
 
-codata OK (R : A -> A -> Prop) (v : A) : BHeap R -> Prop
+codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
 | OK-E : OK E
-| OK-N : (x : A) (l r : BHeap R) -> R v x -> OK (N x l r)
+| OK-N : (v x : A) (l r : BHeap) (okl : OK x l) (okr : OK x r) (p : R v x) -> OK (N x l r okl okr)
 ```
 
-This definition too is a modification of the original inductive-inductive definition of finite binary heaps, so it's probably correct. The only difference is the use of the `codata` keyword. This desugars as follows.
+This definition is a modification of the original inductive-inductive definition of finite binary heaps, so it's probably correct. The only difference is the use of the `codata` keyword. This desugars as follows.
 
-```
-data BHeapX (X : Type) (R : A -> A -> Prop) : Type
-| E
-| N (v : A, l r : X, okl : OKX v l, okr : OKX v r)
-
-and
-
-data OKX (#X : Type) (#R : A -> A -> Prop) (v : A) : BHeapX X R -> Prop
-| OKX-E : OKX E
-| OKX-N : (x : A) (l r : BHeapX X R) -> R v x -> OKX (N x l r)
-
-codata BHeap (R : A -> A -> Type) : Type
-& Out : BHeapX (BHeap R) R
-
-OK #(X : Type) #(R : A -> A -> Type) (v : A) (h : BHeap R) : Prop :=
-  OKX v h.Out
-```
-
-Again, the desugaring looks pretty easy to grasp. `BHeapX` and `OKX` are defined by induction-induction, which is perfectly legal, even though there isn't a lot of induction going on and we could have used ordinary inductive families. Finally, we define `BHeap` by tying the knot and implement `OK` as a wrapper around `OKX`.
-
-From this example it is obvious that there really isn't any coinduction-coinduction going on - it depicts only coinduction-induction, and the "induction" part isn't really that much inductive, as its only one layer deep. But contrary to what was the case for "coinduction-recursion", I don't see why the inductive part of a coinductive-inductive definition couldn't be truly inductive. Maybe we should look for a better example. Also, coinduction-coinduction still seems possible, at least when both types are positive coinductives.
+TODO: fix this
 
 Papers:
 - None
