@@ -3642,7 +3642,34 @@ TODO:
 
 In one of the previous sections we have seen induction-induction, which is a mechanism for mutually defining an inductive type and an inductive family indexed by this type. What about "coinduction-coinduction" or something like that, which would be the dual thing in the world of coinduction? Is it possible?
 
-Let's find out by defining binary heaps again, but this time they will possibly be infinite.
+Let's find out by defining binary heaps again, but this time they will be necessarily infinite.
+
+```
+codata BHeap (R : A -> A -> Prop) : Type
+& root of A
+& l    of BHeap
+& r    of BHeap
+& okl  of OK root l
+& okr  of OK root r
+
+and
+
+codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
+& ok : (#v : A, h : #BHeap) -> OK v h -> R v h.root
+```
+
+More compact
+
+```
+codata BHeap (R : A -> A -> Prop) : Type
+& root of A
+& l    of BHeap
+& r    of BHeap
+& okl  of R root l.root
+& okr  of R root r.root
+```
+
+
 
 ```
 codata BHeap (R : A -> A -> Prop) : Type
@@ -4030,7 +4057,7 @@ These benefits multiply enormously when matching two or more values. For example
 | Inductives       | see below           |
 | Coinductives     | see below           |
 | Refinements      | if `A : Type h p` <br> and `P : A -> Prop` <br> then `{x : A \| P x} : Type h p` |
-| Singletons       | `Singleton x : Contr` |
+| Singletons       | `Singleton A x : Contr` |
 | Strict universes | `Type h p : Type (h + 1) (p + 1)` |
 | Non-strict universes | `hType h p : hType (h + 1) (p + 1)` |
 | Subtypes         | if `A : Type h p` <br> then `Sub A : Type (max 2 (h + 1)) p` |
@@ -4138,10 +4165,11 @@ So maybe we are free to eliminate strict sets into any type whatsoever and the r
 
 ### Summary
 
-I have no idea what I'm doing. If something is not described here, it defaults to how it works in [Arend](https://arend-lang.github.io/about/arend-features#universe-levels)
+I have no idea what I'm doing. If something is not described here, it defaults to how it works in [Arend](https://arend-lang.github.io/about/arend-features#universe-levels).
 
-Some reading on universes:
+Papers:
 - [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
+- [A type theory with definitional proof-irrelevance](https://www.theses.fr/2019IMTA0169.pdf) (for strict universes, see section 6.3)
 - [Generalized Universe Hierarchies and First-Class Universe Levels](https://arxiv.org/pdf/2103.00223.pdf)
 - [Notes on Universes in Type Theory](http://www.cs.rhul.ac.uk/home/zhaohui/universes.pdf)
 - [Algebraic Type Theory and Universe Hierarchies](https://arxiv.org/pdf/1902.08848.pdf)

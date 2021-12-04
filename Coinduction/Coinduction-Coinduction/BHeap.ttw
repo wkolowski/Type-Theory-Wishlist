@@ -1,0 +1,78 @@
+codata BHeap (R : A -> A -> Prop) : Type
+& root of A
+& l    of BHeap
+& r    of BHeap
+& okl  of R root l.root
+& okr  of R root r.root
+
+nats : (n : Nat) -> BHeap (<=)
+& root  => n
+& l & r => nats (s n)
+& okl   => le-s-r n : n <= s n
+& okr   => le-s-r n : n <= s n
+
+map
+  #(A B : Type) (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B) (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (h : BHeap R) -> BHeap S
+& root => f h.root
+& l    => map h.l
+& r    => map h.r
+& okl  => pres h.root h.l.root h.okl
+& okr  => pres h.root h.r.root h.okr
+
+zipWith
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  : (ha : BHeap RA, hb : BHeap RB) -> BHeap RC
+& root => f ha.root hb.root
+& l    => zipWith ha.l hb.r
+& r    => zipWith ha.r hb.r
+& okl  => pres ha.okl hb.okl
+& okr  => pres ha.okr hb.okr
+
+mirror : (h : BHeap R) -> BHeap R
+& root => h.root
+& l    => mirror h.r
+& r    => mirror h.l
+& okl  => h.okr
+& okr  => h.okl
+
+repeat (x : A) (refl : #(x : A) -> R x x) : BHeap R
+& root       => x
+& l    & r   => repeat
+& okl  & okr => refl
+
+data Exists
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
+| root of (root : P h.root)
+| l    of (l : Exists h.l)
+| r    of (r : Exists h.r)
+
+codata Forall
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
+& root of P h.root
+& l    of Forall h.l
+& r    of Forall h.r
+
+codata Sim : (h1 h2 : BHeap R) -> Type
+& roots of h1.root = h2.root
+& ls    of Sim h1.l h2.l
+& rs    of Sim h1.r h2.r
+// & okls  of h1.okl = h2.okl
+// & okrs  of h1.okr = h2.okr
+  // Not well-typed (unless `=` is heterogenous),
+  // but also not needed, because `R`'s codomain is `Prop`.
+
+Sim-eq : (s : Sim h1 h2) -> h1 = h2 :=
+  path i =>
+    & root => s.roots i
+    & l    => Sim-eq s.ls i
+    & r    => Sim-eq s.rs i
+    & okl  => h1.okl // h1.okl : R h1.root h1.l.root
+                     // h2.okl : R h2.root h2.l.root
