@@ -1,0 +1,103 @@
+// Basic syntax - coinduction-coinduction is explicit (marked by `and`).
+codata SortedStream (R : A -> A -> Prop) : Type
+constructor Cons
+& hd of A
+& tl of SortedStream
+& ok of OK hd tl
+
+and
+
+codata OK (R : A -> A -> Prop) : A -> SortedStream -> Prop
+& ok : #(v : A, s : SortedStream) -> OK v s -> R v s.hd
+
+// Better syntax - coinduction-coinduction is implicit.
+codata SortedStream (R : A -> A -> Prop) : Type
+& hd of A
+& tl of SortedStream
+& ok of R hd tl.hd
+
+// Some functions - this is where coinduction-coinduction happens.
+
+// Axiom.
+le-s-r (n : Nat) : n <= s n
+
+nats : (n : Nat) -> SortedStream (<=)
+& hd => n
+& tl => nats (s n)
+& ok => le-s-r n
+
+map
+  #(A B : Type) (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B) (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (s : SortedStream R) -> SortedStream S
+& hd => f s.hd
+& tl => map s.tl
+& ok => pres s.ok
+
+zipWith
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  : (sa : SortedStream RA, sb : SortedStream RB) -> SortedStream RC
+& hd => f sa.hd sb.hd
+& tl => zipWith sa.tl sb.tl
+& ok => pres sa.ok sb.ok
+
+repeat (x : A) (refl : (x : A) -> R x x) : SortedStream R
+& hd => x
+& tl => repeat
+& ok => refl x
+
+iterate
+  #(A : Type, R : A -> A -> Prop)
+  (f : A -> A) (incr : (x : A) -> R x (f x))
+  : (x : A) -> SortedStream R
+& hd => x
+& tl => iterate (f x)
+& ok => incr x
+
+index (#A : Type, #R : A -> A -> Prop) : (s : SortedStream S) -> Nat -> A
+| _, z   => s.hd
+| _, s n => index s.tl n
+
+drop (#A : Type, #R : A -> A -> Prop) : (n : Nat, s : SortedStream S) -> SortedStream A
+| z   , _ => s
+| s n', _ => drop n' s.tl
+
+merge (r : A -> A -> Bool) : (s1 s2 : SortedStream r) -> SortedStream
+& hd => if r s1.hd s2.hd then s1.hd else s2.hd
+& tl => if r s1.hd s2.hd then merge s1.tl s2 else merge s1 s2.tl
+& ok => if r s1.hd s2.hd then // hard
+
+merge (r : A -> A -> Bool) : (s1 s2 : SortedStream r) -> SortedStream :=
+  if r s1.hd s2.hd
+  then
+    & hd => s1.hd
+    & tl => merge s1.tl s2
+    & ok => // hard
+  else
+    & hd => s2.hd
+    & tl => merge s1 s2.tl
+    & ok => // hard
+
+// Some predicates and relations - they don't have much to do with
+// coinduction-coinduction, so you can skip them.
+
+data Exists
+  (#A : Type, #R : A -> A -> Prop, P : A -> Type, s : SortedStream R) : Type
+| hd of (hd : P s.hd)
+| tl of (tl : Exists s.tl)
+
+codata Forall
+  (#A : Type, #R : A -> A -> Prop, P : A -> Type, s : SortedStream R) : Type
+& hd of P s.hd
+& tl of Forall s.tl
+
+codata Sim : (s1 s2 : SortedStream R) -> Type
+& hds of s1.hd = s2.hd
+& tls of Sim s1.tl s2.tl
+& oks of s1.ok = s2.ok // Not well-typed, unless `=` is heterogenous.

@@ -1,5 +1,6 @@
 // Coinductive-coinductive definition of a type of necessarily infinite binary heaps.
 codata BHeap (R : A -> A -> Prop) : Type
+constructor N
 & root of A
 & l    of BHeap
 & r    of BHeap
@@ -10,12 +11,13 @@ and
 
 // Together with a predicate that ensures they're really heaps.
 codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
-& ok : (#v : A, h : #BHeap) -> OK v h -> R v h.root
+& ok : (#v : A, #h : BHeap) -> OK v h -> R v h.root
 
 // If we inline the definition of `OK` in `BHeap`, we get a much simpler syntax
 // (if you don't believe me, check the file PositiveBHeap.ttw where this kind
 // of syntax sugar can't be made to work).
 codata BHeap (R : A -> A -> Prop) : Type
+constructor N
 & root of A
 & l    of BHeap
 & r    of BHeap

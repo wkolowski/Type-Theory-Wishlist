@@ -1,0 +1,124 @@
+// Basic syntax - coinduction-coinduction is explicit (marked by `and`).
+codata SortedCoList (R : A -> A -> Prop) : Type
+| Nil
+| Cons of
+  & hd of A
+  & tl of SortedCoList
+  & ok of OK hd tl
+
+and
+
+codata OK (R : A -> A -> Prop) : A -> SortedCoList -> Prop
+& ok : #(h : A, t : SortedCoList) -> OK h t -> R h t.hd
+
+// Better syntax - coinduction-coinduction is implicit.
+codata SortedCoList (R : A -> A -> Prop) : Type
+| Nil
+| Cons of
+  & hd of A
+  & tl of SortedCoList
+  & ok of OK hd tl
+
+// Some functions - this is where coinduction-coinduction happens.
+
+// Axiom.
+le-s-r (n : Nat) : n <= s n
+
+nats : (n : Nat) -> SortedCoList (<=) := Cons
+& hd => n
+& tl => nats (s n)
+& ok => le-s-r n
+
+map
+  #(A B : Type) (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B) (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (s : SortedCoList R) -> SortedCoList S
+| Nil  => Nil
+| Cons => Cons
+  & hd => f s.hd
+  & tl => map s.tl
+  & ok => pres s.ok
+
+zipWith
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  : (sa : SortedCoList RA, sb : SortedCoList RB) -> SortedCoList RC
+| Nil , _    => Nil
+| _   , Nil  => Nil
+| Cons, Cons => Cons
+  & hd => f sa.hd sb.hd
+  & tl => zipWith sa.tl sb.tl
+  & ok => pres sa.ok sb.ok
+
+repeat (x : A) (refl : (x : A) -> R x x) : SortedCoList R := Cons
+& hd => x
+& tl => repeat
+& ok => refl x
+
+iterate
+  #(A : Type, R : A -> A -> Prop)
+  (f : A -> A) (incr : (x : A) -> R x (f x))
+  : (x : A) -> SortedCoList R
+  := Cons
+& hd => x
+& tl => iterate (f x)
+& ok => incr x
+
+index (#A : Type, #R : A -> A -> Prop) : (s : SortedCoList S) -> Nat -> Option A
+| Nil , _   => None
+| Cons, z   => Some s.hd
+| Cons, s n => index s.tl n
+
+drop (#A : Typed, #R : A -> A -> Prop) : (s : SortedCoList S) -> Nat -> SortedCoList A
+| Nil , _   => Nil
+| _   , z   => s
+| Cons, s n => drop s.tl n
+
+merge (r : A -> A -> Bool) : (s1 s2 : SortedCoList r) -> SortedCoList
+| Nil , _    => s2
+| _   , Nil  => s1
+| Cons, Cons =>
+  if r s1.hd s2.hd
+  then Cons
+    & hd => s1.hd
+    & tl => merge s1.tl s2
+    & ok => // hard
+  else Cons
+    & hd => s2.hd
+    & tl => merge s1 s2.tl
+    & ok => // hard
+
+// Some predicates and relations - they don't have much to do with
+// coinduction-coinduction, so you can skip them.
+
+// More verbose.
+data Exists
+  (#A : Type, #R : A -> A -> Prop, P : A -> Type, s : SortedCoList R) : Type
+| hd of
+  & _  of s is Cons
+  & hd of P s.hd
+| tl of
+  & _  of s is Cons
+  & tl of Exists s.tl
+
+// Less verbose.
+data Exists
+  (#A : Type, #R : A -> A -> Prop, P : A -> Type, s : SortedCoList R, _ : s is Cons) : Type
+| hd of
+  & hd of P s.hd
+| tl of
+  & tl of Exists s.tl
+
+codata Forall
+  (#A : Type, #R : A -> A -> Prop, P : A -> Type, s : SortedCoList R) : Type
+| Nil  of
+  & _  of s is Nil
+| Cons of
+  & _  of s is Cons
+  & hd of P s.hd
+  & tl of Forall s.tl

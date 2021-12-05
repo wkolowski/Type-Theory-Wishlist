@@ -1,0 +1,26 @@
+// Coinductive-coinductive definition of infinite BSTs.
+codata BST (R : A -> A -> Prop) : Type
+constructor N
+& root of A
+& l    of BST
+& r    of BST
+& okl  of OKL root l
+& okr  of OKR root r
+
+and
+
+codata OKL (R : A -> A -> Prop) : A -> BST -> Prop
+& ok : (#v : A, #t : BST) -> OKL v t -> R t.root v
+
+and
+
+codata OKR (R : A -> A -> Prop) : A -> BST -> Prop
+& ok : (#v : A, #t : BST) -> OKR v t -> R t.root v -> Empty
+
+codata BST (R : A -> A -> Prop) : Type
+constructor N
+& root of A
+& l    of BST
+& r    of BST
+& okl  of R l.root root
+& okr  of R l.root root -> Empty
