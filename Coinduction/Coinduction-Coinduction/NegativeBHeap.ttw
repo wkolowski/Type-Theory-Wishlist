@@ -1,9 +1,28 @@
+// Coinductive-coinductive definition of a type of necessarily infinite binary heaps.
+codata BHeap (R : A -> A -> Prop) : Type
+& root of A
+& l    of BHeap
+& r    of BHeap
+& okl  of OK root l
+& okr  of OK root r
+
+and
+
+// Together with a predicate that ensures they're really heaps.
+codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
+& ok : (#v : A, h : #BHeap) -> OK v h -> R v h.root
+
+// If we inline the definition of `OK` in `BHeap`, we get a much simpler syntax
+// (if you don't believe me, check the file PositiveBHeap.ttw where this kind
+// of syntax sugar can't be made to work).
 codata BHeap (R : A -> A -> Prop) : Type
 & root of A
 & l    of BHeap
 & r    of BHeap
 & okl  of R root l.root
 & okr  of R root r.root
+
+// Some functions - this is where coinduction-coinduction happens.
 
 nats : (n : Nat) -> BHeap (<=)
 & root  => n
@@ -48,6 +67,9 @@ repeat (x : A) (refl : #(x : A) -> R x x) : BHeap R
 & l    & r   => repeat
 & okl  & okr => refl
 
+// Some predicates and relations - they don't have much to do with
+// coinduction-coinduction, so you can skip them.
+
 data Exists
   (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
 | root of (root : P h.root)
@@ -74,5 +96,5 @@ Sim-eq : (s : Sim h1 h2) -> h1 = h2 :=
     & root => s.roots i
     & l    => Sim-eq s.ls i
     & r    => Sim-eq s.rs i
-    & okl  => h1.okl // h1.okl : R h1.root h1.l.root
-                     // h2.okl : R h2.root h2.l.root
+    & okl  => ? // h1.okl : R h1.root h1.l.root, TODO
+                // h2.okl : R h2.root h2.l.root, TODO

@@ -1,0 +1,237 @@
+// Definitions of types, predicates and relations - this is where
+// nice syntax happens.
+
+// Old, boring syntax.
+codata BHeap (R : A -> A -> Prop) : Type
+| E
+| N (root : A, l r : BHeap, okl : OK root l, okr : OK root r)
+
+and
+
+codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
+| OK-E : #(root : A) -> OK v E
+| OK-N : #(root x : A) #(l r : BHeap) (okl : OK x l) (okr : OK x r) (p : R v x)
+            -> OK v (N x l r okl okr)
+
+// Note: `is` is a syntax sugar for pattern matching
+// that checks for only a single constructor. For example, when used together
+// with `if`, like in `if h is E then x else y`, it means
+// `match h with | E => x | _ => y end`.
+// When used alone, it is a `Bool`ean, i.e. `h is E : Bool`. It is true when
+// `h` was made with the `E` constructor and false otherwise.
+// Note that `Bool`eans are automatically coerced to propositions.
+
+// Intermediate, more record-y syntax.
+codata BHeap (R : A -> A -> Prop) : Type
+| E
+| N of (root : A, l r : BHeap, okl : OK root l, okr : OK root r)
+
+and
+
+codata OK (R : A -> A -> Prop) (v : A) (h : BHeap) : Prop
+| OK-E of (_ : h is E)
+| OK-N of (_ : h is N, p : R v h.root)
+
+// Best syntax! If we can mix definitions by pattern and copatterns, then
+// why not mix definitions of inductives and records?
+codata BHeap (R : A -> A -> Prop) : Type
+| E
+| N of
+  & root of A
+  & l r  of BHeap
+  & okl  of OK root l
+  & okr  of OK root r
+
+and
+
+codata OK (R : A -> A -> Prop) (v : A) (h : BHeap) : Prop
+| OK-E of
+  & _ of h is E
+| OK-N of
+  & _ of h is N
+  & p of R v h.root
+
+// Old, boring syntax.
+data Exists
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : BHeap R -> Type
+| root : (#h : BHeap R) -> h is N -> P h.root   -> Exists h
+| l    : (#h : BHeap R) -> h is N -> Exists h.l -> Exists h
+| r    : (#h : BHeap R) -> h is N -> Exists h.r -> Exists h
+
+// Intermediate, more record-y syntax.
+data Exists
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : BHeap R -> Type
+| root : (#h : BHeap R, _ : h is N, root : P h.root) -> Exists h
+| l    : (#h : BHeap R, _ : h is N, l : Exists h.l)  -> Exists h
+| r    : (#h : BHeap R, _ : h is N, r : Exists h.r)  -> Exists h
+
+// Best syntax.
+data Exists
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
+| root of (_ : h is N, root : P h.root)
+| l    of (_ : h is N, l : Exists h.l)
+| r    of (_ : h is N, r : Exists h.r)
+
+// Best^2 syntax!
+data Exists
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R, #_ : h is N) : Type
+| root of (root : P h.root)
+| l    of (l : Exists h.l)
+| r    of (r : Exists h.r)
+
+// Old, boring syntax.
+codata Forall
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
+| E : Forall E
+| N : (#h : BHeap R) -> h is N -> P h.root -> Forall h.l -> Forall h.r -> Forall h
+
+// More regular syntax.
+codata Forall
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
+| E : (#h : BHeap R) -> h is E -> Forall h
+| N : (#h : BHeap R) -> h is N -> P h.root -> Forall h.l -> Forall h.r -> Forall h
+
+// Intermediate, more record-y syntax.
+codata Forall
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
+| E of (_ : h is E)
+| N of (_ : h is N, root : P h.root, l : Forall h.l, r : Forall h.r)
+
+// Best syntax.
+codata Forall
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
+| E of
+  & _ of h is E
+| N of
+  & _    of h is N
+  & root of P h.root
+  & l    of Forall h.l
+  & r    of Forall h.r
+
+// Old, boring syntax.
+codata Sim : (h1 h2 : BHeap R) -> Type
+| Es : Sim E E
+| Ns : #(h1 h2 : BHeap R) -> h1 is N -> h2 is N ->
+        h1.root = h2.root -> Sim h1.l h2.l -> Sim h1.r h2.r -> Sim h1 h2
+
+// Intermediate, more record-y syntax.
+codata Sim (h1 h2 : BHeap R) : Type
+| Es of (_ : h1 is E, _ : h2 is E)
+| Ns of (_ : h1 is N, _ : h2 is N,
+        roots : h1.root = h2.root, ls : Sim h1.l h2.l, rs : Sim h1.r h2.r)
+
+// Best syntax!
+codata Sim (h1 h2 : BHeap R) : Type
+| Es of
+  & _ of h1 is E
+  & _ of h2 is E
+| Ns of
+  & _     of h1 is N
+  & _     of h2 is N
+  & roots of h1.root = h2.root
+  & ls    of Sim h1.l h2.l
+  & rs    of Sim h1.r h2.r
+
+// Definitions of functions - this is where coinduction-coinduction happens.
+
+nats : (n : Nat) -> BHeap (<=) := N
+& root       => n
+& l    & r   => nats (s n)
+& okl  & okr => nats-ok n
+
+and
+
+nats-ok : (n : Nat) -> OK (<=) n (nats (s n)) := OK-N
+& okl => nats-ok (s n)
+& okr => nats-ok (s n)
+& p   => le-s-r n : n <= s n
+
+map
+  #(A B : Type) (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B) (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (h : BHeap R) -> BHeap S
+| E => E
+| N => N
+  & root => f h.root
+  & l    => map h.l
+  & r    => map h.r
+  & okl  => map-ok h.root h.l h.okl
+  & okr  => map-ok h.root h.r
+
+and
+
+map-ok
+  #(A B : Type) (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B) (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (#v : A, #h : BHeap R, ok : OK v h) -> OK (f v) (map h)
+| OK-E => OK-E
+| OK-N => OK-N
+  & okl => map-ok ok.okl
+  & okr => map-ok ok.okr
+  & p   => pres ok.p
+
+zipWith
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  : (ha : BHeap RA, hb : BHeap RB) -> BHeap RC
+| E, _ => E
+| _, E => E
+| N, N => N
+  & root => f ha.root hb.root
+  & l    => zipWith ha.l hb.l
+  & r    => zipWith ha.r hb.r
+  & okl  => zipWith-ok ha.okl hb.okl
+  & okr  => zipWith-ok ha.okr hb.okr
+
+and
+
+zipWith-ok
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  : #(va : A, vb : B, ha : BHeap RA, hb : BHeap RB)
+    (oka : OK va ha) (okb : vb hb) -> OK (f va vb) (zipWith ha hb)
+| OK-E, _    => OK-E
+| _   , OK-E => OK-E
+| OK-N, OK-N => OK-N
+  & okl => zipWith-ok oka.okl okb.okl
+  & okr => zipWith-ok oka.okr okb.okr
+  & p   => pres oka.p okb.p
+
+mirror : (h : BHeap R) -> BHeap R
+| E => E
+| N => N
+  & root => h.root
+  & l    => mirror h.r
+  & r    => mirror h.l
+  & okl  => mirror-ok h.okr
+  & okr  => mirror-ok h.okl
+
+and
+
+mirror-ok : #(v : A, h : BHeap R) -> (ok : OK v h) -> OK v (mirror h)
+| OK-E => OK-E
+| OK-N => OK-N
+  & okl => mirror-ok ok.okr
+  & okr => mirror-ok ok.okl
+  & p   => ok.p
+
+repeat (x : A) (refl : #(x : A) -> R x x) : BHeap R := N
+& root       => x
+& l    & r   => repeat
+& okl  & okr => repeat-ok
+
+and
+
+repeat-ok (x : A) (refl : #(x : A) -> R x x) : OK x repeat := OK-N
+& okl & okr => repeat-ok
+& p         => refl
