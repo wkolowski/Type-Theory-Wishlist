@@ -15,7 +15,7 @@ codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
 
 // If we inline the definition of `OK` in `BHeap`, we get a much simpler syntax
 // (if you don't believe me, check the file PositiveBHeap.ttw where this kind
-// of syntax sugar can't be made to work).
+// of syntax sugar can't be applied).
 codata BHeap (R : A -> A -> Prop) : Type
 constructor N
 & root of A
@@ -39,8 +39,8 @@ map
 & root => f h.root
 & l    => map h.l
 & r    => map h.r
-& okl  => pres h.root h.l.root h.okl
-& okr  => pres h.root h.r.root h.okr
+& okl  => pres h.okl
+& okr  => pres h.okr
 
 zipWith
   #(A B C : Type)

@@ -9,17 +9,16 @@ codata BHeap (R : A -> A -> Prop) : Type
 and
 
 codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
-| OK-E : #(root : A) -> OK v E
-| OK-N : #(root x : A) #(l r : BHeap) (okl : OK x l) (okr : OK x r) (p : R v x)
-            -> OK v (N x l r okl okr)
+| OK-E : #(root : A) -> OK root E
+| OK-N : #(root x : A) #(l r : BHeap) (okl : OK x l) (okr : OK x r) (p : R root x)
+            -> OK root (N x l r okl okr)
 
-// Note: `is` is a syntax sugar for pattern matching
-// that checks for only a single constructor. For example, when used together
-// with `if`, like in `if h is E then x else y`, it means
-// `match h with | E => x | _ => y end`.
+// Note: `is` is a syntax sugar for pattern matching that checks for only a
+// single constructor. For example, when used together with `if`, like in
+// `if h is E then x else y`, it means `match h with | E => x | _ => y end`.
 // When used alone, it is a `Bool`ean, i.e. `h is E : Bool`. It is true when
 // `h` was made with the `E` constructor and false otherwise.
-// Note that `Bool`eans are automatically coerced to propositions.
+//Note that `Bool`eans are automatically coerced to propositions.
 
 // Intermediate, more record-y syntax.
 codata BHeap (R : A -> A -> Prop) : Type
@@ -32,7 +31,7 @@ codata OK (R : A -> A -> Prop) (v : A) (h : BHeap) : Prop
 | OK-E of (_ : h is E)
 | OK-N of (_ : h is N, p : R v h.root)
 
-// Best syntax! If we can mix definitions by pattern and copatterns, then
+// Best syntax! If we can mix definitions by patterns and copatterns, then
 // why not mix definitions of inductives and records?
 codata BHeap (R : A -> A -> Prop) : Type
 | E
@@ -78,6 +77,15 @@ data Exists
 | root of (root : P h.root)
 | l    of (l : Exists h.l)
 | r    of (r : Exists h.r)
+
+// Best^3 syntax - if a constructor has only one argument, we don't need to
+// wrap it in a record, and the field automatically gets the same name as the
+// constructor.
+data Exists
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R, #_ : h is N) : Type
+| root of P h.root
+| l    of Exists h.l
+| r    of Exists h.r
 
 // Old, boring syntax.
 codata Forall

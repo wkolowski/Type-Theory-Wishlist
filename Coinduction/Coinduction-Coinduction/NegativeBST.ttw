@@ -17,10 +17,49 @@ and
 codata OKR (R : A -> A -> Prop) : A -> BST -> Prop
 & ok : (#v : A, #t : BST) -> OKR v t -> R t.root v -> Empty
 
+// A more compact definition.
 codata BST (R : A -> A -> Prop) : Type
 constructor N
 & root of A
 & l    of BST
 & r    of BST
 & okl  of R l.root root
-& okr  of R l.root root -> Empty
+& okr  of R r.root root -> Empty
+
+// Some functions.
+
+map
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  (reflect : #(x y : A) -> S (f x) (f y) -> R x y)
+  : (h : BST R) -> BST S
+& root => f h.root
+& l    => map h.l
+& r    => map h.r
+& okl  => pres h.okl
+& okr  => fun x : S (f h.r.root) (f h.root) => h.okr (reflect x)
+
+zipWith
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  (reflect-l : #(a1 a2 : A, b1 b2 : B) ->
+            RC (f a1 b1) (f a2 b2) -> RA a1 a2)
+  : (ha : BST RA, hb : BST RB) -> BST RC
+& root => f ha.root hb.root
+& l    => zipWith ha.l hb.r
+& r    => zipWith ha.r hb.r
+& okl  => pres ha.okl hb.okl
+& okr  => fun x : S (f ha.r.root hb.r.root) (f ha.root hb.root) => reflect-l x |> ha.okr
+
+// TODO
+mirror : (h : BST R) -> BST (fun x y => R y x) := ?todo
+
+// No predicates and relations - in fact, we can reuse the ones
+// for ordinary binary trees.

@@ -1,0 +1,172 @@
+// Old, boring syntax.
+codata BST (R : A -> A -> Prop) : Type
+| E
+| N of (root : A, l r : BST, okl : OKL root l, okr : OKR root r)
+
+and
+
+codata OKL (R : A -> A -> Prop) : A -> BST -> Prop
+| OKL-E : #(root : A) -> OKL root E
+| OKL-N : #(root x : A) #(l r : BST) (okl : OKL x l) (okr : OKR x r) (p : R x root)
+            -> OKL root (N x l r okl okr)
+
+and
+
+codata OKR (R : A -> A -> Prop) : A -> BST -> Prop
+| OKR-E : #(root : A) -> OK root E
+| OKR-N : #(root x : A) #(l r : BST) (okl : OKL x l) (okr : OKR x r) (p : R x root -> Empty)
+            -> OKR root (N x l r okl okr)
+
+// Intermediate syntax with `is`.
+codata BST (R : A -> A -> Prop) : Type
+| E
+| N of (root : A, l r : BST, okl : OKL root l, okr : OKR root r)
+
+and
+
+codata OKL (R : A -> A -> Prop, root : A, h : BST) : Prop
+| OKL-E of (_ : h is E)
+| OKL-N of (_ : h is N, p : R h.root root)
+
+and
+
+codata OKR (R : A -> A -> Prop, root : A, h : BST) : Prop
+| OKR-E of (_ : h is E)
+| OKR-N of (_ : h is N, p : R root h.root -> Empty)
+
+// Best syntax!
+codata BST (R : A -> A -> Prop) : Type
+| E
+| N of
+  & root of A
+  & l r  of BST
+  & okl  of OKL root l
+  & okr  of OKR root r
+
+and
+
+codata OKL (R : A -> A -> Prop, root : A, h : BST) : Prop
+| OKL-E of h is E
+| OKL-N of
+  & _ of h is N
+  & p of R h.root root
+
+and
+
+codata OKR (R : A -> A -> Prop, root : A, h : BST) : Prop
+| OKR-E of h is E
+| OKR-N of
+  & _ of h is N
+  & p : R root h.root -> Empty
+
+// Even better - we can replace fields with underscore name, like
+// `_ of h is N`, with unnamed fields.
+codata BST (R : A -> A -> Prop) : Type
+| E
+| N of
+  & root of A
+  & l r  of BST
+  & okl  of OKL root l
+  & okr  of OKR root r
+
+and
+
+codata OKL (R : A -> A -> Prop, root : A, h : BST) : Prop
+| OKL-E of h is E
+| OKL-N of
+  & h is N
+  & p of R h.root root
+
+and
+
+codata OKR (R : A -> A -> Prop, root : A, h : BST) : Prop
+| OKR-E of h is E
+| OKR-N of
+  & h is N
+  & p : R root h.root -> Empty
+
+
+
+
+
+
+// Best syntax.
+codata Forall
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BST R) : Type
+| E of
+  & _ of h is E
+| N of
+  & _    of h is N
+  & root of P h.root
+  & l    of Forall h.l
+  & r    of Forall h.r
+
+// Definitions of functions - this is where coinduction-coinduction happens.
+
+map
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  (reflect : #(x y : A) -> S (f x) (f y) -> R x y)
+  : (h : BST R) -> BST S
+| E => E
+| N => N
+  & root => f h.root
+  & l    => map h.l
+  & r    => map h.r
+  & okl  => 
+  & okr  => 
+
+and
+
+// TODO
+map-okl
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  (reflect : #(x y : A) -> S (f x) (f y) -> R x y)
+  : (#v : A, #h : BST R, ok : OK v h) -> OK (f v) (map h)
+| OK-E => OK-E
+| OK-N => OK-N
+  & okl => ?todo
+  & okr => ?todo
+  & p   => ?todo
+
+zipWith
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  : (ha : BST RA, hb : BST RB) -> BST RC
+| E, _ => E
+| _, E => E
+| N, N => N
+  & root => f ha.root hb.root
+  & l    => zipWith ha.l hb.l
+  & r    => zipWith ha.r hb.r
+  & okl  => ?todo
+  & okr  => ?todo
+
+and
+
+zipWith-ok
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  : #(va : A, vb : B, ha : BST RA, hb : BST RB)
+    (oka : OK va ha) (okb : vb hb) -> OK (f va vb) (zipWith ha hb)
+| OK-E, _    => OK-E
+| _   , OK-E => OK-E
+| OK-N, OK-N => OK-N
+  & okl => ?todo
+  & okr => ?todo
+  & p   => ?todo

@@ -1,0 +1,44 @@
+// Deduplicated streams
+
+codata Stream (A : Type) : Type
+& hd    : A
+& tl    : Stream
+& dedup : NotElem hd tl
+
+and
+
+codata NotElem (#A : Type) (h : A) : Stream -> Type
+& hd : NotElem h s -> h = s.hd -> Empty
+& tl : NotElem h s -> NotElem h s.tl
+
+// Deduplicated streams v2
+
+codata Stream (A : Type) : Type
+& hd    of A
+& tl    of Stream
+& dedup of NotElem hd tl
+
+and
+
+codata NotElem (#A : Type) (h : A) (s : Stream) : Type
+& hd of h = s.hd -> Empty
+& tl of NotElem h s.tl
+
+// Duplicated streams
+
+codata Stream (A : Type) : Type
+& hd  of A
+& tl  of Stream
+& dup of Elem hd tl
+
+and
+
+data Elem (#A : Type) (h : A) : Stream -> Type
+| z : (#s : Stream) -> h = s.hd -> Elem h s
+| s : (#s : Stream) -> Elem h s.tl -> Elem h s
+
+// Shorter definition of Elem.
+codata Elem (#A : Type) (h : A) (s : Stream) : Type
+| z of h = s.hd
+| s of Elem h s.tl
+
