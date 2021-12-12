@@ -1,0 +1,17 @@
+codata Sum (A B : Type) : Type
+& b of Bool
+& snd of if b then A else B
+
+codata Sum (A B : Type) : Type
+& b of Bool
+& snd with b
+  | tt => A
+  | ff => B
+
+inl #(A B : Type) (a : A) : Sum A B
+& b   => tt
+& snd => a
+
+inr #(A B : Type) (b : B) : Sum A B
+& b   => ff
+& snd => b

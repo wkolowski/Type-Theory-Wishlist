@@ -1,0 +1,22 @@
+codata BST (R : A -> A -> Prop) : Type
+| E
+| N of
+  & root of A
+  & l r  of BST
+  & okl  of l is N -> R t.root root
+  & okr  of r is N -> R t.root root -> Empty
+
+map
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  (reflect : #(x y : A) -> S (f x) (f y) -> R x y)
+  : (t : BST R) -> BST S
+| E => E
+| N => N
+  & root => f t.root
+  & l    => map t.l
+  & r    => map t.r
+  & okl  => fun x : map t.l is N => pres (t.okl x)
+  & okr  => map-okr t.okr

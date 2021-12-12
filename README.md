@@ -42,8 +42,8 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Mutual Coinductive Types](#mutual-coinductive-types)
     1. [Coinductive Families](#coinductive-families)
     1. [Nested Coinductive Families](#nested-coinductive-families)
-    1. [Coinduction-Recursion (TODO)](#coinduction-recursion)
     1. [Coinduction-Coinduction (TODO)](#coinduction-coinduction)
+    1. [Coinduction-Corecursion (TODO)](#coinduction-corecursion)
 1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
     1. [Coinduction-Induction](#coinduction-induction)
     1. [Types with inductive and coinductive components (TODO)](#inductive-coinductive-components)
@@ -3476,7 +3476,7 @@ Papers:
 TODO:
 - Polish the writing.
 - Search for more papers.
-- Figure out the final notation: `of` as a short-hand when defining inductive and coinductive and the colon `:` when defining families?
+- Figure out the final notation: `of` as a short-hand when defining inductive and coinductive types and the colon `:` when defining families?
 
 ### Nested Coinductive Families <a id="nested-coinductive-families"></a> [↩](#toc)
 
@@ -3587,57 +3587,6 @@ TODO:
 - Decide if the last piece of syntax sugar should be included.
 - Change syntax of basic (co)inductives to use `of`.
 
-### Coinduction-Recursion <a id="coinduction-recursion"></a> [↩](#toc)
-
-Let's try to use induction-recursion syntax together with the `codata` keyword and see what happens. For exploration purposes, we will try to define a type of infinite binary heaps.
-
-```
-codata BHeap (R : A -> A -> Prop) : Type
-| E
-| N (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
-
-and
-
-OK #(R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop
-| E => Unit
-| N => R v h.v
-```
-
-Aaaaand that's it. The definition looks pretty correct - it's copy-pasted from the earlier inductive-recursive definition of binary heaps, so it probably represents some kind of binary heaps. The only difference is the use of the `codata` keyword. Let's see how to desugar this.
-
-```
-data BHeapX (X : Type) (R : A -> A -> Prop) : Type
-| E
-| N (v : A, l r : X, okl : OKX v l, okr : OKX v r)
-
-and
-
-OKX (#X : Type, #R : A -> A -> Prop, v : A) : (h : BHeapX X R) -> Prop
-| E => Unit
-| N => R v h.v
-
-codata BHeap (R : A -> A -> Type) : Type
-& Out : BHeapX (BHeap R) R
-
-OK #(R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop :=
-  OKX v h.Out
-```
-
-The desugaring is pretty self-explanatory. We define `BHeapX` and `OKX` by induction-recursion and then tie the knot by defining `BHeap` coinductively as the fixpoint of `BHeap` and `OK` as a wrapper around `OKX`.
-
-The limits of positive coinduction-recursion seem to be pretty clear: we can mutually define dependent types coinductively and **non-recursive** functions by pattern matching. Recursive functions, however, are not allowed, because the inductive part of our desugaring is non-recursive, i.e. it is only one layer deep. Therefore, recursion is illegal in this case. This shouldn't be surprising - after all, defining recursive function by pattern matching on a coinductive argument is very illegal.
-
-To sum up: there's no coinduction-recursion, but we can mutually define types coinductively and functions by pattern matching.
-
-Papers:
-- [Wander types: A formalization of coinduction-recursion](https://www.nii.ac.jp/pi/n10/10_47.pdf)
-
-**Status: very speculative.**
-
-TODO:
-- Search for papers.
-- Find a good example of coinduction-corecursion.
-
 ### Coinduction-Coinduction <a id="coinduction-coinduction"></a> [↩](#toc)
 
 In one of the previous sections we have seen induction-induction, which is a mechanism for mutually defining an inductive type and an inductive family indexed by this type. What about "coinduction-coinduction" or something like that, which would be the dual thing in the world of coinduction? Is it possible?
@@ -3695,6 +3644,57 @@ Papers:
 TODO:
 - Search for papers.
 - Find a good example of coinduction-coinduction.
+
+### Coinduction-Corecursion <a id="coinduction-corecursion"></a> [↩](#toc)
+
+Let's try to use induction-recursion syntax together with the `codata` keyword and see what happens. For exploration purposes, we will try to define a type of infinite binary heaps.
+
+```
+codata BHeap (R : A -> A -> Prop) : Type
+| E
+| N (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
+
+and
+
+OK #(R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop
+| E => Unit
+| N => R v h.v
+```
+
+Aaaaand that's it. The definition looks pretty correct - it's copy-pasted from the earlier inductive-recursive definition of binary heaps, so it probably represents some kind of binary heaps. The only difference is the use of the `codata` keyword. Let's see how to desugar this.
+
+```
+data BHeapX (X : Type) (R : A -> A -> Prop) : Type
+| E
+| N (v : A, l r : X, okl : OKX v l, okr : OKX v r)
+
+and
+
+OKX (#X : Type, #R : A -> A -> Prop, v : A) : (h : BHeapX X R) -> Prop
+| E => Unit
+| N => R v h.v
+
+codata BHeap (R : A -> A -> Type) : Type
+& Out : BHeapX (BHeap R) R
+
+OK #(R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop :=
+  OKX v h.Out
+```
+
+The desugaring is pretty self-explanatory. We define `BHeapX` and `OKX` by induction-recursion and then tie the knot by defining `BHeap` coinductively as the fixpoint of `BHeap` and `OK` as a wrapper around `OKX`.
+
+The limits of positive coinduction-recursion seem to be pretty clear: we can mutually define dependent types coinductively and **non-recursive** functions by pattern matching. Recursive functions, however, are not allowed, because the inductive part of our desugaring is non-recursive, i.e. it is only one layer deep. Therefore, recursion is illegal in this case. This shouldn't be surprising - after all, defining recursive function by pattern matching on a coinductive argument is very illegal.
+
+To sum up: there's no coinduction-recursion, but we can mutually define types coinductively and functions by pattern matching.
+
+Papers:
+- [Wander types: A formalization of coinduction-recursion](https://www.nii.ac.jp/pi/n10/10_47.pdf)
+
+**Status: very speculative.**
+
+TODO:
+- Search for papers.
+- Find a good example of coinduction-corecursion.
 
 ## Mixed Inductive and Coinductive Types <a id="mixed-inductive-coinductive"></a> [↩](#toc)
 

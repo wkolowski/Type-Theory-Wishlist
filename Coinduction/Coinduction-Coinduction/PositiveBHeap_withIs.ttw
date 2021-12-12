@@ -1,0 +1,93 @@
+codata BHeap (R : A -> A -> Prop) : Type
+| E
+| N of
+  & root of A
+  & l r  of BHeap
+  & okl  of l is N -> R root l.root
+  & okr  of r is N -> R root r.root
+
+// Axiom.
+le-s-r : (n : Nat) -> n <= s n
+
+nats : (n : Nat) -> BHeap (<=) := N
+& root => n
+& l    => nats (s n)
+& r    => nats (s n)
+& okl  => fun _ : l is N => le-s-r n
+& okr  => fun _ : r is N => le-s-r n
+
+map
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (h : BHeap R) -> BHeap S
+| E => E
+| N => N
+  & root => f h.root
+  & l    => map h.l
+  & r    => map h.r
+  & okl  => fun _ => pres h.okl
+  & okr  => fun _ => pres h.okr
+
+zipWith
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  : (ha : BHeap RA, hb : BHeap RB) -> BHeap RC
+| E, _ => E
+| _, E => E
+| N, N => N
+  & root => f ha.root hb.root
+  & l    => zipWith ha.l hb.l
+  & r    => zipWith ha.r hb.r
+  & okl with ha.l, hb.l
+    | E, _ => fun e : zipWith ha.l hb.l is N => abort e // `ha.l => E`, so `zipWith ha.l hb.l => E` because of the first clause
+    | _, E => fun e : zipWith ha.l hb.l is N => abort e
+    | N, N => fun _ : zipWith ha.l hb.l is N => pres (ha.okl (_ : ha.l is N)) (hb.okl (_ : hb.l is N))
+  & okr with ha.r, hb.r
+    | E, _ => fun e : zipWith ha.r hb.r is N => abort e
+    | _, E => fun e : zipWith ha.r hb.r is N => abort e
+    | N, N => fun _ : zipWith ha.r hb.r is N => pres (ha.okr _) (hb.okr _)
+
+zipWith
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  : (ha : BHeap RA, hb : BHeap RB) -> BHeap RC
+| E, _ => E
+| _, E => E
+| N, N => N
+  & root => f ha.root hb.root
+  & l    => zipWith ha.l hb.l
+  & r    => zipWith ha.r hb.r
+  & okl with ha.l, hb.l
+    | E, _
+    | _, E => abort
+    | N, N => fun _ => pres (ha.okl _) (hb.okl _)
+  & okr with ha.r, hb.r
+    | E, _
+    | _, E => abort
+    | N, N => fun _ => pres (ha.okr _) (hb.okr _)
+
+mirror : (h : BHeap R) -> BHeap R
+| E => E
+| N => N
+  & root => h.root
+  & l    => mirror h.r
+  & r    => mirror h.l
+  & okl  => h.okr
+  & okr  => h.okl
+
+repeat (x : A) (refl : (x : A) -> R x x) : BHeap R := N
+& root       => x
+& l    & r   => repeat
+& okl  & okr => refl x
