@@ -24,13 +24,17 @@ constructor N
 & okl  of R root l.root
 & okr  of R root r.root
 
-// Some functions - this is where coinduction-coinduction happens.
+// Some functions - this is where coinduction-coinduction happens,
+// although you can't see it because of the above syntax sugar.
+
+// Axiom.
+le-s-r : (n : Nat) -> n <= s n
 
 nats : (n : Nat) -> BHeap (<=)
 & root  => n
 & l & r => nats (s n)
-& okl   => le-s-r n : n <= s n
-& okr   => le-s-r n : n <= s n
+& okl   => le-s-r n
+& okr   => le-s-r n
 
 map
   #(A B : Type) (R : A -> A -> Prop) (S : B -> B -> Prop)
@@ -68,35 +72,3 @@ repeat (x : A) (refl : #(x : A) -> R x x) : BHeap R
 & root       => x
 & l    & r   => repeat
 & okl  & okr => refl
-
-// Some predicates and relations - they don't have much to do with
-// coinduction-coinduction, so you can skip them.
-
-data Exists
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
-| root of (root : P h.root)
-| l    of (l : Exists h.l)
-| r    of (r : Exists h.r)
-
-codata Forall
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
-& root of P h.root
-& l    of Forall h.l
-& r    of Forall h.r
-
-codata Sim : (h1 h2 : BHeap R) -> Type
-& roots of h1.root = h2.root
-& ls    of Sim h1.l h2.l
-& rs    of Sim h1.r h2.r
-// & okls  of h1.okl = h2.okl
-// & okrs  of h1.okr = h2.okr
-  // Not well-typed (unless `=` is heterogenous),
-  // but also not needed, because `R`'s codomain is `Prop`.
-
-Sim-eq : (s : Sim h1 h2) -> h1 = h2 :=
-  path i =>
-    & root => s.roots i
-    & l    => Sim-eq s.ls i
-    & r    => Sim-eq s.rs i
-    & okl  => ? // h1.okl : R h1.root h1.l.root, TODO
-                // h2.okl : R h2.root h2.l.root, TODO

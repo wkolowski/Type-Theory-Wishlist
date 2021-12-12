@@ -32,7 +32,7 @@ and
 
 codata OKR (R : A -> A -> Prop, root : A, h : BST) : Prop
 | OKR-E of (_ : h is E)
-| OKR-N of (_ : h is N, p : R root h.root -> Empty)
+| OKR-N of (_ : h is N, p : R h.root root -> Empty)
 
 // Best syntax!
 codata BST (R : A -> A -> Prop) : Type
@@ -57,10 +57,10 @@ codata OKR (R : A -> A -> Prop, root : A, h : BST) : Prop
 | OKR-E of h is E
 | OKR-N of
   & _ of h is N
-  & p : R root h.root -> Empty
+  & p of R h.root root -> Empty
 
-// Even better - we can replace fields with underscore name, like
-// `_ of h is N`, with unnamed fields.
+// Even better - we can replace fields named `_`, like `_ of h is N`,
+// with unnamed fields.
 codata BST (R : A -> A -> Prop) : Type
 | E
 | N of
@@ -83,23 +83,7 @@ codata OKR (R : A -> A -> Prop, root : A, h : BST) : Prop
 | OKR-E of h is E
 | OKR-N of
   & h is N
-  & p : R root h.root -> Empty
-
-
-
-
-
-
-// Best syntax.
-codata Forall
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BST R) : Type
-| E of
-  & _ of h is E
-| N of
-  & _    of h is N
-  & root of P h.root
-  & l    of Forall h.l
-  & r    of Forall h.r
+  & p of R h.root root -> Empty
 
 // Definitions of functions - this is where coinduction-coinduction happens.
 
@@ -115,58 +99,71 @@ map
   & root => f h.root
   & l    => map h.l
   & r    => map h.r
-  & okl  => 
-  & okr  => 
+  & okl  => map-okl h.okl
+  & okr  => map-okr h.okr
 
 and
 
-// TODO
 map-okl
   #(A B : Type)
   (R : A -> A -> Prop) (S : B -> B -> Prop)
   (f : A -> B)
   (pres : #(x y : A) -> R x y -> S (f x) (f y))
   (reflect : #(x y : A) -> S (f x) (f y) -> R x y)
-  : (#v : A, #h : BST R, ok : OK v h) -> OK (f v) (map h)
+  : (#v : A, #h : BST R, okl : OKL v h) -> OKL (f v) (map h)
 | OK-E => OK-E
 | OK-N => OK-N
-  & okl => ?todo
-  & okr => ?todo
-  & p   => ?todo
-
-zipWith
-  #(A B C : Type)
-  (RA : A -> A -> Prop)
-  (RB : B -> B -> Prop)
-  (RC : C -> C -> Prop)
-  (f : A -> B -> C)
-  (pres : #(a1 a2 : A, b1 b2 : B) ->
-            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
-  : (ha : BST RA, hb : BST RB) -> BST RC
-| E, _ => E
-| _, E => E
-| N, N => N
-  & root => f ha.root hb.root
-  & l    => zipWith ha.l hb.l
-  & r    => zipWith ha.r hb.r
-  & okl  => ?todo
-  & okr  => ?todo
+  & okl => map-okl h.okl
+  & okr => map-okr h.okr
+  & p   => pres okl.p
 
 and
 
-zipWith-ok
-  #(A B C : Type)
-  (RA : A -> A -> Prop)
-  (RB : B -> B -> Prop)
-  (RC : C -> C -> Prop)
-  (f : A -> B -> C)
-  (pres : #(a1 a2 : A, b1 b2 : B) ->
-            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
-  : #(va : A, vb : B, ha : BST RA, hb : BST RB)
-    (oka : OK va ha) (okb : vb hb) -> OK (f va vb) (zipWith ha hb)
-| OK-E, _    => OK-E
-| _   , OK-E => OK-E
-| OK-N, OK-N => OK-N
-  & okl => ?todo
-  & okr => ?todo
-  & p   => ?todo
+map-okr
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  (reflect : #(x y : A) -> S (f x) (f y) -> R x y)
+  : (#v : A, #h : BST R, okr : OKR v h) -> OKR (f v) (map h)
+| OK-E => OK-E
+| OK-N => OK-N
+  & okl => map-okl h.okl
+  & okr => map-okr h.okr
+  & p   => fun x : S (f h.root) (f v) => reflect x |> okr.p
+
+// By using a `mutual` block, we saved 11 lines.
+// In general, the more functions we want to define, the bigger the savings.
+mutual
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  (reflect : #(x y : A) -> S (f x) (f y) -> R x y)
+  
+  map : (h : BST R) -> BST S
+  | E => E
+  | N => N
+    & root => f h.root
+    & l    => map h.l
+    & r    => map h.r
+    & okl  => map-okl h.okl
+    & okr  => map-okr h.okr
+
+  and
+
+  map-okl : (#v : A, #h : BST R, okl : OKL v h) -> OKL (f v) (map h)
+  | OK-E => OK-E
+  | OK-N => OK-N
+    & okl => map-okl h.okl
+    & okr => map-okr h.okr
+    & p   => pres okl.p
+
+  and
+
+  map-okr : (#v : A, #h : BST R, okr : OKR v h) -> OKR (f v) (map h)
+  | OK-E => OK-E
+  | OK-N => OK-N
+    & okl => map-okl h.okl
+    & okr => map-okr h.okr
+    & p   => fun x : S (f h.root) (f v) => reflect x |> okr.p
