@@ -108,6 +108,24 @@ mutual
     & h is N
     & p of R v h.root
 
+// Using uniform indices instead of non-uniform parameters.
+mutual
+  (R : A -> A -> Prop)
+
+  codata BHeap : Type
+  | E
+  | N of
+    & root of A
+    & l r  of BHeap
+    & okl  of OK root l
+    & okr  of OK root r
+
+  codata OK : (v : A) (h : BHeap) -> Prop
+  | OK-E of h is E
+  | OK-N of
+    & h is N
+    & p of R v h.root
+
 // Old, boring syntax.
 data Exists
   (#A : Type, P : A -> Type, #R : A -> A -> Prop) : BHeap R -> Type
@@ -139,6 +157,13 @@ data Exists
 // Best^3 syntax.
 data Exists
   (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R, #_ : h is N) : Type
+| root of P h.root
+| l    of Exists h.l
+| r    of Exists h.r
+
+// Using uniform indices instead of non-uniform parameters.
+data Exists
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R, #_ : h is N) -> Type
 | root of P h.root
 | l    of Exists h.l
 | r    of Exists h.r
@@ -193,6 +218,16 @@ codata Forall
   & l    of Forall h.l
   & r    of Forall h.r
 
+// Using uniform indices instead of non-uniform parameters.
+codata Forall
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
+| E of h is E
+| N of
+  & h is N
+  & root of P h.root
+  & l    of Forall h.l
+  & r    of Forall h.r
+
 // Old, boring syntax.
 codata Sim : (h1 h2 : BHeap R) -> Type
 | Es : Sim E E
@@ -219,6 +254,18 @@ codata Sim (h1 h2 : BHeap R) : Type
 
 // Best^2 syntax.
 codata Sim (h1 h2 : BHeap R) : Type
+| Es of
+  & h1 is E
+  & h2 is E
+| Ns of
+  & h1 is N
+  & h2 is N
+  & roots of h1.root = h2.root
+  & ls    of Sim h1.l h2.l
+  & rs    of Sim h1.r h2.r
+
+// Using uniform indices instead of non-uniform parameters.
+codata Sim : (h1 h2 : BHeap R) -> Type
 | Es of
   & h1 is E
   & h2 is E

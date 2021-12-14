@@ -115,6 +115,32 @@ mutual
     & h is N
     & p of R h.root root -> Empty
 
+// Using uniform indices instead of non-uniform parameters.
+mutual
+  #(A : Type) (R : A -> A -> Prop)
+
+  codata BST : Type
+  | E
+  | N of
+    & root of A
+    & l r  of BST
+    & okl  of OKL root l
+    & okr  of OKR root r
+
+  codata OKL : (root : A, h : BST) -> Prop
+  | OKL-E of
+    & h is E
+  | OKL-N of
+    & h is N
+    & p of R h.root root
+
+  codata OKR : (root : A, h : BST) -> Prop
+  | OKR-E of
+    & h is E
+  | OKR-N of
+    & h is N
+    & p of R h.root root -> Empty
+
 // Definitions of functions - this is where coinduction-coinduction happens.
 
 map

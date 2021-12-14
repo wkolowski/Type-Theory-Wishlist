@@ -1,18 +1,4 @@
-// Deduplicated streams
-
-codata Stream (A : Type) : Type
-& hd    : A
-& tl    : Stream
-& dedup : NotElem hd tl
-
-and
-
-codata NotElem (#A : Type) (h : A) : Stream -> Type
-& hd : NotElem h s -> h = s.hd -> Empty
-& tl : NotElem h s -> NotElem h s.tl
-
-// Deduplicated streams v2
-
+// Deduplicated streams, full syntax.
 codata Stream (A : Type) : Type
 & hd    of A
 & tl    of Stream
@@ -20,12 +6,35 @@ codata Stream (A : Type) : Type
 
 and
 
-codata NotElem (#A : Type) (h : A) (s : Stream) : Type
+codata NotElem (#A : Type) : (h : A, s : Stream) -> Type
+& hd : (h : A, s : Stream) -> NotElem h s -> h = s.hd -> Empty
+& tl : (h : A, s : Stream) -> NotElem h s -> NotElem h s.tl
+
+// Using non-uniform parameters.
+codata Stream (A : Type) : Type
+& hd    of A
+& tl    of Stream
+& dedup of NotElem hd tl
+
+and
+
+codata NotElem (#A : Type) (h : A, s : Stream) : Type
 & hd of h = s.hd -> Empty
 & tl of NotElem h s.tl
 
-// Duplicated streams
+// Using uniform indices instead of non-uniform parameters.
+codata Stream (A : Type) : Type
+& hd    of A
+& tl    of Stream
+& dedup of NotElem hd tl
 
+and
+
+codata NotElem (#A : Type) : (h : A, s : Stream) -> Type
+& hd of h = s.hd -> Empty
+& tl of NotElem h s.tl
+
+// Duplicated streams, full syntax.
 codata Stream (A : Type) : Type
 & hd  of A
 & tl  of Stream
@@ -33,12 +42,30 @@ codata Stream (A : Type) : Type
 
 and
 
-data Elem (#A : Type) (h : A) : Stream -> Type
-| z : (#s : Stream) -> h = s.hd -> Elem h s
-| s : (#s : Stream) -> Elem h s.tl -> Elem h s
+data Elem (#A : Type) : (h : A, s : Stream) -> Type
+| z : #(h : A, s : Stream) -> h = s.hd -> Elem h s
+| s : #(h : A, s : Stream) -> Elem h s.tl -> Elem h s
 
-// Shorter definition of Elem.
-codata Elem (#A : Type) (h : A) (s : Stream) : Type
+// Using non-uniform parameters.
+codata Stream (A : Type) : Type
+& hd  of A
+& tl  of Stream
+& dup of Elem hd tl
+
+and
+
+data Elem (#A : Type) (h : A, s : Stream) : Type
 | z of h = s.hd
 | s of Elem h s.tl
 
+// Using uniform indices instead of non-uniform parameters.
+codata Stream (A : Type) : Type
+& hd  of A
+& tl  of Stream
+& dup of Elem hd tl
+
+and
+
+data Elem (#A : Type) : (h : A, s : Stream) -> Type
+| z of h = s.hd
+| s of Elem h s.tl

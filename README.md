@@ -2436,6 +2436,31 @@ data Bush (A : Type) : Type
 
 As you can see, we no longer need to quantify the `A : Type` in each constructor and also we don't need to write `-> Complete A` (or `-> Lam A` or `-> Bush A`) to mark the codomain of each constructor. However, one serious drawback of this notation is that it breaks the separation of parameters and indices that we tried so hard to enforce. For this reason I'm still not sure whether this notation should be allowed.
 
+#### Non-uniform parameters, uniform indices...
+
+The above syntax sugar can be called **non-uniform parameters** (this is the standard name used in Haskell, Coq and Agda). However, it is fundamentally evil, because it breaks the important rule that **parameters don't change**. Therefore, we should avoid it and find a better syntax sugar.
+
+Instead, we propose a new syntax sugar called **uniform indices**. It is the good twin brother of the previous one: whenever the index of the codomain is the same in all constructors, we don't need to separately quantify it in every constructor. In case the codomain index is not a variable, but a more complex term, we don't need to separately quantify the free variables that appear in it.
+
+Let's see how the examples from above look like when translated to uniform indices.
+
+```
+data Complete : (A : Type) -> Type
+| E
+| N of (v : A, ts : Complete (A * A))
+
+data Lam : (A : Type) -> Type
+| Var of (n : Nat)
+| App of (l r : Lam A)
+| Abs of (body : Lam (Option A))
+
+data Bush : (A : Type) -> Type
+| E
+| N of (h : A, t : Bush (Bush A))
+```
+
+They look almost the same, the only exception being that the `(A : Type)` was moved to the right of the semicolon. In the end, we don't lose anything and we gain peace of mind stemming from the fact that our distinction between parameters and indices is upheld.
+
 Papers:
 - [Deep Induction: Induction Rules for (Truly) Nested Types](https://cs.appstate.edu/~johannp/20-fossacs.pdf)
 - [An induction principle for nested datatypes in intensional type theory](https://www.irit.fr/~Ralph.Matthes/papers/MatthesInductionNestedJFPCUP.pdf)
@@ -3575,6 +3600,32 @@ codata CoBush (A : Type) : Type
 ```
 
 As you can see, we no longer need to quantify the `A : Type` in each constructor and also we don't need to write the domains/codomains of the fields/constructors, respectively.
+
+#### Non-uniform parameters, uniform indices...
+
+As was the case for inductive types, we don't actually like the above "non-uniform parameters" syntax sugar and want to replace it with "uniform indices". The analogous syntax sugar for coinductive types works as follows: if all indices in the domains of destructors are the same, then we don't need to separately quantify them in each destructor. If the indices are terms, we don't need to quantify the free variables that appear in them.
+
+Let's see how the examples from above look like when translated to uniform indices.
+
+```
+codata Complete : (A : Type) -> Type
+| E
+| N of (v : A, ts : Complete (A * A))
+
+codata Complete' : (A : Type) -> Type
+& v  of A
+& ts of Complete' (A * A)
+
+codata Obama : (A : Type) -> Type
+& hd of A
+& tl of Obama (Obama A)
+
+codata CoBush : (A : Type) -> Type
+| Nil
+| Cons of (hd : A, tl : CoBush (CoBush A))
+```
+
+Just as for inductive types, these types defined using uniform indices look almost the same as the ones defined using non-uniform parameters, save for the `(A : Type)` that moved to the right of the semicolon.
 
 Papers:
 - None
