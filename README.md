@@ -1574,7 +1574,7 @@ We should name the argument of each constructor, as this will be used for automa
 
 ```
 data _*_ (A B : Type) : Type
-| pair (outl : A, outr : B)
+| pair of (outl : A, outr : B)
 ```
 
 This doesn't affect the ordinary way of doing pattern matching that binds names.
@@ -1591,7 +1591,7 @@ swap : (x : A * B) -> B * A
 | pair => pair x.outr x.outl
 ```
 
-Things are even more comfortable: because records get opened/unpacked automatically, we don't need to name the function argument, as we may simply use the name `outl` and `outr`.
+Things are even more comfortable: because records get opened/unpacked automatically, we don't need to name the function argument, as we may simply use the name `outl` and `outr` (but we won't use this feature too much in the following sections).
 
 ```
 swap : A * B -> B * A
@@ -1610,7 +1610,7 @@ As usual, the inductive type being defined can appear as argument to any of the 
 ```
 data Nat : Type
 | z
-| s (pred : Nat)
+| s of (pred : Nat)
 ```
 
 More complicated nested patterns that don't follow the type's structure are perfectly fine.
@@ -1637,7 +1637,7 @@ In the definition of the type of `List`s below, this manifests in that we write 
 ```
 data List (A : Type) : Type
 | []
-| _::_ (hd : A) (tl : List)
+| _::_ of (hd : A, tl : List)
 ```
 
 This distinction applies both to inductive and recursive definitions. It looks a bit weird at first, as that's not what people are used to, but hey, you are going to appreciate it when the definitions get more complicated!
@@ -1700,16 +1700,16 @@ TODO:
 Names of inductive type constructors do NOT need to be globally unique, unlike in many other languages.
 
 ```
-data TrafficLight
+data TrafficLight : Type
 | Red
 | Orange
 | Green
 
-data Color
+data Color : Type
 | Red
 | Green
 | Blue
-| RGBA (r : u8, g : u8, b : u8, a : u8)
+| RGBA of (r : u8, g : u8, b : u8, a : u8)
 ```
 
 Both of the above types have constructors named `Red` and `Green`, but there is no confusion between them. For example, if we apply a function `canDrive : TrafficLight -> Bool` to `Red`, i.e. `canDrive Red`, then `Red` is interpreted as `Red : TrafficLight`. If a color is expected, e.g. in `isPretty Red` for `isPretty : Color -> Bool`, `Red` is interpreted as `Red : Color`.
@@ -1912,10 +1912,10 @@ Ordinary inductive types can refer to themselves in the constructors' arguments.
 ```
 data List' (A : Type) : Type
 | Empty
-| NonEmpty (ne : NonEmptyList)
+| NonEmpty of (ne : NonEmptyList)
 
 data NonEmptyList (A : Type) : Type
-| Cons (hd : A, tl : List')
+| Cons of (hd : A, tl : List')
 ```
 
 The above code defines by mutual induction two types - the first represents lists, the other non-empty lists. Values of type `List'` are either `Empty` or they are a `NonEmptyList` wrapped in the constructor `NonEmpty`, whereas `NonEmptyList`s are just a head and a tail (which is a `List'`), wrapped in the constructor `Cons`. Note that the distinction between parameters and indices is upheld - we don't need to write the type parameter `A` neither when referring to `List'` in the `Cons` constructor, nor when referring to `NonEmptyList` in the `NonEmpty` constructor.
@@ -1958,16 +1958,16 @@ Nested Inductive Types are inductive types `I` in which the inductive occurrence
 One of the most iconic examples of Nested Inductive Types is the type of rose trees, i.e. trees that have a `List` of subtrees.
 
 ```
-data RoseTree (A : Type)
+data RoseTree (A : Type) : Type
 | E
-| N (v : A, ts : List RoseTree)
+| N of (v : A, ts : List RoseTree)
 ```
 
 Functions out of such types can be defined as usual by pattern matching and recursion, with the nested recursion (i.e. on the `List` in case of `RoseTree`) being handled just fine.
 
 ```
 size : RoseTree A -> Nat
-| E => 0
+| E      => 0
 | N _ ts => 1 + sum (map size ts)
 ```
 
@@ -1977,8 +1977,8 @@ There are a few other ways to implement `size`.
 
 ```
 size : RoseTree A -> Nat
-| E => 0
-| N _ [] => 1
+| E             => 0
+| N _ []        => 1
 | N v (t :: ts) => size t + size (N v ts)
 ```
 
@@ -2021,13 +2021,13 @@ Yet another way to implement `size` (and one that is probably the most universal
 ```
 data RoseTree (A : Type) : Type
 | E
-| N (v : A, ts : RoseTreeList)
+| N of (v : A, ts : RoseTreeList)
 
 and
 
 data RoseTreeList (A : Type) : Type
 | Nil
-| Cons (h : RoseTree, t : RoseTreeList)
+| Cons of (h : RoseTree, t : RoseTreeList)
 ```
 
 Last but not least, the mutually recursive implementation of `size` and `size'` points to the commonly known fact that we can represent Nested Inductive Types using Mutual Inductive Types. In fact, this kind of translation is exactly one idea how to provide full support for Nested Inductive Types in practice.
@@ -2050,9 +2050,9 @@ The basic idea here is that in inductive type definitions constructors can patte
 ```
 data Z : Type
 | z
-| s (pred : Z)
+| s of (pred : Z)
   | p k => k
-| p (succ : Z)
+| p of (succ : Z)
   | s k => k
 ```
 
@@ -2088,19 +2088,19 @@ Higher Inductive Types are inductive types which can be defined using not only p
 
 ```
 data Set (A : Type) : Type
-| in (x : A)
+| in of (x : A)
 | id
-| union (x y : Set A)
+| union of (x y : Set A)
   | id, y  => y
   | x , id => x
   | union x y, z => union x (union y z)
-| comm (x y : Set A) with (i : I)
+| comm of (x y : Set A) with (i : I)
   | i0 => union x y
   | i1 => union y x
-| idem (x : Set A) with (i : I)
+| idem of (x : Set A) with (i : I)
   | i0 => union x x
   | i1 => x
-| isSet (x y : Set A) (p q : x = y) (i j : I) with i
+| isSet of (x y : Set A) (p q : x = y) (i j : I) with i
   | i0 => p j
   | i1 => q j
 ```
@@ -2188,9 +2188,9 @@ The basics of names and nominal function types are described [here](#names). In 
 
 ```
 data Term : Type
-| Var (x : Name Term)
-| App (l r : Term)
-| Lam (t : ∇ α : Term. Term)
+| Var of (x : Name Term)
+| App of (l r : Term)
+| Lam of (t : ∇ α : Term. Term)
 ```
 
 Representing lambda terms is easy enough. A term is either a variable which is just a name for a term wrapped in the constructor `Var`, an application of one term to another, represented with `App`, or a `Lam`bda abstraction, represented as a term that binds a name.
@@ -2478,9 +2478,9 @@ Induction-induction allows us to simultaneously define two or more types such th
 
 ```
 data Dense (R : A -> A -> Prop) : Type
-| in   (x   : A)
-| mid #(x y : Dense) (H : Dense-R R x y)
-| eq  #(x   : Dense) (H : Dense-R R x x) with (i : I)
+| in  of  (x   : A)
+| mid of #(x y : Dense) (H : Dense-R R x y)
+| eq  of #(x   : Dense) (H : Dense-R R x x) with (i : I)
   | i0 => mid x x H
   | i1 => in x
 
@@ -2499,7 +2499,7 @@ Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `D
 ```
 data BHeap (R : A -> A -> Prop) : Type
 | E
-| N (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
+| N of (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
 
 and
 
@@ -2536,11 +2536,11 @@ Induction-Recursion is an enhancement of inductive types which allows us to mutu
 data U : Type
 | 0
 | 1
-| + (u1 u2 : U)
-| * (u1 u2 : U)
-| → (u1 u2 : U)
-| pi (dom : U) (cod : El dom -> U)
-| eq (u : U) (x y : El u)
+| +  of (u1 u2 : U)
+| *  of (u1 u2 : U)
+| →  of (u1 u2 : U)
+| pi of (dom : U) (cod : El dom -> U)
+| eq of (u : U) (x y : El u)
 
 and El : (u : U) -> Type
 | 0        => Empty
@@ -2558,11 +2558,11 @@ This is a definition of a universe of codes `U`, which contains codes for the `E
 data U : Type
 | 0
 | 1
-| + (u1 u2 : U)
+| + of (u1 u2 : U)
   | 0, u => u
   | u, 0 => u
   | u1 + u2, u3 => u1 + (u2 + u3)
-| * (u1 u2 : U)
+| * of (u1 u2 : U)
   | 0, _ => 0
   | _, 0 => 0
   | 1, u => u
@@ -2570,19 +2570,19 @@ data U : Type
   | u1 * u2, u3 => u1 * (u2 * u3)
   | u1, u2 + u3 => (u1 * u2) + (u1 * u3)
   | u1 + u2, u3 => (u1 * u3) + (u2 * u3)
-| → (u1 u2 : U)
+| → of (u1 u2 : U)
   | _, 1 => 1
   | 0, _ => 1
   | 1, u => u
   | u1 * u2, u3 => u1 → (u2 → u3)
   | u1 + u2, u3 => (u1 → u3) * (u2 → u3)
   | u1, u2 * u3 => (u1 → u2) * (u1 → u3)
-| pi (dom : U) (cod : El dom -> U)
+| pi of (dom : U) (cod : El dom -> U)
   | 0, _ => 1
   | 1, _ => cod unit
   | u1 * u2, _ => pi u1 (fun x => pi u2 (fun y => cod (x, y)))
   | u1 + u2, _ => pi u1 (fun x => dom (inl x)) * pi u2 (fun y => dom (inr y))
-| eq (u : U) (x y : El u)
+| eq of (u : U) (x y : El u)
   | 0     , _       , _        => Unit
   | 1     , _       , _        => Unit
   | u + v , inl x'  , inl y'   => eq u x' y'
@@ -2607,9 +2607,11 @@ We can combine induction-recursion with Computational Inductive Types to get a m
 ```
 data BHeap (R : A -> A -> Prop) : Type
 | E
-| N (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
+| N of (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
 
-and OK (R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop
+and
+
+OK (R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop
 | E => Unit
 | N => R v h.v
 ```
@@ -2773,8 +2775,8 @@ Coinductive types are "negative", i.e. they are record-like types which are defi
 
 ```
 codata _*_ (A B : Type) : Type
-& l : A
-& r : B
+& l of A
+& r of B
 ```
 
 Functions whose codomain is coinductive are defined by copattern matching. The fields of a coinductive value can be accessed with the dot notation, just like for records.
@@ -2806,8 +2808,8 @@ Of course the coinductive type being defined can appear in types of fields, prov
 
 ```
 codata Stream (A : Type) : Type
-& hd : A
-& tl : Stream
+& hd of A
+& tl of Stream
 ```
 
 Corecursive definitions by copattern matching work essentially the same as those which are not corecursive. Note that, just like for recursive definitions, we must omit the parameters of the definition, which may look weird at first and requires some getting used to.
@@ -2958,7 +2960,7 @@ We have special syntax for coinductive types that have only a single field which
 ```
 codata CoList (A : Type) : Type
 | CoNil
-| CoCons (hd : A, tl : CoList)
+| CoCons of (hd : A, tl : CoList)
 ```
 
 The above is a definition of a type of colists, i.e. things which are like lists, but possibly infinite. In fact, it is a definition of a parameterized family of coinductive types. The type has two constructor, `CoNil` and `CoCons`, whose arguments are just like those for `List`s.
@@ -2968,10 +2970,10 @@ Note that the above is NOT an inductive type, despite using the `|` syntax of in
 ```
 data CoListX (X A : Type) : Type
 | CoNilX
-| CoConsX (hd : A, tl : X)
+| CoConsX of (hd : A, tl : X)
 
 codata CoList (A : Type) : Type
-& Out : CoListX CoList A
+& Out of CoListX CoList A
 
 CoNil : CoList A
 & Out => CoNilX
@@ -3035,9 +3037,9 @@ TODO:
 Note that names of fields do NOT need be globally unique, contrary to what is the case in many other languages.
 
 ```
-codata NonEmptyCoList (A : Type)
-& hd : A
-& tl : Option NonEmptyCoList
+codata NonEmptyCoList (A : Type) : Type
+& hd of A
+& tl of Option NonEmptyCoList
 ```
 
 The above type defines the type of non-empty colists. The fields are named `hd` and `tl`, just like the fields of `Stream`, but this does not produce much confusion. When accessing a field, like `s.hd`, it is clear from the type of `s` which `hd` is meant. This is the case also in many other situations. If `hd` is truly ambiguous, we can disambiguate by writing `Stream.hd` and `NonEmptyCoList.hd`, respectively. Just like for inductive types, each coinductive type has its own namespace, which is a record that contains the fields in function form (`Stream.hd : (#A : Type, s : Stream A) -> A`) and other useful autogenerated stuff.
@@ -3045,7 +3047,7 @@ The above type defines the type of non-empty colists. The fields are named `hd` 
 ```
 codata CoList (A : Type) : Type
 | Nil
-| Cons (hd : A, tl : CoList)
+| Cons of (hd : A, tl : CoList)
 ```
 
 The above code defines the type of colists again, but this time with constructor names changed to `Nil` and `Cons`. The constructor names are the same as for lists, but we don't need to worry about name conflicts, because positive coinductive types have their own namespaces too.
@@ -3076,7 +3078,7 @@ Last but not least, the bundled parameters syntax of course also works with posi
 ```
 codata CoNat : Type
 | z
-| s (pred : CoNat)
+| s of (pred : CoNat)
 
 len : CoList -> CoNat
 | Nil      => z
@@ -3097,8 +3099,8 @@ Just as inductive types can be nested, leading to higher-order recursion, so can
 
 ```
 codata StreamTree (A : Type) : Type
-& v  : A
-& ts : Stream StreamTree
+& v  of A
+& ts of Stream StreamTree
 ```
 
 Above we have an example of nested (negative) coinductive types. `StreamTree`, is a necessarily infinite tree that has a value `v : A` at its root and a `Stream` of subtrees. This type is nested, because `StreamTree` occurs as an argument to `Stream`.
@@ -3138,7 +3140,7 @@ Yet another way to define this function is to split it into two mutually corecur
 ```
 codata CoRoseTree (A : Type) : Type
 | Empty
-| Node (v : A, ts : CoList CoRoseTree)
+| Node of (v : A, ts : CoList CoRoseTree)
 ```
 
 `CoRoseTree`, shown above, is an example of a nested (positive) coinductive type. It is a coinductive version of `RoseTree` that we saw in the section on nested inductive types, but with a `CoList` of subtrees instead of a `List`. It is a nested type, because `CoRoseTree` occurs as an argument to `CoList`.
@@ -3193,14 +3195,14 @@ In the previous section we have seen that we can translate higher-order corecurs
 
 ```
 codata StreamTree (A : Type) : Type
-& v  : A
-& ts : StreamOfStreamTree
+& v  of A
+& ts of StreamOfStreamTree
 
 and
 
 codata StreamOfStreamTree (A : Type) : Type
-& hd : StreamTree
-& tl : StreamOfStreamTree
+& hd of StreamTree
+& tl of StreamOfStreamTree
 ```
 
 The above code shows how to mutually define the type of `StreamTree`s and `StreamOfStreamTree`, which is just `Stream` specialized to hold `StreamTree`s.
@@ -3222,13 +3224,13 @@ We can now define `stmap` and `smap` by mutual corecursion. The code is identica
 ```
 codata CoRoseTree (A : Type) : Type
 | Empty
-| Node (v : A, ts : CoListOfCoRoseTree)
+| Node of (v : A, ts : CoListOfCoRoseTree)
 
 and
 
 codata CoListOfCoRoseTree (A : Type) : Type
 | Nil
-| Cons (hd : CoRoseTree, tl : CoListOfCoRoseTree)
+| Cons of (hd : CoRoseTree, tl : CoListOfCoRoseTree)
 ```
 
 Similarly, we mutually define the type of `CoRoseTree`s together and `CoListOfCoRoseTree`, which is just `CoList` specialized to `CoRoseTree`.
@@ -3249,12 +3251,12 @@ The code for `crmap` and `clmap` again is exactly identical to what we have seen
 
 ```
 codata CoListTree (A : Type) : Type
-& v  : A
-& ts : CoListTree
+& v  of A
+& ts of CoListTree
 
 codata CoListOfCoListTree (A : Type) : Type
 | Nil
-| Cons (hd : CoListTree, tl : CoListOfCoListTree)
+| Cons of (hd : CoListTree, tl : CoListOfCoListTree)
 ```
 
 Mutual Coinductive Types need not both be negative or both be positive - they can also be mixed, i.e. some may be negative while others are positive. An example of such types is shown above. We define `CoListTree`, which is a necessarily infinite tree that has a value of type `A` at the root and a potentially infinite sequence of subtrees, which is represented as `CoListOfCoListTree`, the type of `CoList`s specialized to `CoListTree`. Both types are defined simultaneously.
@@ -3292,7 +3294,7 @@ Coinductive Families are the dual of Inductive Families. Syntactically, we need 
 ```
 codata Odd : CoNat -> Prop
 & Oz  : Odd z -> Empty
-& Oss : Odd (s (s n)) -> Odd n
+& Oss : (#n : Nat) -> Odd (s (s n)) -> Odd n
 ```
 
 The above example defines a predicate `Odd` on conatural numbers. `Odd` has two fields, `Oz` and `Oss`, but not all proofs of `Odd c` can access these fields. The type of `Oz` is `Odd z -> Empty`, so this field can only be accessed if we have `x : Odd z`, i.e. a proof that zero is `Odd`. The other field, `Oss`, is of type `(#n : CoNat) -> Odd (s (s n)) -> Odd c`, so it can only be accessed by proofs of `Odd` for conaturals greater than or equal to two.
@@ -3478,7 +3480,7 @@ First, we define `CoVecF`, the base functor of `CoVec`, defined inductively. It 
 
 ```
 codata CoVec (A : Type) (c : CoNat) : Type
-& out : CoVecF A (CoVec A) c
+& out of CoVecF A (CoVec A) c
 ```
 
 Then we coinductively "tie the knot" of the base functor to get the desired family `CoVec`.
@@ -3674,7 +3676,7 @@ codata BHeap (R : A -> A -> Prop) : Type
 ```
 codata BHeap (R : A -> A -> Prop) : Type
 | E
-| N (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
+| N of (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
 
 and
 
@@ -3703,7 +3705,7 @@ Let's try to use induction-recursion syntax together with the `codata` keyword a
 ```
 codata BHeap (R : A -> A -> Prop) : Type
 | E
-| N (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
+| N of (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
 
 and
 
@@ -3717,7 +3719,7 @@ Aaaaand that's it. The definition looks pretty correct - it's copy-pasted from t
 ```
 data BHeapX (X : Type) (R : A -> A -> Prop) : Type
 | E
-| N (v : A, l r : X, okl : OKX v l, okr : OKX v r)
+| N of (v : A, l r : X, okl : OKX v l, okr : OKX v r)
 
 and
 
@@ -3726,7 +3728,7 @@ OKX (#X : Type, #R : A -> A -> Prop, v : A) : (h : BHeapX X R) -> Prop
 | N => R v h.v
 
 codata BHeap (R : A -> A -> Type) : Type
-& Out : BHeapX (BHeap R) R
+& Out of BHeapX (BHeap R) R
 
 OK #(R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop :=
   OKX v h.Out
@@ -3758,12 +3760,12 @@ The classical example of a mixed coinductive-inductive type is the type of strea
 ```
 mutual
   codata SP (A B : Type) : Type
-  | Put (hd : B, tl : SP A B)
-  | Get (gsp : A -> GetSP A B)
+  | Put of (hd : B, tl : SP A B)
+  | Get of (gsp : A -> GetSP A B)
 
   data GetSP (A B : Type) : Type
-  | Put (hd : B, tl : SP A B)
-  | Get (g : A -> GetSP A B)
+  | Put of (hd : B, tl : SP A B)
+  | Get of (g : A -> GetSP A B)
 ```
 
 The implementation is somewhat mysterious, so let's go over it in detail.
@@ -3845,14 +3847,14 @@ The last thing we should probably want to know is how does this desugar.
 
 ```
 data SP' (X Y A B : Type) : Type
-| Put' (hd : B, tl : X)
-| Get' (gsp : A -> Y)
+| Put' of (hd : B, tl : X)
+| Get' of (gsp : A -> Y)
 
 data GetSP' (X A B : Type) : Type
-| In (in : SP' X (GetSP' X A B) A B)
+| In of (in : SP' X (GetSP' X A B) A B)
 
 codata SP (A B : Type) : Type
-& Out : SP' (SP A B) (GetSP' (SP A B) A B) A B
+& Out of SP' (SP A B) (GetSP' (SP A B) A B) A B
 
 GetSP (A B : Type) : Type :=
   GetSP' (SP A B) A B
@@ -3921,7 +3923,7 @@ This leads us to consider types in which self-referring occurrences can be eithe
 ```
 data Tree (A : Type) : Type
 | E
-| N (v : A, l : Tree A, codata r : Tree A)
+| N of (v : A, l : Tree A, codata r : Tree A)
 ```
 
 The above represents an inductive binary tree whose left subtree is also inductive, but whose right subtree is coinductive, i.e. potentially infinite.
@@ -4141,17 +4143,17 @@ This feature allows us to define the operation known under many names: propositi
 // Propositional truncation.
 %Truncated
 data Squash (A : Type) : hProp
-| sq (x : A)
+| sq of (x : A)
 
 // Strict truncation.
 %Truncated
 data ||_|| (A : Type) : Prop
-| |_| (x : A)
+| |_| of (x : A)
 
 // Also pretty useful one: strict set truncation.
 %Truncated
 data SetSquash (A : Type) : Set
-| in (x : A)
+| in of (x : A)
 ```
 
 The price we must pay for non-strict truncation is that we can eliminate truncated types `A : hType h p` only when constructing elements of types `B : hType h' p'` with `h' <= h`, i.e. of the same or lower h-level.
@@ -4173,7 +4175,7 @@ But is this really the case? This would mean that we can't define a family of st
 ```
 data SNat : Set
 | z
-| s (pred : SNat)
+| s of (pred : SNat)
 
 // This is certainly legal.
 even : SNat -> Prop
@@ -4190,12 +4192,12 @@ even : SNat -> Type
 // Legal.
 data Even : SNat -> Prop
 | Ez  : Even z
-| Ess (#n : SNat) (e : Even n) : Even (s (s n))
+| Ess : (#n : SNat) (e : Even n) -> Even (s (s n))
 
 // Illegal?
 data Even : SNat -> Type
 | Ez  : Even z
-| Ess (#n : SNat) (e : Even n) : Even (s (s n))
+| Ess : (#n : SNat) (e : Even n) -> Even (s (s n))
 
 // This definition looks quite illegal: `n = m : Prop` but `P m : Type`.
 transport (#P : SNat -> Type) #(n m : SNat) (x : P n) : n = m -> P m
@@ -4401,17 +4403,17 @@ TODO:
 One nice consequence of our subtyping rules for inductive types is that types of strongly-specified programs are (or can be made into, depending on constructor's chosen names) subtypes of types of weakly-specified programs. This solves (or at least diminishes) a long-lasting clash between strong and weak specifications.
 
 ```
-data Answer
+data Answer : Type
 | Yes
 | No
 
-data Option (A : Type)
-| Yes (value : A)
+data Option (A : Type) : Type
+| Yes of (value : A)
 | No
 
-data Decision (P : Type)
-| Yes (yes : P)
-| No  (no  : ~ P)
+data Decision (P : Type) : Type
+| Yes of (yes : P)
+| No  of (no  : ~ P)
 ```
 
 Consider the above definitions of `Answer`, `Option` and `Decision`. `Answer` is a renamed version of `Bool`, with `Yes` instead of `tt` and `No` instead of `ff`. `Option` is defined as usual in ML languages and represents the presence of a `value` (`Yes value`) or lack of a value (`No`). `Decision P` is an analogue of Coq's `sumbool` and represents a decision procedure for the proposition `P`, where the `Yes` constructor carries a proof of `P` and the `No` constructor carries a proof of `~ P`.
@@ -4453,13 +4455,13 @@ dedupConsecutive dec [x, x, y, x, y, y, z, x, z, z]
 We should have subtyping between an inductive type and a positive coinductive type with the same base functor. For example, `List A` should be a subtype of `CoList A`, where
 
 ```
-data List (A : Type)
+data List (A : Type) : Type
 | Nil
-| Cons (hd : A, tl : List)
+| Cons of (hd : A, tl : List)
 
-codata CoList (A : Type)
+codata CoList (A : Type) : Type
 | Nil
-| Cons (hd : A, tl : CoList)
+| Cons of (hd : A, tl : CoList)
 ```
 
 The coercion is of course
@@ -4474,13 +4476,13 @@ c : List A -> CoList A
 Another example: natural numbers should be a subtype of the conatural numbers, where
 
 ```
-data Nat
+data Nat : Type
 | Z
-| S (pred : Nat)
+| S of (pred : Nat)
 
-codata CoNat
+codata CoNat : Type
 | Z
-| S (pred : CoNat)
+| S of (pred : CoNat)
 ```
 
 with the coercion being
@@ -4503,14 +4505,14 @@ For example, `Stream`s are necessarily infinite, whereas `CoList`s are only pote
 We propose a different solution of this problem: we can declare a constructor name for negative coinductive types. This name is then used to determine subtyping relations for the type.
 
 ```
-codata Stream (A : Type)
+codata Stream (A : Type) : Type
 & constructor Cons
-& hd : A
-& tl : Stream
+& hd of A
+& tl of Stream
 
-codata CoList (A : Type)
+codata CoList (A : Type) : Type
 | Nil
-| Cons (hd : A, tl : CoList)
+| Cons of (hd : A, tl : CoList)
 ```
 
 The type family `Stream` defined as above is equivalent to our previous definition, but additionally we get an autogenerated function `Cons : (hd : A, tl : Stream A) -> Stream A`, so that we can write `Cons h t` and we need to use neither tuple syntax (`(hd => h, tl => t)`) nor copattern syntax nor module syntax.
@@ -4534,9 +4536,9 @@ We should also take care of subtyping rules for (co)inductive families. There ar
 As an example of the first kind of subtyping, consider the types of vectors and lists.
 
 ```
-data List (A : Type)
+data List (A : Type) : Type
 | Nil
-| Cons (hd : A, tl : List)
+| Cons of (hd : A, tl : List)
 
 data Vec (A : Type) : Nat -> Type
 | Nil  : Vec z
@@ -4580,8 +4582,8 @@ For example, we have `Z <: Z'`, where `Z` is the type of integers we have seen b
 ```
 data Z' : Type
 | z
-| s (pred : Z)
-| p (succ : Z)
+| s of (pred : Z)
+| p of (succ : Z)
 ```
 
 Of course, we want the other subtyping rules for inductive types to also apply to Computational Inductive Types. For example, we want to have `Nat <: Z`. To derive this subtyping judgement, we need to think about subtyping of sums and inductives in reverse direction.
@@ -4612,14 +4614,14 @@ Co-inheritance is a mechanism for code reuse dual to OOP's inheritance (and also
 For example, consider the usual type of lists (renamed `ConsList`) and its supertype, the type `BiList` of lists which have an additional constructor for adding elements at the end.
 
 ```
-data ConsList (A : Type)
+data ConsList (A : Type) : Type
 | Nil
-| Cons (hd : A, tl : ConsList)
+| Cons of (hd : A, tl : ConsList)
 
-data BiList (A : Type)
+data BiList (A : Type) : Type
 | Nil
-| Cons (hd : A, tl : BiList)
-| Snoc (init : BiList, last : A)
+| Cons of (hd : A, tl : BiList)
+| Snoc of (init : BiList, last : A)
 ```
 
 We can define some useful functions for `ConsList`, like the function `len` which computes the length of a list.
@@ -4682,9 +4684,9 @@ Even though `mapc` above has codomain `ConsList B`, this is fine because `ConsLi
 Now, this is still not the full power of co-inheritance, because so far we have only used single co-inheritance. But multiple co-inheritance is possible too. Consider the type `SnocList` of lists which have no `Cons`, but only a `Snoc`.
 
 ```
-data SnocList (A : Type)
+data SnocList (A : Type) : Type
 | Nil
-| Snoc (init : SnocList, last : A)
+| Snoc of (init : SnocList, last : A)
 ```
 
 We can implement `map` for `SnocList`s.

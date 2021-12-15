@@ -18,5 +18,5 @@ map
   & root => f t.root
   & l    => map t.l
   & r    => map t.r
-  & okl  => fun x : map t.l is N => pres (t.okl x)
-  & okr  => map-okr t.okr
+  & okl  => fun _ : map t.l is N => pres (t.okl _)
+  & okr  => fun _ : map t.r is N => pres (t.okr _)

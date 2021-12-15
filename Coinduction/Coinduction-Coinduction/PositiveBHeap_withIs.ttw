@@ -27,8 +27,8 @@ map
   & root => f h.root
   & l    => map h.l
   & r    => map h.r
-  & okl  => fun _ => pres h.okl
-  & okr  => fun _ => pres h.okr
+  & okl  => fun _ => pres (h.okl (_ : h.l is N))
+  & okr  => fun _ => pres (h.okr (_ : h.l is N))
 
 zipWith
   #(A B C : Type)
@@ -54,6 +54,7 @@ zipWith
     | _, E => fun e : zipWith ha.r hb.r is N => abort e
     | N, N => fun _ : zipWith ha.r hb.r is N => pres (ha.okr _) (hb.okr _)
 
+// Less bloated.
 zipWith
   #(A B C : Type)
   (RA : A -> A -> Prop)
