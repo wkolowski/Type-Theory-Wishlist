@@ -30,7 +30,8 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Higher Inductive Types](#higher-inductive-types)
     1. [Nominal Inductive Types](#nominal-inductive-types)
     1. [Inductive Families](#inductive-families)
-    1. [Nested Inductive Families](#nested-families)
+    1. [Nested Inductive Families](#nested-inductive-families)
+    1. [Syntax sugar for inductive families with uniform indices](#inductive-uniform-indices)
     1. [Inductive-Inductive Types](#induction-induction)
     1. [Inductive-Recursive Types](#induction-recursion)
 1. [Recursive Families](#recursive-families)
@@ -42,6 +43,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Mutual Coinductive Types](#mutual-coinductive-types)
     1. [Coinductive Families](#coinductive-families)
     1. [Nested Coinductive Families](#nested-coinductive-families)
+    1. [Syntax sugar for coinductive families with uniform indices](#coinductive-uniform-indices)
     1. [Coinduction-Coinduction (TODO)](#coinduction-coinduction)
     1. [Coinduction-Corecursion (TODO)](#coinduction-corecursion)
 1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
@@ -2366,7 +2368,7 @@ Papers:
 TODO:
 - Explicit argument syntax urgently needed in the `head` example above.
 
-### Nested Inductive Families <a id="nested-families"></a> [↩](#toc)
+### Nested Inductive Families <a id="nested-inductive-families"></a> [↩](#toc)
 
 Nested Inductive Families are inductive families `I` in which the inductive occurrence of `I` in the indices is nested in some type constructor.
 
@@ -2413,36 +2415,24 @@ bmap : (#A #B : Type, f : A -> B, b : Bush A) -> Bush B
 
 As always, let's start (and end) by implementing mapping, here called `bmap`. In the `E` case, we just return `E`. In the `N` case we of course apply `f` to the head of the `Bush`, but for the tail we need to recursively `bmap` the function `bmap f` itself over `t`. This is an example of higher-order recursion in which we have both an indirect recursive call (`bmap f`) and a direct one (`bmap (bmap f)`).
 
-#### Some more syntax sugar, possibly...
+Papers:
+- [Deep Induction: Induction Rules for (Truly) Nested Types](https://cs.appstate.edu/~johannp/20-fossacs.pdf)
+- [An induction principle for nested datatypes in intensional type theory](https://www.irit.fr/~Ralph.Matthes/papers/MatthesInductionNestedJFPCUP.pdf)
 
-We have some special syntax sugar which makes defining Inductive Families easier. It is most useful for nested families, but we can use it for any inductive family for which the indices in the codomain are the same for all constructors. In such a case, we might move the indices to the left of the final colon and we also don't need to quantify them in the constructors.
+**Status: Nested Inductive Families like `Complete` or `Lam` are supported by Coq and Agda (and probably other languages too). Problems only start with the truly nested types - they are not legal in Coq or Agda, and I would also guess nowhere else. Usually one has to turn off the positivity checker for the definition to be accepted. Even then, support for termination checking, autogeneration of elimination principles and proofs is lacking. To sum up: support for Nested Inductive Families is easy, but support for Truly Nested Inductive Families is very speculative.**
 
-Let's see how this simplifies the definitions of the types we have seen above.
+TODO:
+- Figure out how the deep induction principles can be implemented in Coq.
+- How exactly does termination checking work for truly nested types?
+- Decide whether the syntax sugar for families in which codomain indices don't vary should be included in the language.
 
-```
-data Complete (A : Type) : Type
-| E
-| N of (v : A, ts : Complete (A * A))
+### Syntax sugar for inductive families with uniform indices <a id='inductive-uniform-indices'></a> [↩](#toc)
 
-data Lam (A : Type) : Type
-| Var of (n : Nat)
-| App of (l r : Lam A)
-| Abs of (body : Lam (Option A))
+In the previous section we have seen a special kind of inductive families, in which the codomain of every constructor had the same index (i.e. the indices only varied in the constructors' arguments) and this index was a variable. We will call such families **families with uniform indices** and we have special syntax sugar to facilitate defining them. It is most useful for nested families, as they are the most common example of families with uniform indices.
 
-data Bush (A : Type) : Type
-| E
-| N of (h : A, t : Bush (Bush A))
-```
+The syntax sugar works as follows: whenever an inductive family has uniform indices, we don't need to quantify the codomain index in every constructor separately and we don't need to explicitly provide the codomain - we can use the `of` syntax used for ordinary inductive types, which omits the codomain.
 
-As you can see, we no longer need to quantify the `A : Type` in each constructor and also we don't need to write `-> Complete A` (or `-> Lam A` or `-> Bush A`) to mark the codomain of each constructor. However, one serious drawback of this notation is that it breaks the separation of parameters and indices that we tried so hard to enforce. For this reason I'm still not sure whether this notation should be allowed.
-
-#### Non-uniform parameters, uniform indices...
-
-The above syntax sugar can be called **non-uniform parameters** (this is the standard name used in Haskell, Coq and Agda). However, it is fundamentally evil, because it breaks the important rule that **parameters don't change**. Therefore, we should avoid it and find a better syntax sugar.
-
-Instead, we propose a new syntax sugar called **uniform indices**. It is the good twin brother of the previous one: whenever the index of the codomain is the same in all constructors, we don't need to separately quantify it in every constructor. In case the codomain index is not a variable, but a more complex term, we don't need to separately quantify the free variables that appear in it.
-
-Let's see how the examples from above look like when translated to uniform indices.
+Let's see how the examples from [the previous section](#nested-inductive-families) look like when translated to this new syntax sugar.
 
 ```
 data Complete : (A : Type) -> Type
@@ -2459,18 +2449,16 @@ data Bush : (A : Type) -> Type
 | N of (h : A, t : Bush (Bush A))
 ```
 
-They look almost the same, the only exception being that the `(A : Type)` was moved to the right of the semicolon. In the end, we don't lose anything and we gain peace of mind stemming from the fact that our distinction between parameters and indices is upheld.
+As you can see, we now need to name the index to be able to refer to it, because it is not quantified. Constructor arguments are given after `of` and we omit the codomain, but contrary to ordinary inductive types, we need to explicitly state what the index is for inductive arguments. In the end, the new syntax sugar saves us from quite some typing, especially for longer definitions.
+
+Not papers:
+- [Non-regular Parameters are OK](https://gallais.github.io/blog/non-regular-parameters.html) (a blogpost which explains how a translation from uniform indices (i.e. non-uniform parameters) to ordinary inductive families works)
 
 Papers:
-- [Deep Induction: Induction Rules for (Truly) Nested Types](https://cs.appstate.edu/~johannp/20-fossacs.pdf)
-- [An induction principle for nested datatypes in intensional type theory](https://www.irit.fr/~Ralph.Matthes/papers/MatthesInductionNestedJFPCUP.pdf)
+- [Semantical Investigations in Intuitionistic Set Theory
+and Type Theories with Inductive Families](http://www.lsv.fr/~barras/habilitation/barras-habilitation.pdf) (see section 8.6.1)
 
-**Status: Nested Inductive Families like `Complete` or `Lam` are supported by Coq and Agda (and probably other languages too). Problems only start with the truly nested types - they are not legal in Coq or Agda, and I would also guess nowhere else. Usually one has to turn off the positivity checker for the definition to be accepted. Even then, support for termination checking, autogeneration of elimination principles and proofs is lacking. To sum up: support for Nested Inductive Families is easy, but support for Truly Nested Inductive Families is very speculative.**
-
-TODO:
-- Figure out how the deep induction principles can be implemented in Coq.
-- How exactly does termination checking work for truly nested types?
-- Decide whether the syntax sugar for families in which codomain indices don't vary should be included in the language.
+**Status: Agda and Coq have a similar syntax sugar called _non-uniform parameters_, which is like a dual of our syntax sugar for _uniform indices_. Haskell also supports this, but here it is a full-fledged language feature instead of just syntax sugar. Therefore I think supporting implementing the above syntax sugar for uniform indices would be trivial.**
 
 ### [Inductive-Inductive Types](Induction/Induction-Induction) <a id="induction-induction"></a> [↩](#toc)
 
@@ -3577,6 +3565,21 @@ bmap : (#A #B : Type, f : A -> B, b : CoBush A) -> CoBush B
 
 Defining `bmap` for `CoBush` is as easy (or as hard, depending on how you look at it) as defining it for `Bush`. Yet again, we need to use a scary higher-order corecursive call, `bmap (bmap f)`.
 
+Papers:
+- None
+
+**Status: extremely speculative.**
+
+TODO:
+- Search for papers.
+- Write some code dealing with truly nested coinductive families.
+- Decide if the last piece of syntax sugar should be included.
+- Change syntax of basic (co)inductives to use `of`.
+
+### Syntax sugar for coinductive families with uniform indices <a id="coinductive-uniform-indices"></a> [↩](#toc)
+
+TODO
+
 #### Some more syntax sugar, possibly...
 
 Coinductive Families enjoy an analogous kind of syntax sugar to what we have seen for Inductive Families. For negative coinductive types, if all codomains of a coinductive family are the same, we may treat indices as parameters and we don't need to quantify over the indices in fields. For positive coinductive types, if all domains of a coinductive family are the same, we may treat indices as parameters and we don't need to quantify over the indices in constructors.
@@ -3628,17 +3631,6 @@ codata CoBush : (A : Type) -> Type
 ```
 
 Just as for inductive types, these types defined using uniform indices look almost the same as the ones defined using non-uniform parameters, save for the `(A : Type)` that moved to the right of the semicolon.
-
-Papers:
-- None
-
-**Status: extremely speculative.**
-
-TODO:
-- Search for papers.
-- Write some code dealing with truly nested coinductive families.
-- Decide if the last piece of syntax sugar should be included.
-- Change syntax of basic (co)inductives to use `of`.
 
 ### Coinduction-Coinduction <a id="coinduction-coinduction"></a> [↩](#toc)
 
