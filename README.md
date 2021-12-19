@@ -47,6 +47,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Coinduction-Coinduction (TODO)](#coinduction-coinduction)
     1. [Coinduction-Corecursion (TODO)](#coinduction-corecursion)
 1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
+    1. [Mixing records and inductives: A * (B + C)](#mixing-records-and-inductives)
     1. [Coinduction-Induction](#coinduction-induction)
     1. [Types with inductive and coinductive components (TODO)](#inductive-coinductive-components)
 1. [Refinement types](#refinements)
@@ -2458,7 +2459,7 @@ Papers:
 - [Semantical Investigations in Intuitionistic Set Theory
 and Type Theories with Inductive Families](http://www.lsv.fr/~barras/habilitation/barras-habilitation.pdf) (see section 8.6.1)
 
-**Status: Agda and Coq have a similar syntax sugar called _non-uniform parameters_, which is like a dual of our syntax sugar for _uniform indices_. Haskell also supports this, but here it is a full-fledged language feature instead of just syntax sugar. Therefore I think supporting implementing the above syntax sugar for uniform indices would be trivial.**
+**Status: Agda and Coq have a similar syntax sugar called _non-uniform parameters_, which is like a dual of our syntax sugar for _uniform indices_. Haskell also supports this, but here it is a full-fledged language feature instead of just syntax sugar. Therefore I think supporting implementing the above syntax sugar for uniform indices would be trivial. Caveat: naive translation from uniform indices to ordinary inductive families raises universe levels, so we need a more elaborate translation (see section 8.6.1 of the above habilitation thesis).**
 
 ### [Inductive-Inductive Types](Induction/Induction-Induction) <a id="induction-induction"></a> [↩](#toc)
 
@@ -3578,39 +3579,11 @@ TODO:
 
 ### Syntax sugar for coinductive families with uniform indices <a id="coinductive-uniform-indices"></a> [↩](#toc)
 
-TODO
+Coinductive Families enjoy an analogous kind of syntax sugar to what we have seen for Inductive Families. For negative coinductive types, if domains of all fields have the same indices (i.e. they have _uniform indices_), we don't need to quantify the domain indices in every field separately - we can use the `of` syntax used for ordinary negative coinductive types, which omits the domain. For positive coinductive types, this syntax sugar works exactly the same as for inductive types.
 
-#### Some more syntax sugar, possibly...
+This syntax sugar is most useful for nested coinductive families, as they are the most common example of coinductive families with uniform indices.
 
-Coinductive Families enjoy an analogous kind of syntax sugar to what we have seen for Inductive Families. For negative coinductive types, if all codomains of a coinductive family are the same, we may treat indices as parameters and we don't need to quantify over the indices in fields. For positive coinductive types, if all domains of a coinductive family are the same, we may treat indices as parameters and we don't need to quantify over the indices in constructors.
-
-This syntax sugar is particularly well-suited for nested coinductive families, because they always fulfill the criteria. Let's see how the syntax sugar simplifies the definitions of the types we have seen above.
-
-```
-codata Complete (A : Type) : Type
-| E
-| N of (v : A, ts : Complete (A * A))
-
-codata Complete' (A : Type) : Type
-& v  of A
-& ts of Complete' (A * A)
-
-codata Obama (A : Type) : Type
-& hd of A
-& tl of Obama (Obama A)
-
-codata CoBush (A : Type) : Type
-| Nil
-| Cons of (hd : A, tl : CoBush (CoBush A))
-```
-
-As you can see, we no longer need to quantify the `A : Type` in each constructor and also we don't need to write the domains/codomains of the fields/constructors, respectively.
-
-#### Non-uniform parameters, uniform indices...
-
-As was the case for inductive types, we don't actually like the above "non-uniform parameters" syntax sugar and want to replace it with "uniform indices". The analogous syntax sugar for coinductive types works as follows: if all indices in the domains of destructors are the same, then we don't need to separately quantify them in each destructor. If the indices are terms, we don't need to quantify the free variables that appear in them.
-
-Let's see how the examples from above look like when translated to uniform indices.
+Let's see how the examples from [the previous section](#nested-coinductive-families) look like when translated to this new syntax sugar.
 
 ```
 codata Complete : (A : Type) -> Type
@@ -3630,7 +3603,9 @@ codata CoBush : (A : Type) -> Type
 | Cons of (hd : A, tl : CoBush (CoBush A))
 ```
 
-Just as for inductive types, these types defined using uniform indices look almost the same as the ones defined using non-uniform parameters, save for the `(A : Type)` that moved to the right of the semicolon.
+As you can see, we now need to name the index to be able to refer to it, because it is not quantified. For negative types, field types are given after `of` and we omit the domain, whereas for positive types the constructor arguments are given after `of` and we omit the codomain. Contrary to ordinary coinductive types, we need to explicitly state what the index is for coinductive arguments. In the end, the new syntax sugar saves us from quite some typing, especially for longer definitions.
+
+For papers, status and TODOs, see [the analogous section for inductive types](#inductive-uniform-indices)
 
 ### Coinduction-Coinduction <a id="coinduction-coinduction"></a> [↩](#toc)
 
@@ -3638,55 +3613,13 @@ In one of the previous sections we have seen induction-induction, which is a mec
 
 Let's find out by defining binary heaps again, but this time they will be necessarily infinite.
 
-```
-codata BHeap (R : A -> A -> Prop) : Type
-& root of A
-& l    of BHeap
-& r    of BHeap
-& okl  of OK root l
-& okr  of OK root r
-
-and
-
-codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
-& ok : (#v : A, h : #BHeap) -> OK v h -> R v h.root
-```
-
-More compact
-
-```
-codata BHeap (R : A -> A -> Prop) : Type
-& root of A
-& l    of BHeap
-& r    of BHeap
-& okl  of R root l.root
-& okr  of R root r.root
-```
-
-
-
-```
-codata BHeap (R : A -> A -> Prop) : Type
-| E
-| N of (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
-
-and
-
-codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
-| OK-E : OK E
-| OK-N : (v x : A) (l r : BHeap) (okl : OK x l) (okr : OK x r) (p : R v x) -> OK (N x l r okl okr)
-```
-
-This definition is a modification of the original inductive-inductive definition of finite binary heaps, so it's probably correct. The only difference is the use of the `codata` keyword. This desugars as follows.
-
-TODO: fix this
-
 Papers:
 - None
 
 **Status: very speculative.**
 
 TODO:
+- Write a new version of this section.
 - Search for papers.
 - Find a good example of coinduction-coinduction.
 
@@ -3744,6 +3677,116 @@ TODO:
 ## Mixed Inductive and Coinductive Types <a id="mixed-inductive-coinductive"></a> [↩](#toc)
 
 TODO
+
+### Mixing records and inductives: A * (B + C) <a id="mixing-records-and-inductives"></a> [↩](#toc)
+
+It may sometimes happen that all constructors of an inductive type share an argument and we want to avoid writing it over and over again. Or we may want to put some additional (co)data into values of an inductive type, but not into the type itself, so that it doesn't appear at the type level.
+
+We introduce new syntax sugar which serves exactly this purpose. Consider the type below.
+
+```
+data ProdSum (A B C : Type) : Type
+& a of A
+| b of B
+| c of C
+```
+
+`ProdSum` is a family of inductive types with three parameters, `A B C : Type`. It has two constructors, `b : B -> ProdSum A B C` and `c : C -> ProdSum A B C`. But it also has this `& a of A` in the second line of the definition. How should we interpret it? If we denote product as `*` and sum as `+`, then `ProdSum A B C` is `A * (B + C)`, i.e. a type that is made of either a `B` or a `C`, but also has a field of type `A`, no matter which constructor it was made with.
+
+```
+ab : ProdSum Bool Nat String :=
+  b tt 0
+
+ac : ProdSum Bool Nat String :=
+  c ff "42"
+```
+
+To create values of type `ProdSum A B C`, we use the constructors, just like for ordinary inductive types, but we also need to specify the value of the field `a` - it is the first argument of both `b` and `c`.
+
+```
+ab' : ProdSum Bool Nat String :=
+  b (a => tt, b => 0)
+
+ac' : ProdSum Bool Nat String :=
+  c (a => ff, c => "42")
+
+ab'' : ProdSum Bool Nat String := b
+& a => tt
+& b => 0
+
+ac'' : ProdSum Bool Nat String := c
+& a => ff
+& c => "42"
+```
+
+Of course we don't need to apply the arguments positionally, we can also use the tuple syntax or the copattern syntax. Note that the unnamed argument of `b` is in fact called `b`, just like the constructor itself, and analogously for `c`.
+
+```
+ab-a : ab.a = tt := refl
+ac-a : ac.a = ff := refl
+```
+
+Given a value `x` of type `ProdSum A B C`, we can access the field `a` using the dot syntax, by writing `x.a`.
+
+```
+data ProdSum' (A B C : Type) : Type
+| b' of (a : A, b : B)
+| c' of (a : A, c : C)
+
+f : (x : ProdSum A B C) -> ProdSum' A B C
+| b => b'
+  & a => x.a
+  & b => x.b
+| c => c'
+  & a => x.a
+  & c => x.c
+
+g : (x : ProdSum' A B C) -> ProdSum A B C
+| b' => b
+  & a => x.a
+  & b => x.b
+| c' => c
+  & a => x.a
+  & c => x.c
+
+fg : (x : ProdSum A B C) -> g (f x) = x
+| b => refl
+| c => refl
+
+gf : (x : ProdSum' A B C) -> f (g x) = x
+| b' => refl
+| c' => refl
+```
+
+The above code shows `ProdSum'`, the desugaring of `ProdSum`. The two types are equivalent (and thus equal), which is showcased by functions `f` and `g`, which look almost identical (except for the `'`s).
+
+```
+data ProdProdSum (A B C D : Type) : Type
+& a of A
+& b of B
+| c of C
+| d of D
+```
+
+Of course, these mixed record-inductives may have more than one field. For example, the above type `ProdProdSum A B C D` has two fields, `a` of type `A` and `b` of type `B`. Intuitively, this type corresponds to `A * B * (C + D)`
+
+```
+data SumProdProd (A B C D : Type) : Type
+| a of A
+| b of B
+& c of C
+& d of D
+```
+
+Another possibly useful feature is to be able to put these shared constructor arguments at the end of the constructor's argument list. This is achieved by the above type `SumProdProd A B C D`, which intuitively corresponds to `(A + B) * C * D`.
+
+Papers:
+- None
+
+**Status: this is my own idea, but it seems very easy to implement.**
+
+TODO:
+- Think some more about this.
 
 ### Coinduction-Induction? Somewhat. <a id="coinduction-induction"></a> [↩](#toc)
 

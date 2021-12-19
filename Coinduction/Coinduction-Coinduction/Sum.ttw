@@ -18,20 +18,6 @@ inr #(A B : Type) (b : B) : Sum A B
 & b   => ff
 & snd => b
 
-// We can mix records and inductives.
-// AandBorC A B C = A * (B + C)
-data AandBorC (A B C : Type) : Type
-& a of A
-| b of B
-| c of C
-
-// Defining values of this type:
-val : AandBorC Bool Nat Nat :=
-  b tt 0
-
-val' : AandBorC Bool Nat Nat :=
-  c ff 42
-
 // Separate section for parameters.
 data Sum
   parameters
