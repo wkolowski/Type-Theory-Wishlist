@@ -140,30 +140,38 @@ data Exists
 | l    : (#h : BHeap R, _ : h is N, l : Exists h.l)  -> Exists h
 | r    : (#h : BHeap R, _ : h is N, r : Exists h.r)  -> Exists h
 
-// Best syntax.
+// Best syntax - uniform indices.
 data Exists
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
 | root of (_ : h is N, root : P h.root)
 | l    of (_ : h is N, l : Exists h.l)
 | r    of (_ : h is N, r : Exists h.r)
 
-// Best^2 syntax!
+// Bester syntax - no need to write `_` for unnamed hypotheses.
 data Exists
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R, #_ : h is N) : Type
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
+| root of (h is N, root : P h.root)
+| l    of (h is N, l : Exists h.l)
+| r    of (h is N, r : Exists h.r)
+
+// Bestest syntax - mixed record-inductive.
+data Exists
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
+& h is N
 | root of (root : P h.root)
 | l    of (l : Exists h.l)
 | r    of (r : Exists h.r)
 
-// Best^3 syntax.
-data Exists
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R, #_ : h is N) : Type
-| root of P h.root
-| l    of Exists h.l
-| r    of Exists h.r
+// Note:
+// & A
+// | B
+// | C
+// should be interpreted as A * (B + C).
 
-// Using uniform indices instead of non-uniform parameters.
+// Bestester syntax - no need for names in single-field records.
 data Exists
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R, #_ : h is N) -> Type
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
+& h is N
 | root of P h.root
 | l    of Exists h.l
 | r    of Exists h.r
@@ -174,19 +182,19 @@ codata Forall
 | E : Forall E
 | N : (#h : BHeap R) -> h is N -> P h.root -> Forall h.l -> Forall h.r -> Forall h
 
-// More regular syntax.
+// More regular syntax using `is`.
 codata Forall
   (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
 | E : (#h : BHeap R) -> h is E -> Forall h
 | N : (#h : BHeap R) -> h is N -> P h.root -> Forall h.l -> Forall h.r -> Forall h
 
-// Intermediate, more record-y syntax.
+// Intermediate, more record-y syntax using uniform indices.
 codata Forall
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
+  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
 | E of (_ : h is E)
 | N of (_ : h is N, root : P h.root, l : Forall h.l, r : Forall h.r)
 
-// Best syntax.
+// Best syntax - let's spread out the arguments over multiple lines with `&`.
 codata Forall
   (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
 | E of
@@ -197,31 +205,11 @@ codata Forall
   & l    of Forall h.l
   & r    of Forall h.r
 
-// Best^2 syntax.
-codata Forall
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
-| E of
-  & h is E
-| N of
-  & h is N
-  & root of P h.root
-  & l    of Forall h.l
-  & r    of Forall h.r
-
-// Best^3 syntax.
-codata Forall
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop, h : BHeap R) : Type
-| E of h is E
-| N of
-  & h is N
-  & root of P h.root
-  & l    of Forall h.l
-  & r    of Forall h.r
-
-// Using uniform indices instead of non-uniform parameters.
+// Bester syntax - no need to write `_` when the name doesn't matter.
 codata Forall
   (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
-| E of h is E
+| E of
+  & h is E
 | N of
   & h is N
   & root of P h.root
@@ -234,14 +222,19 @@ codata Sim : (h1 h2 : BHeap R) -> Type
 | Ns : #(h1 h2 : BHeap R) -> h1 is N -> h2 is N ->
         h1.root = h2.root -> Sim h1.l h2.l -> Sim h1.r h2.r -> Sim h1 h2
 
-// Intermediate, more record-y syntax.
-codata Sim (h1 h2 : BHeap R) : Type
-| Es of (_ : h1 is E, _ : h2 is E)
-| Ns of (_ : h1 is N, _ : h2 is N,
-        roots : h1.root = h2.root, ls : Sim h1.l h2.l, rs : Sim h1.r h2.r)
+// More regular syntax using `is`.
+codata Sim : (h1 h2 : BHeap R) -> Type
+| Es : #(h1 h2 : BHeap R) -> h1 is E -> h2 is E -> Sim h1 h2
+| Ns : #(h1 h2 : BHeap R) -> h1 is N -> h2 is N ->
+        h1.root = h2.root -> Sim h1.l h2.l -> Sim h1.r h2.r -> Sim h1 h2
 
-// Best syntax!
-codata Sim (h1 h2 : BHeap R) : Type
+// Intermediate, more record-y syntax using uniform indices.
+codata Sim : (h1 h2 : BHeap R) -> Type
+| Es of (_ : h1 is E, _ : h2 is E)
+| Ns of (_ : h1 is N, _ : h2 is N, roots : h1.root = h2.root, ls : Sim h1.l h2.l, rs : Sim h1.r h2.r)
+
+// Best syntax.
+codata Sim : (h1 h2 : BHeap R) -> Type
 | Es of
   & _ of h1 is E
   & _ of h2 is E
@@ -252,19 +245,7 @@ codata Sim (h1 h2 : BHeap R) : Type
   & ls    of Sim h1.l h2.l
   & rs    of Sim h1.r h2.r
 
-// Best^2 syntax.
-codata Sim (h1 h2 : BHeap R) : Type
-| Es of
-  & h1 is E
-  & h2 is E
-| Ns of
-  & h1 is N
-  & h2 is N
-  & roots of h1.root = h2.root
-  & ls    of Sim h1.l h2.l
-  & rs    of Sim h1.r h2.r
-
-// Using uniform indices instead of non-uniform parameters.
+// Bester syntax.
 codata Sim : (h1 h2 : BHeap R) -> Type
 | Es of
   & h1 is E

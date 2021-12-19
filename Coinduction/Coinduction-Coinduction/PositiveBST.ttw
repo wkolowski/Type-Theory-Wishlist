@@ -17,24 +17,24 @@ codata OKR (R : A -> A -> Prop) : A -> BST -> Prop
 | OKR-N : #(root x : A) #(l r : BST) (okl : OKL x l) (okr : OKR x r) (p : R x root -> Empty)
             -> OKR root (N x l r okl okr)
 
-// Intermediate syntax with `is`.
+// Intermediate syntax with `is` and uniform indices.
 codata BST (R : A -> A -> Prop) : Type
 | E
 | N of (root : A, l r : BST, okl : OKL root l, okr : OKR root r)
 
 and
 
-codata OKL (R : A -> A -> Prop, root : A, h : BST) : Prop
+codata OKL (R : A -> A -> Prop) : (root : A, h : BST) -> Prop
 | OKL-E of (_ : h is E)
 | OKL-N of (_ : h is N, p : R h.root root)
 
 and
 
-codata OKR (R : A -> A -> Prop, root : A, h : BST) : Prop
+codata OKR (R : A -> A -> Prop) : (root : A, h : BST) -> Prop
 | OKR-E of (_ : h is E)
 | OKR-N of (_ : h is N, p : R h.root root -> Empty)
 
-// Best syntax!
+// Best syntax.
 codata BST (R : A -> A -> Prop) : Type
 | E
 | N of
@@ -45,18 +45,18 @@ codata BST (R : A -> A -> Prop) : Type
 
 and
 
-codata OKL (R : A -> A -> Prop, root : A, h : BST) : Prop
+codata OKL (R : A -> A -> Prop) : (root : A, h : BST) -> Prop
 | OKL-E of
-  & h is E
+  & _ of h is E
 | OKL-N of
   & _ of h is N
   & p of R h.root root
 
 and
 
-codata OKR (R : A -> A -> Prop, root : A, h : BST) : Prop
+codata OKR (R : A -> A -> Prop) : (root : A, h : BST) -> Prop
 | OKR-E of
-  & h is E
+  & _ of h is E
 | OKR-N of
   & _ of h is N
   & p of R h.root root -> Empty
@@ -73,7 +73,7 @@ codata BST (R : A -> A -> Prop) : Type
 
 and
 
-codata OKL (R : A -> A -> Prop, root : A, h : BST) : Prop
+codata OKL (R : A -> A -> Prop) : (root : A, h : BST) -> Prop
 | OKL-E of
   & h is E
 | OKL-N of
@@ -82,7 +82,7 @@ codata OKL (R : A -> A -> Prop, root : A, h : BST) : Prop
 
 and
 
-codata OKR (R : A -> A -> Prop, root : A, h : BST) : Prop
+codata OKR (R : A -> A -> Prop) : (root : A, h : BST) -> Prop
 | OKR-E of
   & h is E
 | OKR-N of
@@ -90,32 +90,6 @@ codata OKR (R : A -> A -> Prop, root : A, h : BST) : Prop
   & p of R h.root root -> Empty
 
 // Using a `mutual` block.
-mutual
-  #(A : Type) (R : A -> A -> Prop)
-
-  codata BST : Type
-  | E
-  | N of
-    & root of A
-    & l r  of BST
-    & okl  of OKL root l
-    & okr  of OKR root r
-
-  codata OKL (root : A, h : BST) : Prop
-  | OKL-E of
-    & h is E
-  | OKL-N of
-    & h is N
-    & p of R h.root root
-
-  codata OKR (root : A, h : BST) : Prop
-  | OKR-E of
-    & h is E
-  | OKR-N of
-    & h is N
-    & p of R h.root root -> Empty
-
-// Using uniform indices instead of non-uniform parameters.
 mutual
   #(A : Type) (R : A -> A -> Prop)
 

@@ -10,19 +10,7 @@ codata NotElem (#A : Type) : (h : A, s : Stream) -> Type
 & hd : (h : A, s : Stream) -> NotElem h s -> h = s.hd -> Empty
 & tl : (h : A, s : Stream) -> NotElem h s -> NotElem h s.tl
 
-// Using non-uniform parameters.
-codata Stream (A : Type) : Type
-& hd    of A
-& tl    of Stream
-& dedup of NotElem hd tl
-
-and
-
-codata NotElem (#A : Type) (h : A, s : Stream) : Type
-& hd of h = s.hd -> Empty
-& tl of NotElem h s.tl
-
-// Using uniform indices instead of non-uniform parameters.
+// Using uniform indices.
 codata Stream (A : Type) : Type
 & hd    of A
 & tl    of Stream
@@ -46,19 +34,7 @@ data Elem (#A : Type) : (h : A, s : Stream) -> Type
 | z : #(h : A, s : Stream) -> h = s.hd -> Elem h s
 | s : #(h : A, s : Stream) -> Elem h s.tl -> Elem h s
 
-// Using non-uniform parameters.
-codata Stream (A : Type) : Type
-& hd  of A
-& tl  of Stream
-& dup of Elem hd tl
-
-and
-
-data Elem (#A : Type) (h : A, s : Stream) : Type
-| z of h = s.hd
-| s of Elem h s.tl
-
-// Using uniform indices instead of non-uniform parameters.
+// Using uniform indices.
 codata Stream (A : Type) : Type
 & hd  of A
 & tl  of Stream

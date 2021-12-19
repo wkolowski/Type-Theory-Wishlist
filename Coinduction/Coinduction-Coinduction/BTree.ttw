@@ -1,0 +1,79 @@
+data BT (A : Type) : Type
+| E
+| N of
+  & root of A
+  & l r  of BT
+
+codata CoBT (A : Type) : Type
+| E
+| N of
+  & root of A
+  & l r  of BT
+
+codata NegBT (A : Type) : Type
+constructor N
+& root of A
+& l r  of NegBT
+
+// `Exists` on `CoBT`rees should be transferable to `BT` and `NegBT` by subtyping.
+data Exists (#A : Type, P : A -> Type) : (h : CoBT A) -> Type
+& h is N
+| root of P h.root
+| l    of Exists h.l
+| r    of Exists h.r
+
+// Same for `Forall`.
+codata Forall
+  (#A : Type, P : A -> Type) : (h : CoBT A) -> Type
+| E of
+  & h is E
+| N of
+  & h is N
+  & root of P h.root
+  & l    of Forall h.l
+  & r    of Forall h.r
+
+// ... and for `Sim`.
+codata Sim : (h1 h2 : CoBT A) -> Type
+| Es of
+  & h1 is E
+  & h2 is E
+| Ns of
+  & h1 is N
+  & h2 is N
+  & roots of h1.root = h2.root
+  & ls    of Sim h1.l h2.l
+  & rs    of Sim h1.r h2.r
+
+// Unfortunately, there's a slight problem:
+// since `Forall` and `Sim` are coinductive, they don't fit inductive `BT`s
+// too well. In such cases, we probably need to define a separate `Forall`/`Sim`
+// whcih is inductive and prove it equivalent (and hence equal) to the coinductive
+// one using induction on the `BT`. Then we will be able to use lemmas for the
+// coinductive pedicates with the inductive ones.
+
+// Inductive `Forall`.
+data Forall
+  (#A : Type, P : A -> Type) : (h : BT A) -> Type
+| E of
+  & h is E
+| N of
+  & h is N
+  & root of P h.root
+  & l    of Forall h.l
+  & r    of Forall h.r
+
+// Inductive `Sim`.
+data Sim : (h1 h2 : BT A) -> Type
+| Es of
+  & h1 is E
+  & h2 is E
+| Ns of
+  & h1 is N
+  & h2 is N
+  & roots of h1.root = h2.root
+  & ls    of Sim h1.l h2.l
+  & rs    of Sim h1.r h2.r
+
+// Or maybe there is some way to share them?
+// Ductivity-polymorphism?

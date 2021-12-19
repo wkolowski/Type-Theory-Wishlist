@@ -1,0 +1,49 @@
+codata BST (R : A -> A -> Prop) : Type
+| E
+| N of
+  & root of A
+  & l r  of BST
+  & okl  of l is N -> R t.root root
+  & okr  of r is N -> R t.root root -> Empty
+
+// Definitions of functions - this is where coinduction-coinduction happens.
+
+map
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  (reflect : #(x y : A) -> S (f x) (f y) -> R x y)
+  : (h : BST R) -> BST S
+| E => E
+| N => N
+  & root => f h.root
+  & l    => map h.l
+  & r    => map h.r
+  & okl  => fun _ => pres (h.okl _)
+  & okr  => fun _ => fun x : S (f h.r.root) (f h.root) => h.okr _ (reflect x)
+
+zipWith
+  #(A B C : Type)
+  (RA : A -> A -> Prop)
+  (RB : B -> B -> Prop)
+  (RC : C -> C -> Prop)
+  (f : A -> B -> C)
+  (pres : #(a1 a2 : A, b1 b2 : B) ->
+            RA a1 a2 -> RB b1 b2 -> RC (f a1 b1) (f a2 b2))
+  (reflect-l : #(a1 a2 : A, b1 b2 : B) ->
+            RC (f a1 b1) (f a2 b2) -> RA a1 a2)
+  : (ha : BST RA, hb : BST RB) -> BST RC
+| E => E
+| N => N
+  & root => f ha.root hb.root
+  & l    => zipWith ha.l hb.r
+  & r    => zipWith ha.r hb.r
+  & okl  => fun _ => pres (ha.okl _) (hb.okl _)
+  & okr  => fun x : S (f ha.r.root hb.r.root) (f ha.root hb.root) => reflect-l x |> ha.okr
+
+// TODO
+mirror : (h : BST R) -> BST (fun x y => R y x) := ?todo
+
+// No predicates and relations - in fact, we can reuse the ones
+// for ordinary binary trees.

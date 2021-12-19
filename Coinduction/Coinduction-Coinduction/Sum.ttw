@@ -1,7 +1,9 @@
+// Encoding of a sum using a record.
 codata Sum (A B : Type) : Type
 & b of Bool
 & snd of if b then A else B
 
+// Computation in types of record fields.
 codata Sum (A B : Type) : Type
 & b of Bool
 & snd with b
@@ -15,3 +17,42 @@ inl #(A B : Type) (a : A) : Sum A B
 inr #(A B : Type) (b : B) : Sum A B
 & b   => ff
 & snd => b
+
+// We can mix records and inductives.
+// AandBorC A B C = A * (B + C)
+data AandBorC (A B C : Type) : Type
+& a of A
+| b of B
+| c of C
+
+// Defining values of this type:
+val : AandBorC Bool Nat Nat :=
+  b tt 0
+
+val' : AandBorC Bool Nat Nat :=
+  c ff 42
+
+// Separate section for parameters.
+data Sum
+  parameters
+  & A : Type
+  & B : Type
+  sort Type
+  constructors
+  | inl of A
+  | inr of B
+
+// Ordinary.
+data Sum (A B : Type) : Type
+| inl of A
+| inr of B
+
+data Vec
+  parameters
+  & A : Type
+  indices
+  & len : Nat
+  sort Type
+  constructors
+  | Nil  : Vec 0
+  | Cons : (hd : A, #n : Nat, tl : Vec n) -> Vec (s n)
