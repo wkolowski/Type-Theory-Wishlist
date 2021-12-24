@@ -47,7 +47,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Coinduction-Coinduction (TODO)](#coinduction-coinduction)
     1. [Coinduction-Corecursion (TODO)](#coinduction-corecursion)
 1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
-    1. [Mixing records and inductives: A * (B + C)](#mixing-records-and-inductives)
+    1. [Mixing records and sums: A * (B + C)](#mixing-records-and-sums)
     1. [Coinduction-Induction](#coinduction-induction)
     1. [Types with inductive and coinductive components (TODO)](#inductive-coinductive-components)
 1. [Refinement types](#refinements)
@@ -873,6 +873,15 @@ If multiple fields have the same value, we can define all of them at once. We ca
 ```
 origin : (x y z : Nat)
 & x & y & z => 0
+```
+
+Of course we don't need to write all of them in a single line.
+
+```
+origin : (x y z : Nat)
+& x
+& y
+& z => 0
 ```
 
 This is how `translateX` looks in copattern syntax.
@@ -3676,9 +3685,9 @@ TODO:
 
 ## Mixed Inductive and Coinductive Types <a id="mixed-inductive-coinductive"></a> [↩](#toc)
 
-TODO
+TODO: write an introduction
 
-### Mixing records and inductives: A * (B + C) <a id="mixing-records-and-inductives"></a> [↩](#toc)
+### Mixing records and sums: A * (B + C) <a id="mixing-records-and-sums"></a> [↩](#toc)
 
 It may sometimes happen that all constructors of an inductive type share an argument and we want to avoid writing it over and over again. Or we may want to put some additional (co)data into values of an inductive type, but not into the type itself, so that it doesn't appear at the type level.
 
@@ -3727,6 +3736,20 @@ ac-a : ac.a = ff := refl
 ```
 
 Given a value `x` of type `ProdSum A B C`, we can access the field `a` using the dot syntax, by writing `x.a`.
+
+```
+ad : ProdSum Bool Nat String
+& a => negb ab.a
+& ab
+```
+
+
+
+```
+ad : ProdSum Bool Nat String
+& a => negb ab.a
+& _ => ab
+```
 
 ```
 data ProdSum' (A B C : Type) : Type
@@ -3779,6 +3802,22 @@ data SumProdProd (A B C D : Type) : Type
 ```
 
 Another possibly useful feature is to be able to put these shared constructor arguments at the end of the constructor's argument list. This is achieved by the above type `SumProdProd A B C D`, which intuitively corresponds to `(A + B) * C * D`.
+
+```
+data Nel (A : Type) : Type
+& hd of A
+| Singl
+| Cons of (tl : Nel)
+
+codata CoNel (A : Type) : Type
+& hd of A
+| Singl
+| Cons of (tl : CoNel)
+```
+
+Last but not least, we can also use mixed record-sums for defining inductive and coinductive types. Above we see two most obvious examples: non-empty lists `Nel` and non-empty colists `CoNel`.
+
+`Nel A` is a type whose values have a head `hd` and are either a `Singl`eton, which takes no arguments (besides the `hd`, of course), or a `Cons`, which takes the tail `tl` as an argument (in addition to `hd`, of course). `CoNel`, the type of non-empty colists, is analogous to `Nel`, of course with the twist that it is coinductive instead of inductive.
 
 Papers:
 - None
