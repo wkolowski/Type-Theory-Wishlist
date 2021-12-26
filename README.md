@@ -3700,7 +3700,9 @@ data ProdSum (A B C : Type) : Type
 | c of C
 ```
 
-`ProdSum` is a family of inductive types with three parameters, `A B C : Type`. It has two constructors, `b : B -> ProdSum A B C` and `c : C -> ProdSum A B C`. But it also has this `& a of A` in the second line of the definition. How should we interpret it? If we denote product as `*` and sum as `+`, then `ProdSum A B C` is `A * (B + C)`, i.e. a type that is made of either a `B` or a `C`, but also has a field of type `A`, no matter which constructor it was made with.
+`ProdSum` is a family of inductive types with three parameters, `A B C : Type`. It has two constructors, `b : B -> ProdSum A B C` and `c : C -> ProdSum A B C`, and one field `a : ProdSum A B C -> A`.
+
+If we denote product as `*` and sum as `+`, then `ProdSum A B C` can be interpreted as `(A * B) + (A * C)`, i.e. a type that is made of either a `B` or a `C`, but also has a field of type `A`, no matter which constructor it was made with.
 
 ```
 ab : ProdSum Bool Nat String :=
@@ -3728,7 +3730,7 @@ ac'' : ProdSum Bool Nat String := c
 & c => "42"
 ```
 
-Of course we don't need to apply the arguments positionally, we can also use the tuple syntax or the copattern syntax. Note that the unnamed argument of `b` is in fact called `b`, just like the constructor itself, and analogously for `c`.
+Of course we don't need to apply the arguments positionally - we can also use the tuple syntax or the copattern syntax. Note that the unnamed argument of `b` is in fact called `b`, just like the constructor itself, and analogously for `c`.
 
 ```
 ab-a : ab.a = tt := refl
@@ -3738,18 +3740,28 @@ ac-a : ac.a = ff := refl
 Given a value `x` of type `ProdSum A B C`, we can access the field `a` using the dot syntax, by writing `x.a`.
 
 ```
-ad : ProdSum Bool Nat String
-& a => negb ab.a
-& ab
+ab''' : ProdSum Bool Nat String
+& a => tt
+& __sum => b 0
+
+ac''' : ProdSum Bool Nat String
+& a => ff
+& __sum => c "42"
 ```
 
-
+Another way to think of the type `ProdSum A B C` is to treat it not as a sum, but as a product, i.e. as `A * (B + C)`. We can use the copattern syntax to define values of `ProdSum A B C`. In such a situation, the record-like part (i.e. all the fields) behaves like an ordinary record, whereas the sum-like part behaves like an additional field of this record (this field is named `__sum`).
 
 ```
 ad : ProdSum Bool Nat String
-& a => negb ab.a
 & _ => ab
+& a => negb ab.a
+
+ad' : ProdSum Bool Nat String
+& _ => ab
+& a $=> negb
 ```
+
+When working with `ProdSum A B C` using the copattern syntax, we can also make use of prototyping and record update syntax.
 
 ```
 data ProdSum' (A B C : Type) : Type
@@ -3791,7 +3803,7 @@ data ProdProdSum (A B C D : Type) : Type
 | d of D
 ```
 
-Of course, these mixed record-inductives may have more than one field. For example, the above type `ProdProdSum A B C D` has two fields, `a` of type `A` and `b` of type `B`. Intuitively, this type corresponds to `A * B * (C + D)`
+Of course, these mixed record-inductives may have more than one field. For example, the above type `ProdProdSum A B C D` has two fields, `a` of type `A` and `b` of type `B`. Intuitively, this type corresponds to `(A * B * C) + (A * B * D)`, or, equivalently, to `A * B * (C + D)`
 
 ```
 data SumProdProd (A B C D : Type) : Type
@@ -3801,7 +3813,7 @@ data SumProdProd (A B C D : Type) : Type
 & d of D
 ```
 
-Another possibly useful feature is to be able to put these shared constructor arguments at the end of the constructor's argument list. This is achieved by the above type `SumProdProd A B C D`, which intuitively corresponds to `(A + B) * C * D`.
+Another possibly useful feature is to be able to put these shared constructor arguments at the end of the constructor's argument list. This is achieved by the above type `SumProdProd A B C D`, which intuitively corresponds to `(A * C * D) + (B * C  * D)`, or, equivalently, to `(A + B) * C * D`.
 
 ```
 data Nel (A : Type) : Type
@@ -3815,9 +3827,11 @@ codata CoNel (A : Type) : Type
 | Cons of (tl : CoNel)
 ```
 
-Last but not least, we can also use mixed record-sums for defining inductive and coinductive types. Above we see two most obvious examples: non-empty lists `Nel` and non-empty colists `CoNel`.
+We can also use mixed record-sums for defining inductive and coinductive types. Above we see the two most obvious examples: non-empty lists `Nel` and non-empty colists `CoNel`.
 
 `Nel A` is a type whose values have a head `hd` and are either a `Singl`eton, which takes no arguments (besides the `hd`, of course), or a `Cons`, which takes the tail `tl` as an argument (in addition to `hd`, of course). `CoNel`, the type of non-empty colists, is analogous to `Nel`, of course with the twist that it is coinductive instead of inductive.
+
+Last but not least, it would be good to know where we can use this weird feature (try to think of a single language that has it!). A general answer is that mixed record-sums are useful every time we needto attach some metadata to a sum or an inductive type. A more specific one would be parsers - these usually are sums (many possible productions), but also need to store metadata about number line, column and possibly much more.
 
 Papers:
 - None
