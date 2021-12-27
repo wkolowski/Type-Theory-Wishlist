@@ -47,7 +47,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Coinduction-Coinduction (TODO)](#coinduction-coinduction)
     1. [Coinduction-Corecursion (TODO)](#coinduction-corecursion)
 1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
-    1. [Mixing records and sums: A * (B + C)](#mixing-records-and-sums)
+    1. [Mixing records and sums: A * (B + C) = (A * B) + (A * C)](#mixing-records-and-sums)
     1. [Coinduction-Induction](#coinduction-induction)
     1. [Types with inductive and coinductive components (TODO)](#inductive-coinductive-components)
 1. [Refinement types](#refinements)
@@ -3687,7 +3687,7 @@ TODO:
 
 TODO: write an introduction
 
-### Mixing records and sums: A * (B + C) <a id="mixing-records-and-sums"></a> [↩](#toc)
+### Mixing records and sums: A * (B + C) = (A * B) + (A * C)<a id="mixing-records-and-sums"></a> [↩](#toc)
 
 It may sometimes happen that all constructors of an inductive type share an argument and we want to avoid writing it over and over again. Or we may want to put some additional (co)data into values of an inductive type, but not into the type itself, so that it doesn't appear at the type level.
 
@@ -3749,19 +3749,18 @@ ac''' : ProdSum Bool Nat String
 & __sum => c "42"
 ```
 
-Another way to think of the type `ProdSum A B C` is to treat it not as a sum, but as a product, i.e. as `A * (B + C)`. We can use the copattern syntax to define values of `ProdSum A B C`. In such a situation, the record-like part (i.e. all the fields) behaves like an ordinary record, whereas the sum-like part behaves like an additional field of this record (this field is named `__sum`).
+Another way to think of the type `ProdSum A B C` is to treat it not as a sum, but as a product, i.e. as `A * (B + C)`. We can use the copattern syntax to define values of `ProdSum A B C`. In such a situation, the record-like part (i.e. all the fields) behaves like an ordinary record, whereas the sum-like part (i.e. the thing we build using constructors) behaves like an additional field of this record (this field is named `__sum`).
 
 ```
-ad : ProdSum Bool Nat String
-& _ => ab
-& a => negb ab.a
+ad : ProdSum Bool Nat String :=
+  (_ => ab, a => negb ab.a)
 
 ad' : ProdSum Bool Nat String
 & _ => ab
 & a $=> negb
 ```
 
-When working with `ProdSum A B C` using the copattern syntax, we can also make use of prototyping and record update syntax.
+When working with `ProdSum A B C` using the tuple syntax or copattern syntax, we can also make use of prototyping and record update syntax.
 
 ```
 data ProdSum' (A B C : Type) : Type
@@ -3793,7 +3792,41 @@ gf : (x : ProdSum' A B C) -> f (g x) = x
 | c' => refl
 ```
 
-The above code shows `ProdSum'`, the desugaring of `ProdSum`. The two types are equivalent (and thus equal), which is showcased by functions `f` and `g`, which look almost identical (except for the `'`s).
+Besides accessing the field `a`, we may also eliminate values of type `ProdSum A B C` like those of ordinary sums and inductive types, i.e. by pattern matching and recursion.
+
+The above code shows `ProdSum'`, one of the possible desugarings of `ProdSum` (the one that corresponds to `(A * B) + (A * C)`). The two types are equivalent (and thus equal), which is showcased by functions `f` and `g`, which look almost identical (except for the `'`s).
+
+```
+data ProdSumAux (B C : Type) : Type
+| b'' of (b : B)
+| c'' of (c : C)
+
+data ProdSum'' (A B C : Type) : Type
+& a of A
+& __sum' of ProdsumAux B C
+
+f : (x : ProdSum A B C) -> ProdSum'' A B C
+& a => x.a
+& __sum' with x
+  | b => b'' x.b
+  | c => c'' x.c
+
+g : (x : ProdSum'' A B C) -> ProdSum A B C :=
+match x.__sum' with
+| b'' bb => b x.a bb
+| c'' cc => c x.a cc
+
+fg : (x : ProdSum A B C) -> g (f x) = x
+| b => refl
+| c => refl
+
+gf : (x : ProdSum'' A B C) -> f (g x) = x :=
+match x.__sum' with
+| b'' bb => refl
+| c'' cc => refl
+```
+
+The above code shows `ProdSum''`, another of the possible desugarings of `ProdSum` (the one that corresponds to `A * (B + C)`). The two types are equivalent (and thus equal), which is showcased by functions `f` and `g`. This time the definitions are much more awkward, which shows that using `ProdSum''` instead of `ProdSum` would be pretty annoying.
 
 ```
 data ProdProdSum (A B C D : Type) : Type
@@ -3839,7 +3872,7 @@ Papers:
 **Status: this is my own idea, but it seems very easy to implement.**
 
 TODO:
-- Think some more about this.
+- Try to find some papers (or any writing on the topic, for that matter).
 
 ### Coinduction-Induction? Somewhat. <a id="coinduction-induction"></a> [↩](#toc)
 
