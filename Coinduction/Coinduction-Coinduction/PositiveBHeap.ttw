@@ -20,14 +20,14 @@ codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
 // `h` was made with the `E` constructor and false otherwise.
 //Note that `Bool`eans are automatically coerced to propositions.
 
-// Intermediate, more record-y syntax.
+// Intermediate, more record-y syntax, using uniform indices.
 codata BHeap (R : A -> A -> Prop) : Type
 | E
 | N of (root : A, l r : BHeap, okl : OK root l, okr : OK root r)
 
 and
 
-codata OK (R : A -> A -> Prop) (v : A) (h : BHeap) : Prop
+codata OK (R : A -> A -> Prop) : (v : A, h : BHeap) -> Prop
 | OK-E of (_ : h is E)
 | OK-N of (_ : h is N, p : R v h.root)
 
@@ -43,7 +43,7 @@ codata BHeap (R : A -> A -> Prop) : Type
 
 and
 
-codata OK (R : A -> A -> Prop) (v : A) (h : BHeap) : Prop
+codata OK (R : A -> A -> Prop) : (v : A, h : BHeap) -> Prop
 | OK-E of
   & _ of h is E
 | OK-N of
@@ -61,7 +61,7 @@ codata BHeap (R : A -> A -> Prop) : Type
 
 and
 
-codata OK (R : A -> A -> Prop) (v : A) (h : BHeap) : Prop
+codata OK (R : A -> A -> Prop) : (v : A, h : BHeap) -> Prop
 | OK-E of
   & h is E
 | OK-N of
@@ -80,7 +80,7 @@ codata BHeap (R : A -> A -> Prop) : Type
 
 and
 
-codata OK (R : A -> A -> Prop) (v : A) (h : BHeap) : Prop
+codata OK (R : A -> A -> Prop) : (v : A, h : BHeap) -> Prop
 | OK-E of h is E
 | OK-N of
   & h is N
@@ -103,24 +103,6 @@ mutual
     & okr  of OK root r
 
   codata OK (v : A) (h : BHeap) : Prop
-  | OK-E of h is E
-  | OK-N of
-    & h is N
-    & p of R v h.root
-
-// Using uniform indices instead of non-uniform parameters.
-mutual
-  (R : A -> A -> Prop)
-
-  codata BHeap : Type
-  | E
-  | N of
-    & root of A
-    & l r  of BHeap
-    & okl  of OK root l
-    & okr  of OK root r
-
-  codata OK : (v : A) (h : BHeap) -> Prop
   | OK-E of h is E
   | OK-N of
     & h is N

@@ -17,7 +17,7 @@ codata SortedCoList (R : A -> A -> Prop) : Type
 | Cons of
   & hd of A
   & tl of SortedCoList
-  & ok of OK hd tl
+  & ok of R hd tl.hd
 
 // Some functions - this is where coinduction-coinduction happens.
 
@@ -96,29 +96,17 @@ merge (r : A -> A -> Bool) : (s1 s2 : SortedCoList r) -> SortedCoList
 // Some predicates and relations - they don't have much to do with
 // coinduction-coinduction, so you can skip them.
 
-// More verbose.
 data Exists
-  (#A : Type, #R : A -> A -> Prop, P : A -> Type, s : SortedCoList R) : Type
-| hd of
-  & _  of s is Cons
-  & hd of P s.hd
-| tl of
-  & _  of s is Cons
-  & tl of Exists s.tl
-
-// Less verbose.
-data Exists
-  (#A : Type, #R : A -> A -> Prop, P : A -> Type, s : SortedCoList R, _ : s is Cons) : Type
-| hd of
-  & hd of P s.hd
-| tl of
-  & tl of Exists s.tl
+  (#A : Type, #R : A -> A -> Prop, P : A -> Type) : (s : SortedCoList R) -> Type
+& s is Cons
+| hd of P s.hd
+| tl of Exists s.tl
 
 codata Forall
-  (#A : Type, #R : A -> A -> Prop, P : A -> Type, s : SortedCoList R) : Type
+  (#A : Type, #R : A -> A -> Prop, P : A -> Type) : (s : SortedCoList R) -> Type
 | Nil  of
-  & _  of s is Nil
+  & s is Nil
 | Cons of
-  & _  of s is Cons
+  & s is Cons
   & hd of P s.hd
   & tl of Forall s.tl

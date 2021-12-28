@@ -3616,11 +3616,118 @@ As you can see, we now need to name the index to be able to refer to it, because
 
 For papers, status and TODOs, see [the analogous section for inductive types](#inductive-uniform-indices)
 
-### Coinduction-Coinduction <a id="coinduction-coinduction"></a> [↩](#toc)
+### [Coinduction-Coinduction](Coinduction/Coinduction-Coinduction) <a id="coinduction-coinduction"></a> [↩](#toc)
 
 In one of the previous sections we have seen induction-induction, which is a mechanism for mutually defining an inductive type and an inductive family indexed by this type. What about "coinduction-coinduction" or something like that, which would be the dual thing in the world of coinduction? Is it possible?
 
-Let's find out by defining binary heaps again, but this time they will be necessarily infinite.
+#### Negative Coinduction-Coinduction, with the family not really being coinductive
+
+Let's find out by defining binary heaps again.
+
+```
+codata BHeap (R : A -> A -> Prop) : Type
+& root of A
+& l    of BHeap
+& r    of BHeap
+& okl  of OK root l
+& okr  of OK root r
+
+and
+
+codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
+& ok : (#v : A, #h : BHeap) -> OK v h -> R v h.root
+```
+
+The above snippet defines a type `BHeap R` of necessarily infinite binary heaps. The heaps are trees that have a `root` and two subtrees, `l` and `r`, that satisfy the heap property. The property is called `OK` and is defined together with `BHeap`. It is defined using the `codata` keyword, but in fact is not very coinductive, as it is just a wrapper supposed to represent a proof of `R v h.root`, where `v` will be filled by either `h.l.root` or `h.r.root`.
+
+```
+map
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (h : BHeap R) -> BHeap S
+& root => f h.root
+& l    => map h.l
+& r    => map h.r
+& okl  => map-ok h.okl
+& okr  => map-ok h.okr
+
+and
+
+map-ok
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (#v : A, #h : BHeap R, p : OK v h) -> OK (f v) (map h)
+& ok => pres p.ok
+```
+
+We can define functions on the type `BHeap` in the usual way. Above, we define a mapping function `map : BHeap R -> BHeap S`, which transforms `R`-ordered heaps into `S`-ordered heaps, provided that the argument function `f` maps `R`-related inputs to `S`-related outputs (the proof of this fact is called `pres` and is an argument). The definition goes by copattern matching. The definitions for the fields `root`, `l` and `r` are quite obvious. For the fields `okl` and `okr`, we need to use `pres`, but we cannot do this directly - we need to prove a lemma `map-ok`, which establishes that `map` preserves the heap property (or rather, transforms the `R`-heap property into the `S`-heap property). This lemma is defined/proved mutually with `map` - this is our old good mutual corecursion (even though `map-ok` is not really corecursive).
+
+```
+mutual
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+
+  map : (h : BHeap R) -> BHeap S
+  & root => f h.root
+  & l    => map h.l
+  & r    => map h.r
+  & okl  => map-ok h.okl
+  & okr  => map-ok h.okr
+
+  and
+
+  map-ok : (#v : A, #h : BHeap R, p : OK v h) -> OK (f v) (map h)
+  & ok => pres p.ok
+```
+
+It is not hard to see that the previous definition is lengthy and complicated, even though defining `map` should be simple - as simple as for ordinary (co)inductive types and families. The above snippet tries to make it shorter using a `mutual` block, but our attempt isn't very successful. To make the definition of `BHeap` really pleasant, we need more syntax sugar!
+
+```
+codata BHeap (R : A -> A -> Prop) : Type
+& root of A
+& l    of BHeap
+& r    of BHeap
+& okl  of R root l.root
+& okr  of R root r.root
+```
+
+This syntax sugar is shown above. The crux is that in coinductive-coinductive definitions, if the family is a not really coinductive wrapper for a record, we can inline it. Above, `okl` and `okr` are no longer of type `OK ...`, but become mere proofs that establish the heap property.
+
+```
+map
+  #(A B : Type) (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B) (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (h : BHeap R) -> BHeap S
+& root => f h.root
+& l    => map h.l
+& r    => map h.r
+& okl  => pres h.okl
+& okr  => pres h.okr
+```
+
+Using this syntax sugar, defining `map` is much simpler, as we no longer need to resort to mutual corecursion.
+
+```
+codata BST (R : A -> A -> Prop) : Type
+constructor N
+& root of A
+& l    of BST
+& r    of BST
+& okl  of R l.root root
+& okr  of R r.root root -> Empty
+```
+
+Using our syntax sugar, it is similarly easy to define a type of necessarily infinite binary search trees (modulo the usual difficulties with the order relation). If you want to learn more about these two types, see the files [Coind/Coinduction-Coinduction/NegativeBHeap.ttw](NegativeBHeap.ttw) and [Coind/Coinduction-Coinduction/NegativeBST.ttw](NegativeBST.ttw).
+
+#### Positive Coinduction-Coinduction, with the family not really being coinductive
+
+TODO
 
 Papers:
 - None
