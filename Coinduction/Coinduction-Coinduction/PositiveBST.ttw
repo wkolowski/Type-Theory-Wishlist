@@ -7,15 +7,15 @@ and
 
 codata OKL (R : A -> A -> Prop) : A -> BST -> Prop
 | OKL-E : #(root : A) -> OKL root E
-| OKL-N : #(root x : A) #(l r : BST) (okl : OKL x l) (okr : OKR x r) (p : R x root)
-            -> OKL root (N x l r okl okr)
+| OKL-N : #(root x : A, l r : BST) (okl : OKL x l, okr : OKR x r, p : R x root) ->
+            OKL root (N x l r okl okr)
 
 and
 
 codata OKR (R : A -> A -> Prop) : A -> BST -> Prop
 | OKR-E : #(root : A) -> OK root E
-| OKR-N : #(root x : A) #(l r : BST) (okl : OKL x l) (okr : OKR x r) (p : R x root -> Empty)
-            -> OKR root (N x l r okl okr)
+| OKR-N : #(root x : A, l r : BST) (okl : OKL x l, okr : OKR x r, p : R x root -> Empty) ->
+            OKR root (N x l r okl okr)
 
 // Intermediate syntax with `is` and uniform indices.
 codata BST (R : A -> A -> Prop) : Type

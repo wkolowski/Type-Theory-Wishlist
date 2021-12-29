@@ -7,8 +7,8 @@ codata Stream (A : Type) : Type
 and
 
 codata NotElem (#A : Type) : (h : A, s : Stream) -> Type
-& hd : (h : A, s : Stream) -> NotElem h s -> h = s.hd -> Empty
-& tl : (h : A, s : Stream) -> NotElem h s -> NotElem h s.tl
+& hd : #(h : A, s : Stream) -> NotElem h s -> h = s.hd -> Empty
+& tl : #(h : A, s : Stream) -> NotElem h s -> NotElem h s.tl
 
 // Using uniform indices.
 codata Stream (A : Type) : Type

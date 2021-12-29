@@ -10,15 +10,15 @@ and
 
 codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
 | OK-E : #(root : A) -> OK root E
-| OK-N : #(root x : A) #(l r : BHeap) (okl : OK x l) (okr : OK x r) (p : R root x)
-            -> OK root (N x l r okl okr)
+| OK-N : #(root x : A) #(l r : BHeap) (okl : OK x l) (okr : OK x r) (p : R root x) ->
+          OK root (N x l r okl okr)
 
 // Note: `is` is a syntax sugar for pattern matching that checks for only a
 // single constructor. For example, when used together with `if`, like in
 // `if h is E then x else y`, it means `match h with | E => x | _ => y end`.
 // When used alone, it is a `Bool`ean, i.e. `h is E : Bool`. It is true when
 // `h` was made with the `E` constructor and false otherwise.
-//Note that `Bool`eans are automatically coerced to propositions.
+// Note that `Bool`eans are automatically coerced to (strict) propositions.
 
 // Intermediate, more record-y syntax, using uniform indices.
 codata BHeap (R : A -> A -> Prop) : Type
@@ -27,9 +27,9 @@ codata BHeap (R : A -> A -> Prop) : Type
 
 and
 
-codata OK (R : A -> A -> Prop) : (v : A, h : BHeap) -> Prop
+codata OK (R : A -> A -> Prop) : (root : A, h : BHeap) -> Prop
 | OK-E of (_ : h is E)
-| OK-N of (_ : h is N, p : R v h.root)
+| OK-N of (_ : h is N, p : R root h.root)
 
 // If we can mix definitions by patterns and copatterns, then why not mix
 // definitions of inductives and records?
@@ -43,12 +43,12 @@ codata BHeap (R : A -> A -> Prop) : Type
 
 and
 
-codata OK (R : A -> A -> Prop) : (v : A, h : BHeap) -> Prop
+codata OK (R : A -> A -> Prop) : (root : A, h : BHeap) -> Prop
 | OK-E of
   & _ of h is E
 | OK-N of
   & _ of h is N
-  & p of R v h.root
+  & p of R root h.root
 
 // We can replace fields named `_`, like `_ of h is N`, with unnamed fields.
 codata BHeap (R : A -> A -> Prop) : Type
@@ -61,12 +61,12 @@ codata BHeap (R : A -> A -> Prop) : Type
 
 and
 
-codata OK (R : A -> A -> Prop) : (v : A, h : BHeap) -> Prop
+codata OK (R : A -> A -> Prop) : (root : A, h : BHeap) -> Prop
 | OK-E of
   & h is E
 | OK-N of
   & h is N
-  & p of R v h.root
+  & p of R root h.root
 
 // If a constructor has only one argument, we don't need to wrap it in a record,
 // and the field automatically gets the same name as the constructor.
@@ -80,11 +80,11 @@ codata BHeap (R : A -> A -> Prop) : Type
 
 and
 
-codata OK (R : A -> A -> Prop) : (v : A, h : BHeap) -> Prop
+codata OK (R : A -> A -> Prop) : (root : A, h : BHeap) -> Prop
 | OK-E of h is E
 | OK-N of
   & h is N
-  & p of R v h.root
+  & p of R root h.root
 
 // We can factor out common parameters by using `mutual` blocks. In such blocks,
 // we can also drop the `and`s, as everything is mutual with everything else.
@@ -102,41 +102,38 @@ mutual
     & okl  of OK root l
     & okr  of OK root r
 
-  codata OK (v : A) (h : BHeap) : Prop
+  codata OK : (root : A, h : BHeap) -> Prop
   | OK-E of h is E
   | OK-N of
     & h is N
-    & p of R v h.root
+    & p of R root h.root
 
-// Old, boring syntax.
-data Exists
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : BHeap R -> Type
-| root : (#h : BHeap R) -> h is N -> P h.root   -> Exists h
-| l    : (#h : BHeap R) -> h is N -> Exists h.l -> Exists h
-| r    : (#h : BHeap R) -> h is N -> Exists h.r -> Exists h
+// Note: constructors of inductive families cannot have multiple function
+// arrows - this is a syntax error. So `(a : A, b : B) -> C` is fine as
+// a constructor's type, but `(a : A) -> (b : B) -> C` is not.
 
-// Intermediate, more record-y syntax.
+// Basic syntax.
 data Exists
   (#A : Type, P : A -> Type, #R : A -> A -> Prop) : BHeap R -> Type
 | root : (#h : BHeap R, _ : h is N, root : P h.root) -> Exists h
 | l    : (#h : BHeap R, _ : h is N, l : Exists h.l)  -> Exists h
 | r    : (#h : BHeap R, _ : h is N, r : Exists h.r)  -> Exists h
 
-// Best syntax - uniform indices.
+// Better syntax - uniform indices.
 data Exists
   (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
 | root of (_ : h is N, root : P h.root)
 | l    of (_ : h is N, l : Exists h.l)
 | r    of (_ : h is N, r : Exists h.r)
 
-// Bester syntax - no need to write `_` for unnamed hypotheses.
+// Best syntax - no need to write `_` for unnamed hypotheses.
 data Exists
   (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
 | root of (h is N, root : P h.root)
 | l    of (h is N, l : Exists h.l)
 | r    of (h is N, r : Exists h.r)
 
-// Bestest syntax - mixed record-inductive.
+// Bester syntax - mixed record-inductive.
 data Exists
   (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
 & h is N
@@ -144,13 +141,7 @@ data Exists
 | l    of (l : Exists h.l)
 | r    of (r : Exists h.r)
 
-// Note:
-// & A
-// | B
-// | C
-// should be interpreted as A * (B + C).
-
-// Bestester syntax - no need for names in single-field records.
+// Bestest syntax - no need for names in single-field records.
 data Exists
   (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
 & h is N
@@ -158,19 +149,7 @@ data Exists
 | l    of Exists h.l
 | r    of Exists h.r
 
-// Old, boring syntax.
-codata Forall
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
-| E : Forall E
-| N : (#h : BHeap R) -> h is N -> P h.root -> Forall h.l -> Forall h.r -> Forall h
-
-// More regular syntax using `is`.
-codata Forall
-  (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
-| E : (#h : BHeap R) -> h is E -> Forall h
-| N : (#h : BHeap R) -> h is N -> P h.root -> Forall h.l -> Forall h.r -> Forall h
-
-// Intermediate, more record-y syntax using uniform indices.
+// Basic syntax (using `is`).
 codata Forall
   (#A : Type, P : A -> Type, #R : A -> A -> Prop) : (h : BHeap R) -> Type
 | E of (_ : h is E)
@@ -198,19 +177,7 @@ codata Forall
   & l    of Forall h.l
   & r    of Forall h.r
 
-// Old, boring syntax.
-codata Sim : (h1 h2 : BHeap R) -> Type
-| Es : Sim E E
-| Ns : #(h1 h2 : BHeap R) -> h1 is N -> h2 is N ->
-        h1.root = h2.root -> Sim h1.l h2.l -> Sim h1.r h2.r -> Sim h1 h2
-
-// More regular syntax using `is`.
-codata Sim : (h1 h2 : BHeap R) -> Type
-| Es : #(h1 h2 : BHeap R) -> h1 is E -> h2 is E -> Sim h1 h2
-| Ns : #(h1 h2 : BHeap R) -> h1 is N -> h2 is N ->
-        h1.root = h2.root -> Sim h1.l h2.l -> Sim h1.r h2.r -> Sim h1 h2
-
-// Intermediate, more record-y syntax using uniform indices.
+// Basic syntax (using `is`).
 codata Sim : (h1 h2 : BHeap R) -> Type
 | Es of (_ : h1 is E, _ : h2 is E)
 | Ns of (_ : h1 is N, _ : h2 is N, roots : h1.root = h2.root, ls : Sim h1.l h2.l, rs : Sim h1.r h2.r)
@@ -267,8 +234,8 @@ map
   & root => f h.root
   & l    => map h.l
   & r    => map h.r
-  & okl  => map-ok h.root h.l h.okl
-  & okr  => map-ok h.root h.r
+  & okl  => map-ok h.okl
+  & okr  => map-ok h.okr
 
 and
 

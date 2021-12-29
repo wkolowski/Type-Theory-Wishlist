@@ -3635,10 +3635,10 @@ codata BHeap (R : A -> A -> Prop) : Type
 and
 
 codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
-& ok : (#v : A, #h : BHeap) -> OK v h -> R v h.root
+& ok : (#root : A, #h : BHeap) -> OK root h -> R root h.root
 ```
 
-The above snippet defines a type `BHeap R` of necessarily infinite binary heaps. The heaps are trees that have a `root` and two subtrees, `l` and `r`, that satisfy the heap property. The property is called `OK` and is defined together with `BHeap`. It is defined using the `codata` keyword, but in fact is not very coinductive, as it is just a wrapper supposed to represent a proof of `R v h.root`, where `v` will be filled by either `h.l.root` or `h.r.root`.
+The above snippet defines a type `BHeap R` of necessarily infinite binary heaps. The heaps are trees that have a `root` and two subtrees, `l` and `r`, that satisfy the heap property. The property is called `OK` and is defined together with `BHeap`. It is defined using the `codata` keyword, but in fact is not very coinductive, as it is just wraps a proof of `R root h.root`, where `root` will be filled by the root of the binary heap.
 
 ```
 map
@@ -3711,7 +3711,7 @@ map
 & okr  => pres h.okr
 ```
 
-Using this syntax sugar, defining `map` is much simpler, as we no longer need to resort to mutual corecursion.
+Using this syntax sugar, the definition of `map` is much simpler, as we no longer need to resort to mutual corecursion.
 
 ```
 codata BST (R : A -> A -> Prop) : Type
@@ -3727,7 +3727,69 @@ Using our syntax sugar, it is similarly easy to define a type of necessarily inf
 
 #### Positive Coinduction-Coinduction, with the family not really being coinductive
 
-TODO
+We can also have positive coinductive-coinductive types. Let's see how this works by defining binary heaps yet again, but this time they will be only possibly infinite.
+
+```
+codata BHeap (R : A -> A -> Prop) : Type
+| E
+| N of (root : A, l r : BHeap, okl : OK root l, okr : OK root r)
+
+and
+
+codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
+| OK-E : #(root : A) -> OK root E
+| OK-N : #(root x : A) #(l r : BHeap) (okl : OK x l) (okr : OK x r) (p : R root x) -> OK root (N x l r okl okr)
+```
+
+This time, our heaps are either `E`mpty or a `N`ode with a value at the `root` and with two subtrees, together with proofs establishing that the node satisfies the heap property.
+
+```
+map
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (h : BHeap R) -> BHeap S
+| E => E
+| N => N
+  & root => f h.root
+  & l    => map h.l
+  & r    => map h.r
+  & okl  => map-ok h.okl
+  & okr  => map-ok h.okr
+
+and
+
+map-ok
+  #(A B : Type)
+  (R : A -> A -> Prop) (S : B -> B -> Prop)
+  (f : A -> B)
+  (pres : #(x y : A) -> R x y -> S (f x) (f y))
+  : (#root : A, #h : BHeap R, ok : OK root h) -> OK (f root) (map h)
+| OK-E => OK-E
+| OK-N => OK-N
+  & okl => map-ok ok.okl
+  & okr => map-ok ok.okr
+  & p   => pres ok.p
+```
+
+The definition of `map` for our positive `BHeap`s is almost the same as for the negative `BHeap`s, i.e. rather bloated. The only difference is that now we need to also handle the `E` case, which is trivial.
+
+Thaknfully, we can make use of the same syntax sugar that saved us from bloat in the negative case.
+
+```
+codata BHeap (R : A -> A -> Prop) : Type
+| E
+| N of
+  & root of A
+  & l r  of BHeap
+  & okl  of l is N -> R root l.root
+  & okr  of r is N -> R root r.root
+```
+
+Above, we have inlined `OK` into `okl` and `okr`, but there's a significant difference from what we have done for the negative case. Because our type is positive now, we can't just say `R root l.root`, because the left subtree `l` is not a record anymore - it might be `E`mpty (and like wise for `r`).
+
+If we want to write `l.root`, we need to make sure that `l` is a `N`ode. To this effect, we use `l is N` as the premise of `R root l.root`. Because of how `is` works, to the right of `l is N` we know that `l` is convertible with `N root' l' r' okl' okr'` for some `root', l', r', okl'` and `okr'`, so that writing `l.root` (which is convertible with `root'`) is legal (if you don't remember, this is because we may refer to `l`s constructor's argument by writing `l.`).
 
 Papers:
 - None
