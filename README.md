@@ -20,7 +20,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Sums](#sums)
 1. [Inductive Types](#inductive-types)
     1. [Basic Inductive Types](#basic-inductive-types)
-    1. [Constructor names, namespacing and discriminators](#constructors)
+    1. [Constructor names, namespacing, discriminators and other syntactic conveniences](#constructors)
     1. [Syntax sugar for bundled parameters](#bundled-parameters)
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
@@ -1566,7 +1566,7 @@ Basic inductive types work mostly as usual, but as for functions, we want to thi
 
 The different genres of inductive types (enumerations, parameterized types, inductive families, etc.) have progressively more complete syntaxes, so that simple types can be written in a simple way and only the more complicated ones require more details.
 
-Enumerations can NOT be written in a single line and must have the initial bar. Note that we don't need to (and should not) write the codomain the constructors when it's the same in every case.
+Enumerations can NOT be written in a single line and must have the initial bar. Note that we don't need to (and should not) write the codomain of the constructors when it's the same in every case.
 
 ```
 data Bool : Type
@@ -1610,7 +1610,7 @@ swap : A * B -> B * A
 | pair => pair outr outl
 ```
 
-But if there are name conflicts, we need to disambiguate by naming the arguments.
+If there are name conflicts, we need to disambiguate by naming the arguments.
 
 ```
 putTogether : (x y : A * B) -> A * B
@@ -1707,7 +1707,11 @@ TODO:
 - Describe list notation for list-like types.
 - Come up with some syntax for explicit arguments in function applications!
 
-### Constructor names, namespacing and discriminators <a id="constructors"></a> [↩](#toc)
+### Constructor names, namespacing, discriminators and other syntactic conveniences <a id="constructors"></a> [↩](#toc)
+
+In this section we list various tiny conveniences and syntax sugars.
+
+#### Constructor names and namespacing
 
 Names of inductive type constructors do NOT need to be globally unique, unlike in many other languages.
 
@@ -1721,7 +1725,7 @@ data Color : Type
 | Red
 | Green
 | Blue
-| RGBA of (r : u8, g : u8, b : u8, a : u8)
+| RGBA of (r g b a : u8)
 ```
 
 Both of the above types have constructors named `Red` and `Green`, but there is no confusion between them. For example, if we apply a function `canDrive : TrafficLight -> Bool` to `Red`, i.e. `canDrive Red`, then `Red` is interpreted as `Red : TrafficLight`. If a color is expected, e.g. in `isPretty Red` for `isPretty : Color -> Bool`, `Red` is interpreted as `Red : Color`.
@@ -1760,6 +1764,71 @@ add (n m : Nat) : Nat :=
 ```
 
 Of course we can nest these `if`-`is`-`then`-`else` expressions, but it's smarter to use ordinary pattern matching in such cases.
+
+#### Copattern syntax for constructor arguments
+
+Besides possibly overlapping constructor names, a namespace associated to every inductive type and the `is` syntax, we have some more conveniences.
+
+```
+data _*_ (A B : Type) : Type
+| pair of
+  & outl of A
+  & outr of B
+
+data Nat : Type
+| z
+| s of
+  & pred of Nat
+
+data List (A : Type) : Type
+| []
+| _::_ of
+  & hd of A
+  & tl of List
+
+data Color : Type
+| Red
+| Green
+| Blue
+| RGBA of
+  & r g b a : u8
+```
+
+When defining inductive types, for constructor arguments we can use not only tuple syntax, but also copattern syntax. The above code shows how to define the type from the previous section using this syntax.
+
+Using copattern syntax when defining inductive types should be very useful whenever a constructor has a lot of arguments, or argument names are very long, or when we just want to make these definitions a bit more readable.
+
+```
+Sum (A B : Type) : Type
+| inl of A
+| inr of B
+
+Sum' (A B : Type) : Type
+| inl of (inl : A)
+| inr of (inr : B)
+```
+
+Another convenient feature is that if an inductive type's constructor takes only a single argument, we don't need to wrap this argument into a record nor name it. We can just write `C of T`, where `C` is the constructor name and `T` is the argument type, and it will desugar to `C of (C : T)`, i.e. a record with single field whose name is the same as that of the constructor. As an example, the code above shows how to use this syntax sugar to define `Sum`. `Sum'` is the desugaring of `Sum`.
+
+```
+PositiveNat : Type
+& n of Nat
+& n is s
+
+PositiveNat' : Type
+& n of Nat
+& proof of n is s
+```
+
+Another convenient feature at our disposal is that we don't need to name fields that are proofs of very trivial propositions that can be decided during typechecking/elaboration. The most obvious of these is `Unit`, but we probably won't often need to have a field of this type. Another is `is`, the syntax we can use for abridged single-case pattern matching.
+
+In the snippet above, we have defined the type of positive natural numbers `PositiveNat`. It has one field `n`, which is a `Nat`, and another field, left unnamed, which is a proof of `n is s`, i.e. that `n` is not zero.
+
+
+
+// More verbose syntax.
+// List.params, Cons.args, etc.
+
 
 Not papers:
 - [How inductive type namespacing works in Lean](https://leanprover.github.io/theorem_proving_in_lean/inductive_types.html#enumerated-types)
