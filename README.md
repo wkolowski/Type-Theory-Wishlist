@@ -20,7 +20,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Sums](#sums)
 1. [Inductive Types](#inductive-types)
     1. [Basic Inductive Types](#basic-inductive-types)
-    1. [Constructor names, namespacing, discriminators and other syntactic conveniences](#constructors)
+    1. [Various syntactic conveniences for inductive types](#syntactic-conveniences)
     1. [Syntax sugar for bundled parameters](#bundled-parameters)
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
@@ -1707,11 +1707,11 @@ TODO:
 - Describe list notation for list-like types.
 - Come up with some syntax for explicit arguments in function applications!
 
-### Constructor names, namespacing, discriminators and other syntactic conveniences <a id="constructors"></a> [↩](#toc)
+### Various syntactic conveniences for inductive types <a id="syntactic-conveniences"></a> [↩](#toc)
 
-In this section we list various tiny conveniences and syntax sugars.
+In this section we list various tiny convenience features and syntax sugars that we may use when working with inductive types.
 
-#### Constructor names and namespacing
+#### Constructor names may overlap between types
 
 Names of inductive type constructors do NOT need to be globally unique, unlike in many other languages.
 
@@ -1728,11 +1728,81 @@ data Color : Type
 | RGBA of (r g b a : u8)
 ```
 
-Both of the above types have constructors named `Red` and `Green`, but there is no confusion between them. For example, if we apply a function `canDrive : TrafficLight -> Bool` to `Red`, i.e. `canDrive Red`, then `Red` is interpreted as `Red : TrafficLight`. If a color is expected, e.g. in `isPretty Red` for `isPretty : Color -> Bool`, `Red` is interpreted as `Red : Color`.
+Both of the above types have constructors named `Red` and `Green`, but there is no confusion between them. For example, if we apply a function `canDrive : TrafficLight -> Bool` to `Red`, i.e. `canDrive Red`, then `Red` is interpreted as `Red : TrafficLight`. If a color is expected, e.g. in `isPretty Red` for `isPretty : Color -> Bool`, `Red` is interpreted as `Red : Color`. If we need to disambiguate between the two `Red`s, we can write `TrafficLight.Red` and `Color.Red`, respectively.
 
-If we need to disambiguate between the two `Red`s, we can write `TrafficLight.Red` and `Color.Red`, respectively. Here the dot syntax is the same as for records, and in fact every inductive type has its own namespace, which is a record that holds various useful things related to the inductive type, like its constructors or its elimination principle.
+**Status: supporting name clashes is a rather rare feature. It is somewhat supported in Coq, but works very badly and is very confusing. It was supported in Idris 1 and worked pretty well there. Overall, I guess it could be tricky, but in the end it's just a matter of getting it right.**
 
-#### Discriminators
+#### Every inductive type has its own namespace
+
+Above, the `TrafficLight` in `TrafficLight.Red` and the `Color` in `Color.Red` are not the type (names) themselves, but the namespaces associated with these types - in our language, every inductive type has a namespace associated with it.
+
+The namespace is named the same as the type. We may access the contents of this namespace with dot syntax, just like for records. In fact, the namespace associated to an inductive type is nothing more than a record that holds various useful things related to the type.
+
+```
+> :t List.Nil
+List.Nil : (#A : Type) -> List A
+
+> :t List.Cons
+List.Cons : (#A : Type, hd : A, tl : List A) -> List A
+```
+
+As we have already seen, the namespace of an inductive type contains its constructors.
+
+```
+> :t List.Nil.args
+List.Nil.args : Type := (A : Type) -> ()
+
+> :t List.Cons.args
+List.Cons.args : Type := (A : Type) -> (hd : A, tl : List A)
+```
+
+Besides the constructors themselves, the namespace also contains types that represent the constructors' arguments (parameterized by the type's parameters).
+
+```
+> :t List.params
+List.params : Type := (A : Type)
+```
+
+Speaking of parameters, `I.params` is the type that collects all parameters of the inductive type `I`. For `List`, there is only one parameter, namely the type `A`, so `List.params` is a record with one field, `A : Type`.
+
+```
+> :t List.elim
+List.elim : (#A : Type, P : A -> Type, nil : P Nil, cons : (hd : A, tl : List A, IHtl : P tl) -> P (Cons hd tl), l : List A) -> P l
+```
+
+Another thing that we may find in this namespace is the type's elimination principle. The elimination principle of type `I` is called `I.elim`. For example, the induction principle for `List` is called `List.elim`.
+
+```
+> :t List.Base
+data List.Base A (A X : Type) : Type
+| NilX
+| ConsX of (hd : A, tl : X)
+```
+
+The namespace contains even more than what was listed above, including the base functor of the type, it's parametricity translation (for `List`, that would be `Forall` and `Forall`), a characterization of the type's equality (if it's trivial enough to automatically generate), a decision procedure for equality, and so on.
+
+Not papers:
+- [How inductive type namespacing works in Lean](https://leanprover.github.io/theorem_proving_in_lean/inductive_types.html#enumerated-types)
+
+**Status: each inductive type being its own namespace/module is not standard, but implemented in Lean, so if we have namespaces, then autogenerating one for each inductive type should be easy enough. The parameters, constructor arguments and so on already have their representations at the AST level, so turning them into proper types and putting in these namespaces should be easy. Generating the more complicated stuff like decision procedures for equality would be harder.**
+
+#### A more verbose (and more readable) syntax for inductive types
+
+There's a more verbose, but also more readable, version of the syntax used for defining inductive types. It should be useful for big types with lots of parameters, constructors, constructor arguments and so on.
+
+```
+data List
+  parameters
+  & A : Type
+  sort Type
+  constructors
+  | Nil
+  | Cons of (hd : A, tl : List A)
+```
+
+**Status: this is based on Agda's syntax for records, which uses the `constructor` keyword for specifying the constructor name and the `fields` keyword to specify the fields. Using a similar syntax also for inductive types is my own invention, but it should be very easy to implement - it's just syntax.**
+
+#### Discriminators and the `is` syntax for single-case pattern matching
 
 A **discriminator** is a function which checks whether a term was made with a particular constructor. This idea is taken from the F* language. Here, discriminators are named after the constructor, with a `?` at the end, and autogenerated when the type is defined. They come handy often, particularly in preconditions.
 
@@ -1746,7 +1816,7 @@ z? (n : Nat) : Bool := n is z
 s? (n : Nat) : Bool := n is s
 ```
 
-But we can use the `is` syntax to define much more than just discriminators. In the examples below, we show how to use `is` to define the `pred`ecessor function for naturals and `add`ition in a single line (TODO: this ignores the parameter-index distinction).
+But we can use the `is` syntax to define much more than just discriminators. In the examples below, we show how to use `is` to define the `pred`ecessor function for naturals and `add`ition as an one-liner (TODO: this ignores the parameter-index distinction).
 
 ```
 pred (n : Nat) : Option Nat :=
@@ -1764,6 +1834,15 @@ add (n m : Nat) : Nat :=
 ```
 
 Of course we can nest these `if`-`is`-`then`-`else` expressions, but it's smarter to use ordinary pattern matching in such cases.
+
+Not papers:
+- [Discriminators in F* tutorial](https://fstar-lang.org/tutorial/tutorial.html#sec-discriminators)
+- [An example of the `is` syntax in SSReflect](https://coq.inria.fr/refman/proof-engine/ssreflect-proof-language.html#congruence)
+
+**Status: SSReflect has a syntactic construct called `is` that is pretty similar to what was described above, so at the syntactic level implement `is` should be very easy. Making `is` first class (i.e. making `x is C` into a boolean or a type) would be a bit harder, but since it's supposed to just represent the result of a pattern match, it should be doable. Discriminators are not standard, but implemented in F\*, and once we have `is` they should pose no problems.**
+
+TODO:
+- How to unify the `is` syntax with ordinary pattern matching syntax? And how to make patterns (and pattern matching) first-class?
 
 #### Copattern syntax for constructor arguments
 
@@ -1798,6 +1877,10 @@ When defining inductive types, for constructor arguments we can use not only tup
 
 Using copattern syntax when defining inductive types should be very useful whenever a constructor has a lot of arguments, or argument names are very long, or when we just want to make these definitions a bit more readable.
 
+**Status: since copattern syntax is already available for defining records, I don't see any problems with allowing it to define constructor arguments. Implementing it should probably be very easy.**
+
+#### Single-argument constructors
+
 ```
 Sum (A B : Type) : Type
 | inl of A
@@ -1809,6 +1892,10 @@ Sum' (A B : Type) : Type
 ```
 
 Another convenient feature is that if an inductive type's constructor takes only a single argument, we don't need to wrap this argument into a record nor name it. We can just write `C of T`, where `C` is the constructor name and `T` is the argument type, and it will desugar to `C of (C : T)`, i.e. a record with single field whose name is the same as that of the constructor. As an example, the code above shows how to use this syntax sugar to define `Sum`. `Sum'` is the desugaring of `Sum`.
+
+**Status: this is a very simple piece of syntax sugar, which should be easy to implement. The only complication is when the single argument is a record, but let's say that we can treat differently records defined inline (constructor arguments) and records define somewhere else.**
+
+#### Unnamed constructor arguments
 
 ```
 PositiveNat : Type
@@ -1824,21 +1911,7 @@ Another convenient feature at our disposal is that we don't need to name fields 
 
 In the snippet above, we have defined the type of positive natural numbers `PositiveNat`. It has one field `n`, which is a `Nat`, and another field, left unnamed, which is a proof of `n is s`, i.e. that `n` is not zero.
 
-
-
-// More verbose syntax.
-// List.params, Cons.args, etc.
-
-
-Not papers:
-- [How inductive type namespacing works in Lean](https://leanprover.github.io/theorem_proving_in_lean/inductive_types.html#enumerated-types)
-- [Discriminators in F* tutorial](https://fstar-lang.org/tutorial/tutorial.html#sec-discriminators)
-- [An example of the `is` syntax in SSReflect](https://coq.inria.fr/refman/proof-engine/ssreflect-proof-language.html#congruence)
-
-**Status: each inductive type being its own namespace/module is not standard, but implemented in Lean, so it shouldn't pose any problems. Discriminators are not standard, but implemented in F\*, so they shouldn't pose a problem. The `is` syntax is taken from Coq's SSReflect, so it too is unproblematic.**
-
-TODO:
-- How to unify the `is` syntax with ordinary pattern matching syntax? And how to make patterns first-class?
+**Status: TODO**
 
 ### Syntax sugar for bundled parameters <a id="bundled-parameters"></a> [↩](#toc)
 
