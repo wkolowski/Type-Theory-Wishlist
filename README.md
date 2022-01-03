@@ -27,7 +27,6 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
         1. [Copattern syntax for constructor arguments](#copattern-syntax-for-constructor-arguments)
         1. [Single-argument constructors](#single-argument-constructors)
         1. [Unnamed constructor arguments](#unnamed-constructor-arguments)
-        1. [A more verbose (and readable) syntax for inductive types](#verbose-syntax-for-inductives)
         1. [Syntax sugar for bundled parameters](#bundled-parameters)
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
@@ -39,6 +38,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Inductive Families](#inductive-families)
     1. [Nested Inductive Families](#nested-inductive-families)
     1. [Syntax sugar for inductive families with uniform indices](#inductive-uniform-indices)
+    1. [A more verbose (and readable) syntax for inductive types](#verbose-syntax-for-inductives)
     1. [Inductive-Inductive Types](#induction-induction)
     1. [Inductive-Recursive Types](#induction-recursion)
 1. [Recursive Families](#recursive-families)
@@ -1908,40 +1908,6 @@ TODO:
 - Move this to the section on records.
 - Figure out a precise set of propositions for which this is allowed.
 
-#### A more verbose (and readable) syntax for inductive types <a id="verbose-syntax-for-inductives"></a> [↩](#toc)
-
-There's a more verbose, but also more readable, version of the syntax used for defining inductive types. It should be useful for big types with lots of parameters, constructors, constructor arguments and so on.
-
-```
-data List
-  parameters
-  & A : Type
-  sort Type
-  constructors
-  | []
-  | _::_ of (hd : A, tl : List)
-  eliminator foldl
-```
-
-Above we once more define the type of `List`s using this new syntax. We start with the keyword `data` and the type name, as usual. Then, in the next line, we have the keyword `parameters`, below which we list all the parameters using copattern syntax (i.e. each new line starts with a `&`). One line below that we see the keyword `sort`, which is followed by the universe in which the type lives. Then we have the keyword `constructors`, below which we list the constructors, using the familiar syntax with each line starting wth a pipe `|`. At last, we have the `eliminator` keyword which lets us create a synonym for the type's elimination principle.
-
-```
-data List
-  parameters
-  & A : Type
-  sort Type
-  constructors
-  | []
-  | _::_ of
-    & hd of A
-    & tl of List
-  eliminator foldl
-```
-
-Of course we can use this verbose/readable syntax together with copattern for constructor arguments, or any other piece of syntax that we have seen.
-
-**Status: this is based on Agda's syntax for records, which uses the `constructor` keyword for specifying the constructor name and the `fields` keyword to specify the fields. Using a similar syntax also for inductive types is my own idea, but it should be very easy to implement - it's just syntax.**
-
 #### Syntax sugar for bundled parameters <a id="bundled-parameters"></a> [↩](#toc)
 
 As was already said, we distinguish between parameters and indices in function definitions, the consequence being that we can omit the parameters, but we must write the indices. Similarly, we can omit parameters in inductive type definitions.
@@ -2138,8 +2104,7 @@ Mutual recursion is not restricted to mutual inductive types only. Above we have
 
 ```
 mutual
-  parameters
-  & A : Type
+  (A : Type)
 
   data List' : Type
   | Empty
@@ -2149,9 +2114,7 @@ mutual
   | Cons of (hd : A, tl : List')
 
 mutual
-  parameters
-  & A B : Type
-  & f : A -> B
+  #(A B : Type) (f : A -> B)
 
   mapl : List' A -> List' B
   | Empty       => Empty
@@ -2161,7 +2124,7 @@ mutual
   | Cons h t => Cons (f h) (mapl t)
 ```
 
-Last but not least, besides the standard `and` syntax that we have seen, there's also an alternative syntax for defining mutual inductive types and mutual recursive functions. We can define them in blocks which start with the keyword `mutual`. Then, we may list parameters shared by all definitions using copattern syntax, preceded by the `parameters` keyword. Finally, we may give the definitions proper, _without_ using the `and` keyword.
+Last but not least, besides the standard `and` syntax that we have seen, there's also an alternative syntax for defining mutual inductive types and mutual recursive functions. We can define them in blocks which start with the keyword `mutual`. Then, we may list parameters shared by all definitions. Finally, we may give the definitions proper, _without_ using the `and` keyword.
 
 Above we show how to use this syntax to once more define `List'`, `NonEmptyList`, `mapl`, and `mapne`. It may not seem very useful, because the new definitions are longer than the original ones, but the `mutual` block style definitions should prove useful when there are many definitions that share many parameters - in such cases we save quite a lot of writing.
 
@@ -2680,6 +2643,78 @@ Papers:
 and Type Theories with Inductive Families](http://www.lsv.fr/~barras/habilitation/barras-habilitation.pdf) (see section 8.6.1)
 
 **Status: Agda and Coq have a similar syntax sugar called _non-uniform parameters_, which is like a dual of our syntax sugar for _uniform indices_. Haskell also supports this, but here it is a full-fledged language feature instead of just syntax sugar. Therefore I think supporting implementing the above syntax sugar for uniform indices would be trivial. Caveat: naive translation from uniform indices to ordinary inductive families raises universe levels, so we need a more elaborate translation (see section 8.6.1 of the above habilitation thesis).**
+
+### A more verbose (and readable) syntax for inductive types <a id="verbose-syntax-for-inductives"></a> [↩](#toc)
+
+There's a more verbose, but also more readable, version of the syntax used for defining inductive types. It should be useful for big types with lots of parameters, constructors, constructor arguments and so on.
+
+```
+data List
+  parameters
+  & A : Type
+  sort Type
+  constructors
+  | []
+  | _::_ of (hd : A, tl : List)
+  eliminator foldl
+```
+
+Above we once more define the type of `List`s using this new syntax. We start with the keyword `data` and the type name, as usual. Then, in the next line, we have the keyword `parameters`, below which we list all the parameters using copattern syntax (i.e. each new line starts with a `&`). One line below that we see the keyword `sort`, which is followed by the universe in which the type lives. Then we have the keyword `constructors`, below which we list the constructors, using the familiar syntax with each line starting wth a pipe `|`. At last, we have the `eliminator` keyword which lets us create a synonym for the type's elimination principle.
+
+```
+mutual
+  parameters
+  & A : Type
+
+  data RoseTree : Type
+  | E
+  | N of (v : A, ts : RoseTreeList)
+
+  data RoseTreeList
+    sort Type
+    constructors
+    | Nil
+    | Cons of (h : RoseTree, t : RoseTreeList)
+
+mutual
+  parameters
+  & A B : Type
+  & f : A -> B
+
+  maprt : (t : RoseTree A) -> RoseTree B
+  | E => E
+  | N => N (f t.v) (maprtl t.ts)
+
+  maprtl : (ts : RoseTreeList A) -> RoseTreeList B
+  | Nil  => Nil
+  | Cons => Cons (maprt ts.h) (maprtl ts.t)
+```
+
+Besides ordinary inductive types, we also have a version of this verbose syntax for mutual inductive types. Namely, we can use the `keyword` parameters in the line below `mutual` and list the shared parameters there using copattern syntax. The component definitions in these verbose mutual blocks needs not all be verbose themselves - above we show an example mutual definition of `RoseTree` and `RoseTreeList`, in which the `mutual` block and the definition of `RoseTreeList` are both verbose, but the definition of `RoseTree` is ordinary. Note that we can also use these verbose `mutual` blocks for defining mutual recursive functions.
+
+```
+data Vec
+  parameters
+  & A : Type
+  indices
+  & n : Nat
+  sort Type
+  constructors
+  | Nil : Vec 0
+  | Cons :
+    & hd of A
+    & #n of Nat
+    & tl of Vec n
+    -> Vec (s n)
+  eliminator foldl
+```
+
+Of course we can also use this verbose syntax to define inductive families (indices are declared using copattern syntax below the keyword `indices`), possibly together with copattern syntax for constructor arguments, or any other piece of syntax that we have seen. Above we show how to define the familiar type of `Vec`tors in this syntax. As a bonus, we see how copattern syntax for constructor arguments works for inductive families.
+
+**Status: this is based on Agda's syntax for records, which uses the `constructor` keyword for specifying the constructor name and the `fields` keyword to specify the fields. Using a similar syntax also for inductive types is my own idea, but it should be very easy to implement - it's just syntax.**
+
+TODO:
+- Should verbose `mutual` blocks also allow specifying `indices`?
 
 ### [Inductive-Inductive Types](Induction/Induction-Induction) <a id="induction-induction"></a> [↩](#toc)
 
@@ -3465,7 +3500,9 @@ The code for `crmap` and `clmap` again is exactly identical to what we have seen
 ```
 codata CoListTree (A : Type) : Type
 & v  of A
-& ts of CoListTree
+& ts of CoListOfCoListTree
+
+and
 
 codata CoListOfCoListTree (A : Type) : Type
 | Nil
