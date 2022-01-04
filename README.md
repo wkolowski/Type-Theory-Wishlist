@@ -20,7 +20,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Sums](#sums)
 1. [Inductive Types](#inductive-types)
     1. [Basic Inductive Types](#basic-inductive-types)
-    1. [Various syntactic conveniences for inductive types](#syntactic-conveniences)
+    1. [Various syntactic conveniences for inductive types](#syntactic-conveniences-for-inductives)
         1. [Constructor names may overlap between types](#non-unique-constructor-names)
         1. [The namespace associated with an inductive type](#associated-namespace)
         1. [Discriminators and the `is` syntax for single-case pattern matching](#discriminators-and-single-case-pattern-matching)
@@ -45,12 +45,13 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Coinductive Types](#coinductive-types)
     1. [Negative Coinductive Types](#negative-coinductive-types)
     1. [Positive Coinductive Types](#positive-coinductive-types)
-    1. [Field names, namespacing, discriminators and bundled parameters](#coinductive-names-discriminators-bundled-params)
+    1. [Various syntactic conveniences for coinductive types](#syntactic-conveniences-for-coinductives)
     1. [Nested Coinductive Types](#nested-coinductive-types)
     1. [Mutual Coinductive Types](#mutual-coinductive-types)
     1. [Coinductive Families](#coinductive-families)
     1. [Nested Coinductive Families](#nested-coinductive-families)
     1. [Syntax sugar for coinductive families with uniform indices](#coinductive-uniform-indices)
+    1. [A more verbose (and readable) syntax for coinductive types](#verbose-syntax-for-coinductives)
     1. [Coinduction-Coinduction (TODO)](#coinduction-coinduction)
     1. [Coinduction-Corecursion (TODO)](#coinduction-corecursion)
 1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
@@ -1001,7 +1002,7 @@ module
 end
 ```
 
-Just like before, we don't need the `open`, because record arguments are opened automatically.
+Just like before, we don't need the `open` keyword, because record arguments are opened automatically.
 
 ```
 translateX (n : Nat) (p : (x y z : Nat)) : (x y z : Nat) :=
@@ -1714,13 +1715,13 @@ TODO:
 - Describe list notation for list-like types.
 - Come up with some syntax for explicit arguments in function applications!
 
-### Various syntactic conveniences for inductive types <a id="syntactic-conveniences"></a> [↩](#toc)
+### Various syntactic conveniences for inductive types <a id="syntactic-conveniences-for-inductives"></a> [↩](#toc)
 
 In this section we list various tiny convenience features and syntax sugars that we may use when working with inductive types.
 
 #### Constructor names may overlap between types <a id="non-unique-constructor-names"></a> [↩](#toc)
 
-Names of inductive type constructors do NOT need to be globally unique, unlike in many other languages.
+Names of inductive type constructors do NOT need to be globally unique, unlike in many other languages - multiple types can have constructors with the same names.
 
 ```
 data TrafficLight : Type
@@ -1756,17 +1757,17 @@ List.Cons : (#A : Type, hd : A, tl : List A) -> List A
 As we have already seen, the namespace of an inductive type contains its constructors.
 
 ```
-> :t List.Nil.args
+> :def List.Nil.args
 List.Nil.args : Type := (A : Type) -> ()
 
-> :t List.Cons.args
+> :def List.Cons.args
 List.Cons.args : Type := (A : Type) -> (hd : A, tl : List A)
 ```
 
 Besides the constructors themselves, the namespace also contains types that represent the constructors' arguments (parameterized by the type's parameters).
 
 ```
-> :t List.params
+> :def List.params
 List.params : Type := (A : Type)
 ```
 
@@ -1780,13 +1781,13 @@ List.elim : (#A : Type, P : A -> Type, nil : P Nil, cons : (hd : A, tl : List A,
 Another thing that we may find in this namespace is the type's elimination principle. The elimination principle of type `I` is called `I.elim`. For example, the induction principle for `List` is called `List.elim`.
 
 ```
-> :t List.Base
-data List.Base A (A X : Type) : Type
+> :def List.Extras.Base
+data List.Extras.Base A (A X : Type) : Type
 | NilX
 | ConsX of (hd : A, tl : X)
 ```
 
-The namespace contains even more than what was listed above, including the base functor of the type, it's parametricity translation (for `List`, that would be `Forall` and `Forall`), a characterization of the type's equality (if it's trivial enough to automatically generate), a decision procedure for equality, and so on.
+The namespace contains even more than what was listed above, including the base functor of the type, it's parametricity translation (for `List`, that would be `Forall` and `Forall`), a characterization of the type's equality (if it's trivial enough to automatically generate), a decision procedure for equality, and so on. All of these extras may be found in the subnamespace `List.Extras`.
 
 Not papers:
 - [How inductive type namespacing works in Lean](https://leanprover.github.io/theorem_proving_in_lean/inductive_types.html#enumerated-types)
@@ -1888,24 +1889,24 @@ As an example, the code above shows how to use this syntax sugar to define `Sum`
 
 #### Unnamed constructor arguments <a id="unnamed-constructor-arguments"></a> [↩](#toc)
 
-Another convenient feature at our disposal is that we don't need to name fields that are proofs of very trivial propositions that can be decided during typechecking/elaboration. The most obvious of these is `Unit`, but we probably won't often need to have a field of this type. Another is `is`, the syntax we can use for abridged single-case pattern matching.
+Another convenient feature at our disposal is that we don't need to name constructor arguments that are proofs of very trivial propositions that can be decided during typechecking/elaboration. The most obvious of these is `Unit`, but we probably won't often need to have a field of this type. Another is `is`, the syntax we can use for abridged single-case pattern matching.
 
 ```
-PositiveNat : Type
-& n of Nat
-& n is s
+data PositiveNat : Type
+| Mk of
+  & n of Nat
+  & n is s
 
-PositiveNat' : Type
-& n of Nat
-& proof of n is s
+data PositiveNat' : Type
+| Mk of (n : Nat, n is s)
 ```
 
-In the snippet above, we have defined the type of positive natural numbers `PositiveNat`. It has one field `n`, which is a `Nat`, and another field, left unnamed, which is a proof of `n is s`, i.e. that `n` is not zero.
+In the snippet above, we have defined the type of positive natural numbers `PositiveNat`. It has one constructor with an argument `n`, which is a `Nat`, and another argument, left unnamed, which is a proof of `n is s`, i.e. that `n` is not zero. `PositiveNat'` is a version of the same type, but defined using tuple syntax instead of copattern syntax.
 
 **Status: Coq allows naming record fields `_`, but I'm not sure about Agda, Lean or Idris. In any case, I think supporting this at the syntactic level should be easy. Inferring the proofs of `is` should also be fairly trivial.**
 
 TODO:
-- Move this to the section on records.
+- Write a section on unnamed record fields.
 - Figure out a precise set of propositions for which this is allowed.
 
 #### Syntax sugar for bundled parameters <a id="bundled-parameters"></a> [↩](#toc)
@@ -1959,7 +1960,7 @@ app (#A : Type) : (l1 l2 : List A) -> List A
 To sum up, the type of `app`, written as `(l1 l2 : List) -> List` is interpreted as `(#A : Type, l1 l2 : List A) -> List A`, and the definition of `app` is equivalent to the definition shown above.
 
 Papers:
-- None, this is my invention.
+- None, this is my idea.
 
 **Status: the distinction between parameters and indices was present in Lean 2 when defining functions, but its other forms described here are novel. In Coq, the syntax is similar to ours when the parameters of an inductive type are abstracted over inside a section. To sum up, it shouldn't pose any implementation problems.**
 
@@ -2700,7 +2701,7 @@ data Vec
   & n : Nat
   sort Type
   constructors
-  | Nil : Vec 0
+  | Nil  : Vec 0
   | Cons :
     & hd of A
     & #n of Nat
@@ -3270,7 +3271,7 @@ app : (l1 l2 : CoList A) -> CoList A
 See [the file dealing with conatural numbers](Coinduction/Conat.ttw) for more details on this notation.
 
 Papers:
-- None, this is my invention.
+- None, this is my idea.
 
 **Status: somewhat experimental. There are no papers nor a prototype implementation. However, it looks pretty reasonable and I have some Coq code [here](Coinduction/Code/CoVec.v) that shows an example manual desugaring.**
 
@@ -3280,9 +3281,9 @@ TODO:
 TODO:
 - Look for papers.
 
-### Field names, namespacing, discriminators and bundled parameters <a id="coinductive-names-discriminators-bundled-params"></a> [↩](#toc)
+### Various syntactic conveniences for coinductive types <a id="syntactic-conveniences-for-coinductives"></a> [↩](#toc)
 
-Note that names of fields do NOT need be globally unique, contrary to what is the case in many other languages.
+Names of coinductive type fields do NOT need to be globally unique, unlike in many other languages - multiple types can have fields with the same names.
 
 ```
 codata NonEmptyCoList (A : Type) : Type
@@ -3290,7 +3291,7 @@ codata NonEmptyCoList (A : Type) : Type
 & tl of Option NonEmptyCoList
 ```
 
-The above type defines the type of non-empty colists. The fields are named `hd` and `tl`, just like the fields of `Stream`, but this does not produce much confusion. When accessing a field, like `s.hd`, it is clear from the type of `s` which `hd` is meant. This is the case also in many other situations. If `hd` is truly ambiguous, we can disambiguate by writing `Stream.hd` and `NonEmptyCoList.hd`, respectively. Just like for inductive types, each coinductive type has its own namespace, which is a record that contains the fields in function form (`Stream.hd : (#A : Type, s : Stream A) -> A`) and other useful autogenerated stuff.
+The above type defines the type of non-empty colists. The fields are named `hd` and `tl`, just like the fields of `Stream`, but this does not produce much confusion. When accessing a field, like `s.hd`, it is clear from the type of `s` which `hd` is meant. This is the case also in many other situations. If `hd` is truly ambiguous, we can disambiguate by writing `Stream.hd` and `NonEmptyCoList.hd`, respectively. Here `Stream` and `NonEmptyCoList` are not type names, but instead the namespaces associated to these types - every coinductive type has an associated namespace.
 
 ```
 codata CoList (A : Type) : Type
@@ -3298,14 +3299,70 @@ codata CoList (A : Type) : Type
 | Cons of (hd : A, tl : CoList)
 ```
 
-The above code defines the type of colists again, but this time with constructor names changed to `Nil` and `Cons`. The constructor names are the same as for lists, but we don't need to worry about name conflicts, because positive coinductive types have their own namespaces too.
+The above code defines the type of colists again, but this time with constructor names changed to `Nil` and `Cons`. The constructor names are the same as for lists, but we don't need to worry about name conflicts, neither with inductive types nor with other positive coinductive types (not with negative coinductive types' field names), because positive coinductive types have their own associated namespaces too.
 
 ```
-app (l1 l2 : CoList A) : CoList A :=
-  if l1 is Cons h t then Cons h (app t l2) else l2
+> :t NonEmptyCoList.hd
+NonEmptyCoList.hd : (#A : Type) -> NonEmptyCoList A -> A
+
+> :t NonEmptyCoList.tl
+NonEmptyCoList.tl :
+  (#A : Type) -> NonEmptyCoList A -> Option (NonEmptyCoList A)
+
+> :t CoList.Nil
+CoList.Nil : (#A : Type) -> CoList A
+
+> :t CoList.Cons
+CoList.Cons : (#A : Type, hd : A, tl : CoList A) -> CoList A
+
+> :def CoList.Nil.args
+CoList.Nil.args : Type := (A : Type) -> ()
+
+> :def CoList.Cons.args
+CoList.Cons.args : Type := (A : Type) -> (hd : A, tl : CoList A)
+
+> :def NonEmptyCoList.params
+NonEmptyCoList.params : Type := (A : Type)
+
+> :def CoList.params
+CoList.params : Type := (A : Type)
+
+> :t NonEmptyCoList.constructor
+NonEmptyCoList.constructor :
+  (#A : Type, hd : A, tl : NonEmptyCoList A) -> NonEmptyCoList A
 ```
 
-We can use the `is` syntax for doing single-case pattern matching with positive coinductive types too.
+Just like for inductive types, each coinductive type has its own namespace. There, we can find fields (for negative coinductives) and constructors and constructor arguments (for positive coinductives), type parameters, and also the constructor for negative coinductive types. There's also an `Extra` subnamespace just as for inductives, even though it's not shown in the listing above.
+
+```
+codata CoList (A : Type) : Type
+| Nil
+| Cons of
+  & hd of A
+  & tl of CoList
+
+app : (l1 l2 : CoList A) -> CoList A :=
+  fun l1 l2 => if l1 is Cons h t then Cons h (app t l2) else l2
+
+codata Sum (A B : Type) : Type
+| inl of A
+| inr of B
+```
+
+For positive coinductive types, we may use all the syntactic conveniences we know from inductive types, like the `is` syntax for single-case pattern matching, copattern syntax for constructor arguments and the syntax sugar for single-argument constructors.
+
+```
+codata StreamOfPositives : Type
+& hd of Nat
+& hd is s
+& tl of StreamOfEvens
+
+codata CoListOfPositives : Type
+| Nil
+| Cons of (hd : Nat, hd is s, tl : CoListOfEvens)
+```
+
+Just as for inductives, we can have unnamed constructor arguments for positive coinductive types, provided that the field's type is a proposition that can be decided and inferred automatically. But there's more: we can also use unnamed fields in definitions of negative coinductive types. The above snippet shows definitions of a stream of positive naturals and a colist of positive naturals.
 
 ```
 zipWith (f : A -> B -> C) : (s1 : Stream) -> (s2 : Stream) -> Stream
@@ -3313,7 +3370,7 @@ zipWith (f : A -> B -> C) : (s1 : Stream) -> (s2 : Stream) -> Stream
 & tl => zipWith s1.tl s2.tl
 ```
 
-The _bundled parameters syntax_ that we saw previously used with inductive types, also works with coinductive types! In the above implementation of `zipWith`, we don't specify what is the type of elements of the `Stream`s, but what gets inferred is `s1 : Stream A` (because we use `s1.hd` as the first argument of `f`) and `s2 : Stream A` (because we use `s2.hd` as the second argument to `f`), and the result is inferred to be `Stream C`, because this is the type of `f s1.hd s2.hd` which we used for the `hd` of the result. The equivalent code that doesn't use the bundled parameters syntax is
+The _bundled parameters syntax_ that we saw previously used with inductive types, also works with coinductive types. In the above implementation of `zipWith`, we don't specify what is the type of elements of the `Stream`s, but what gets inferred is `s1 : Stream A` (because we use `s1.hd` as the first argument of `f`) and `s2 : Stream B` (because we use `s2.hd` as the second argument to `f`), and the result is inferred to be `Stream C`, because this is the type of `f s1.hd s2.hd` which we used for the `hd` of the result. The equivalent code that doesn't use the bundled parameters syntax is
 
 ```
 zipWith (f : A -> B -> C) : (s1 : Stream A) -> (s2 : Stream B) -> Stream C
@@ -3328,18 +3385,15 @@ codata CoNat : Type
 | z
 | s of (pred : CoNat)
 
-len : CoList -> CoNat
-| Nil      => z
-| Cons _ t => s (len t)
+len : (l : CoList) -> CoNat
+| Nil  => z
+| Cons => s (len l.tl)
 ```
 
 Papers:
 - None.
 
-**Status: non-unique field names for coinductives are analogous to non-unique constructor names for inductives. Coinductive namespacing is analogous to inductive namespacing, which is implemented in Lean. The `is` syntax shouldn't pose problems, as it can be desugared to pattern matching, which is then desugared to copattern matching on negative coinductive types. Bundled parameter syntax is very speculative.**
-
-TODO:
-- Revisit this at some point in the future.
+**Status: non-unique field names for coinductives are analogous to non-unique constructor names for inductives. Coinductive namespacing is analogous to inductive namespacing, which is implemented in Lean. The `is` syntax shouldn't pose problems, as it can be desugared to pattern matching, which is then desugared to copattern matching on negative coinductive types. Copattern syntax for constructor arguments and the syntax sugar for single-argument constructors should work fine provided they work for inductive types. Bundled parameter syntax is very speculative.**
 
 ### Nested Coinductive Types <a id="nested-coinductive-types"></a> [↩](#toc)
 
@@ -3428,7 +3482,7 @@ clmap (f : A -> B) : CoList (CoRoseTree A) -> CoList (CoRoseTree B)
 The last possibility, just like for `StreamTree` previously, is to split the definition of `crmap` into two mutually corecursive definitions, one of `crmap` proper and the other of `clmap`, a mapping function on `CoList`s of `CoRoseTree`s.
 
 Papers:
-- None
+- None.
 
 **Status: nested coinductive types are not standard. Indeed, they are not really supported in Coq, no matter how hard I try, and I guess also not in Agda nor other proof assistants.**
 
@@ -3525,10 +3579,36 @@ clomap (f : A -> B) : CoListOfCoListTree A -> CoListOfCoListTree B
 
 We can define functions for map over these types by mutual corecursion. `cltmap`, which works on `CoListTree`s, applies `f` to the value stored at the root and calls `clomap`, which deals with mapping over `CoListOfCoListTree`. This latter function, when it deals with the `Cons` case, uses `cltmap` to map over the tree `t` and corecursively calls itself to deal with `ts`, the rest of subtrees.
 
+```
+mutual
+  (A : Type)
+
+  codata CoListTree : Type
+  & v  of A
+  & ts of CoListOfCoListTree
+
+  codata CoListOfCoListTree : Type
+  | Nil
+  | Cons of (hd : CoListTree, tl : CoListOfCoListTree)
+
+mutual
+  #(A B : Type) (f : A -> B)
+
+  cltmap : (t : CoListTree A) -> CoListTree B
+  & v  => f t.v
+  & ts => clomap t.ts
+
+  clomap : CoListOfCoListTree A -> CoListOfCoListTree B
+  | Nil      => Nil
+  | Cons t ts => Cons (cltmap t) (clomap ts)
+```
+
+As for mutual inductive types, we can put mutual coinductive/corecursive definitions into `mutual` blocks which allow us to specify parameters shared across definitions. The above snippet shows how the definitions of `CoListTree`, `CoListOfCoListTree`, `cltmap` and `clomap` look in this syntax.
+
 Are Mutually Coinductive Types good for anything besides encoding Nested Coinductive Types? As of now probably not, but they become a lot more useful once we have Coinductive Families at our disposal...
 
 Papers:
-- None
+- Take a look at the papers mentioned in the section on [Mutual Inductive Types](#mutual-inductive-types)
 
 **Status: Mutual Coinductive Types are supported by Coq (and probably also by Agda, but I need to check), so they shouldn't be problematic. However, other proof assistants like Lean or Idris I think, don't directly support Mutual Coinductive Types or coinductive types at all for that matter.**
 
@@ -3544,7 +3624,7 @@ Coinductive Families are the dual of Inductive Families. Syntactically, we need 
 ```
 codata Odd : CoNat -> Prop
 & Oz  : Odd z -> Empty
-& Oss : (#n : Nat) -> Odd (s (s n)) -> Odd n
+& Oss : (#n : CoNat) -> Odd (s (s n)) -> Odd n
 ```
 
 The above example defines a predicate `Odd` on conatural numbers. `Odd` has two fields, `Oz` and `Oss`, but not all proofs of `Odd c` can access these fields. The type of `Oz` is `Odd z -> Empty`, so this field can only be accessed if we have `x : Odd z`, i.e. a proof that zero is `Odd`. The other field, `Oss`, is of type `(#n : CoNat) -> Odd (s (s n)) -> Odd c`, so it can only be accessed by proofs of `Odd` for conaturals greater than or equal to two.
@@ -3867,6 +3947,75 @@ codata CoBush : (A : Type) -> Type
 As you can see, we now need to name the index to be able to refer to it, because it is not quantified. For negative types, field types are given after `of` and we omit the domain, whereas for positive types the constructor arguments are given after `of` and we omit the codomain. Contrary to ordinary coinductive types, we need to explicitly state what the index is for coinductive arguments. In the end, the new syntax sugar saves us from quite some typing, especially for longer definitions.
 
 For papers, status and TODOs, see [the analogous section for inductive types](#inductive-uniform-indices)
+
+### A more verbose (and readable) syntax for coinductive types <a id="verbose-syntax-for-coinductives"></a> [↩](#toc)
+
+Just as for inductive types, for coinductive types too we have a more verbose, but also more readable, special syntax.
+
+```
+codata Stream
+  parameters
+  & A : Type
+  sort Type
+  fields
+  & hd of A
+  & tl of Stream
+  constructor Cons
+```
+
+For negative coinductive types, this syntax is very similar to that for inductive types. We start with the keyword `parameters`, below which we list the type's parameters in copattern syntax, then the keyword `sort`, followed by the type's universe, then we have the keyword `fields` followed by the type's fields in copattern syntax. Finally, we can optionally specify an alias for the type's constructor, after the keyword `constructor`.
+
+```
+mutual
+  parameters
+  & A : Type
+
+  codata StreamTree : Type
+  & v  of A
+  & ts of StreamOfStreamTree
+
+  codata StreamOfStreamTree : Type
+  & hd of StreamTree
+  & tl of StreamOfStreamTree
+
+mutual
+  parameters
+  & A B : Type
+  & f : A -> B
+
+  mapst : (t : StreamTree A) -> StreamTree B
+  & v  => f t.v
+  & ts => maps t.ts
+
+  maps : (s : StreamOfStreamTree A) -> StreamOfStreamTree B
+  & hd => mapst s.hd
+  & tl => maps s.tl
+```
+
+Just as was the case for mutual inductive types, we have a special verbose version of `mutual` blocks, in which we can specify parameters in copattern syntax following the `parameters` keyword and these are shared across all definition in the block. Verbose `mutual` blocks work for both coinductive type definitions and corecursive function definitions.
+
+```
+codata Odd
+  indices
+  & n of CoNat
+  sort Prop
+  fields
+  & Oz  : Odd z -> Empty
+  & Oss : (#n : CoNat) -> Odd (s (s n)) -> Odd n
+  constructor MkOdd
+```
+
+The verbose syntax also works for coinductive families, with the keyword `indices` being used to specify the indices.
+
+The verbose syntax for positive coinductive types is almost the same as for inductive types, with the exception that we can't specify an alias for the elimination rule (because positive coinductive don't have an elimination rule of the same kind as inductive types).
+
+Papers:
+- None, this is my idea.
+
+**Status: if the verbose syntax works for inductive types, then surely it also does for coinductive types. So, it shouldn't pose any problems.**
+
+TODO:
+- Change the keyword `fields` to `destructors`?
 
 ### [Coinduction-Coinduction](Coinduction/Coinduction-Coinduction) <a id="coinduction-coinduction"></a> [↩](#toc)
 
