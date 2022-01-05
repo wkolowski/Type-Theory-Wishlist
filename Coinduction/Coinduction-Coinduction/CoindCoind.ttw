@@ -1,47 +1,61 @@
-// Deduplicated streams, full syntax.
-codata Stream (A : Type) : Type
+codata DeduplicatedStream (A : Type) : Type
 & hd    of A
-& tl    of Stream
+& tl    of DeduplicatedStream
 & dedup of NotElem hd tl
 
 and
 
-codata NotElem (#A : Type) : (h : A, s : Stream) -> Type
-& hd : #(h : A, s : Stream) -> NotElem h s -> h = s.hd -> Empty
-& tl : #(h : A, s : Stream) -> NotElem h s -> NotElem h s.tl
-
-// Using uniform indices.
-codata Stream (A : Type) : Type
-& hd    of A
-& tl    of Stream
-& dedup of NotElem hd tl
-
-and
-
-codata NotElem (#A : Type) : (h : A, s : Stream) -> Type
+codata NotElem (#A : Type) : (h : A, s : DeduplicatedStream) -> Type
 & hd of h = s.hd -> Empty
 & tl of NotElem h s.tl
 
-// Duplicated streams, full syntax.
-codata Stream (A : Type) : Type
+codata DuplicatedStream (A : Type) : Type
 & hd  of A
-& tl  of Stream
+& tl  of DuplicatedStream
 & dup of Elem hd tl
 
 and
 
-data Elem (#A : Type) : (h : A, s : Stream) -> Type
-| z : #(h : A, s : Stream) -> h = s.hd -> Elem h s
-| s : #(h : A, s : Stream) -> Elem h s.tl -> Elem h s
-
-// Using uniform indices.
-codata Stream (A : Type) : Type
-& hd  of A
-& tl  of Stream
-& dup of Elem hd tl
-
-and
-
-data Elem (#A : Type) : (h : A, s : Stream) -> Type
+data Elem (#A : Type) : (h : A, s : DuplicatedStream) -> Type
 | z of h = s.hd
 | s of Elem h s.tl
+
+// Binary trees in which every branch, considered as a stream, is deduplicated.
+// `BDT` stands for `BranchiallyDeduplicatedTree`.
+codata BDT (A : Type) : Type
+& root of A
+& l r  of BDT
+& okl  of NotElem root l
+& okr  of NotElem root r
+
+and
+
+codata NotElem (#A : Type) : (root : A, t : BDT) -> Type
+& root of root = t.root -> Empty
+& l    of NotElem root t.l
+& r    of NotElem root t.r
+
+// Binary trees which are completely deduplicated
+codata DeduplicatedTree (A : Type) : Type
+& root of A
+& l r  of DeduplicatedTree A
+& okl  of NotElem root l
+& okr  of NotElem root r
+& disj of Disjoint l r
+
+and
+
+codata NotElem (#A : Type) : (root : A, t : DeduplicatedTree) -> Type
+& root of root = t.root -> Empty
+& l    of NotElem root t.l
+& r    of NotElem root t.r
+
+and
+
+codata Disjoint (#A : Type) : (t1 t2 : DeduplicatedTree) -> Type
+& r1t2 of NotElem t1.root t2
+& r2t1 of NotElem t2.root t1
+& l1l2 of Disjoint t1.l t2.l
+& l1r2 of Disjoint t1.l t2.r
+& r1l2 of Disjoint t1.r t2.l
+& r1r2 of Disjoint t1.r t2.r
