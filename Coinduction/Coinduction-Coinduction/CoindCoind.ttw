@@ -9,6 +9,32 @@ codata NotElem (#A : Type) : (h : A, s : DeduplicatedStream) -> Type
 & hd of h = s.hd -> Empty
 & tl of NotElem h s.tl
 
+codata StronglySortedStream (#A : Type, R : A -> A -> Prop) : Type
+& hd of A
+& tl of StronglySortedStream
+& sorted of Sorted R hd tl
+
+and
+
+codata Sorted
+  (#A : Type, R : A -> A -> Prop, x : A)
+  : (s : StronglySortedStream) -> Prop
+& hd of R x s.hd
+& tl of Sorted s.tl
+
+// The `this` keyword seems evil...
+codata DeduplicatedStream2 (A : Type) : Type
+& hd of A
+& tl of DeduplicatedStream2
+& dedup of (n m : Nat, neq : n <> m) -> nth n this <> nth m this
+
+and
+
+nth : (n : Nat, s : DeduplicatedStream2) : A
+| z, _ => s.hd
+| s, _ => nth n.pred s.tl
+
+
 codata DuplicatedStream (A : Type) : Type
 & hd  of A
 & tl  of DuplicatedStream
@@ -59,3 +85,16 @@ codata Disjoint (#A : Type) : (t1 t2 : DeduplicatedTree) -> Type
 & l1r2 of Disjoint t1.l t2.r
 & r1l2 of Disjoint t1.r t2.l
 & r1r2 of Disjoint t1.r t2.r
+
+// Different definition.
+codata BTree (A : Type) : Type
+& root of A
+& l r  of A
+
+data Elem (#A : Type, x : A) : (t : BTree A) -> Type
+| root of x = roof
+| l    of Elem l
+| r    of Elem r
+
+Deduplicated (t : BTree A) : Prop :=
+  (x : A) -> isProp (Elem x t)

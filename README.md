@@ -2477,7 +2477,7 @@ add-Even : (n m : Nat, en : Even n, em : Even m) -> Even (add n m)
 | .(s (s n')), _, @Ess n' en', _ => Ess (add-Even n' m en' em)
 ```
 
-Above we see the same proof, but this time the arguments `n` and `m` are not implicit. This leads us to notice a new phenomenon that can occur during dependent pattern matching: if a value matches some pattern, this can provide information about what pattern is matched by this value's index. To mark the occurence of this phenomenon, we use **forced patterns** (which in Agda are called [inaccessible patterns](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns)), which consist of a dot followed by an ordinary pattern (possibly in parentheses).
+Above we see the same proof, but this time the arguments `n` and `m` are not implicit. This leads us to notice a new phenomenon that can occur during dependent pattern matching: if a value matches some pattern, this can provide information about what pattern is matched by this value's index. To mark the occurrence of this phenomenon, we use **forced patterns** (which in Agda are called [inaccessible patterns](https://agda.readthedocs.io/en/v2.5.2/language/function-definitions.html#special-patterns)), which consist of a dot followed by an ordinary pattern (possibly in parentheses).
 
 In the above example we match on all four arguments. When `en` matches `Ez`, we know that `n` must be `z`. We mark this by setting the first pattern to be `.z`. Similarly, when `en` matches `@Ess n' en'` (we use the `@` syntax so that we can explicitly name the `n'`), we know that `n` must be `s (s n')` and we mark this by setting the first pattern to be `.(s (s n'))`. Note that for this to be interpreted as a forced pattern, the `s (s n')` must be put in parentheses.
 
@@ -4282,7 +4282,12 @@ TODO:
 
 ## Mixed Inductive and Coinductive Types <a id="mixed-inductive-coinductive"></a> [↩](#toc)
 
-TODO: write an introduction
+In most functional languages and proof assistants the inductive and coinductive worlds are either strictly separated, or, alternatively, the coinductive world is just missing (or, in Haskell, the inductive and coinductive worlds are the same thing). In OO, hybrid and dynamic languages the things are more shady.
+
+In this section, we want to explain (and explore) a more principled approach to mixing inductive and coinductive types. We will see three main ideas:
+- inductive types with global fields, i.e. fields that are present no matter which constructor was used to create the value
+- coinduction-induction, i.e. a mechanism similar to induction-induction or coinduction-coinduction, but which allows to simultaneously define an inductive type and a coinductive predicate indexed by it, or a coinductive type and an inductive predicate indexed by it
+- mixed inductive-coinductive types, i.e. types in which some occurrences of the self-referring argument may be inductive, while other occurrences may be coinductive
 
 ### Mixing records and sums: A * (B + C) = (A * B) + (A * C)<a id="mixing-records-and-sums"></a> [↩](#toc)
 
