@@ -58,6 +58,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Mixing records and sums: A * (B + C) = (A * B) + (A * C)](#mixing-records-and-sums)
     1. [Coinduction-Induction](#coinduction-induction)
     1. [Types with inductive and coinductive components (TODO)](#inductive-coinductive-components)
+1. [Sections and automatic abstraction over parameters](#sections)
 1. [Refinement types](#refinements)
 1. [Universes](#universes)
 1. [Subtyping, coercions and subtype universes](#subtyping)
@@ -740,7 +741,7 @@ TODO:
 
 ## `Empty` and `Unit` <a id="empty-and-unit"></a> [↩](#toc)
 
-There's the built-in `Empty` type which has no terms in the empty context. It's eliminator is called `abort`.
+There's the built-in `Empty` type which has no terms in the empty context. Its eliminator is called `abort`.
 
 ```
 abort : Empty -> A
@@ -2669,13 +2670,13 @@ data List
   parameters
   & A : Type
   sort Type
+  eliminator foldl
   constructors
   | []
   | _::_ of (hd : A, tl : List)
-  eliminator foldl
 ```
 
-Above we once more define the type of `List`s using this new syntax. We start with the keyword `data` and the type name, as usual. Then, in the next line, we have the keyword `parameters`, below which we list all the parameters using copattern syntax (i.e. each new line starts with a `&`). One line below that we see the keyword `sort`, which is followed by the universe in which the type lives. Then we have the keyword `constructors`, below which we list the constructors, using the familiar syntax with each line starting wth a pipe `|`. At last, we have the `eliminator` keyword which lets us create a synonym for the type's elimination principle.
+Above we once more define the type of `List`s using this new syntax. We start with the keyword `data` and the type name, as usual. Then, in the next line, we have the keyword `parameters`, below which we list all the parameters using copattern syntax (i.e. each new line starts with a `&`). One line below that we see the keyword `sort`, which is followed by the universe in which the type lives. Then we have the `eliminator` keyword which lets us create a synonym for the type's elimination principle (the default name, which is available even when we create a synonym, is `typename.elim`). At last, we have the keyword `constructors`, below which we list the constructors, using the familiar syntax where each line starts with a pipe `|`.
 
 ```
 mutual
@@ -3961,7 +3962,7 @@ codata CoBush : (A : Type) -> Type
 
 As you can see, we now need to name the index to be able to refer to it, because it is not quantified. For negative types, field types are given after `of` and we omit the domain, whereas for positive types the constructor arguments are given after `of` and we omit the codomain. Contrary to ordinary coinductive types, we need to explicitly state what the index is for coinductive arguments. In the end, the new syntax sugar saves us from quite some typing, especially for longer definitions.
 
-For papers, status and TODOs, see [the analogous section for inductive types](#inductive-uniform-indices)
+For papers, status and TODOs, see [the analogous section for inductive types](#inductive-uniform-indices).
 
 ### A more verbose (and readable) syntax for coinductive types <a id="verbose-syntax-for-coinductives"></a> [↩](#toc)
 
@@ -3972,13 +3973,13 @@ codata Stream
   parameters
   & A : Type
   sort Type
+  constructor Cons
   fields
   & hd of A
   & tl of Stream
-  constructor Cons
 ```
 
-For negative coinductive types, this syntax is very similar to that for inductive types. We start with the keyword `parameters`, below which we list the type's parameters in copattern syntax, then the keyword `sort`, followed by the type's universe, then we have the keyword `fields` followed by the type's fields in copattern syntax. Finally, we can optionally specify an alias for the type's constructor, after the keyword `constructor`.
+For negative coinductive types, this syntax is very similar to that for inductive types. We start with the keyword `parameters`, below which we list the type's parameters in copattern syntax, then the keyword `sort`, followed by the type's universe, then we can optionally specify an alias for the type's constructor, after the keyword `constructor`. Finally, we have the keyword `fields` followed by the type's fields in copattern syntax.
 
 ```
 mutual
@@ -4012,12 +4013,12 @@ Just as was the case for mutual inductive types, we have a special verbose versi
 ```
 codata Odd
   indices
-  & n of CoNat
+  & n : CoNat
   sort Prop
+  constructor MkOdd
   fields
   & Oz  : Odd z -> Empty
   & Oss : (#n : CoNat) -> Odd (s (s n)) -> Odd n
-  constructor MkOdd
 ```
 
 The verbose syntax also works for coinductive families, with the keyword `indices` being used to specify the indices.
@@ -4031,6 +4032,7 @@ Papers:
 
 TODO:
 - Change the keyword `fields` to `destructors`?
+- Change the keyword `constructor` to `introductor`?
 
 ### [Coinduction-Coinduction](Coinduction/Coinduction-Coinduction) <a id="coinduction-coinduction"></a> [↩](#toc)
 
@@ -4672,6 +4674,134 @@ Papers:
 TODO:
 - Write something.
 
+## Shared blocks, sections and automatic abstraction over parameters <a id="sections"></a> [↩](#toc)
+
+We have already seen the usefulness of `mutual` blocks - they can greatly reduce the amount of code we need to type in case the mutually defined types or functions share many parameters.
+
+We have two similar mechanisms that are useful for situations when there is no mutual induction/recursion. These are called "shared parameters" and "section".
+
+```
+shared ListFunctions
+  (#A : Type)
+  (p : A -> Bool)
+
+  filter : List A -> List A
+  | [] => []
+  | h :: t with p h
+    | tt => h :: filter t
+    | ff => filter t
+
+  all : List A -> Bool
+  | [] => tt
+  | h :: t => p h && all t
+
+  any : List A -> Bool
+  | [] => ff
+  | h :: t => p h || any t
+```
+
+In the above snippet, we have used the `shared` keyword to define a few list functions which all work for a given type `A` and a `Bool`ean predicate `p : A -> Bool`. We list these parameters right after we open the `shared` block and then we define the functions like usual, just without mentioning the parameters.
+
+
+```
+> :t filter
+filter : (#A : Type, p : A -> Bool) -> List A -> List A
+
+> :t all
+all : (#A : Type, p : A -> Bool) -> List A -> Bool
+
+> :t any
+any : (#A : Type, p : A -> Bool) -> List A -> Bool
+```
+
+After the `shared` block is closed, all of its parameters are abstracted in all definitions in the block (if a parameter is not used, it will be abstracted anyway) and these definitions are added to the global context.
+
+```
+> :def ListFunctions.filter
+Listfunctions.filter
+  : (#A : Type, p : A -> Bool) -> List A -> List A
+  := filter
+
+> :def ListFunctions.params
+ListFunctions.params
+  : Type
+  := (#A : Type, p : A -> Bool)
+```
+
+The whole `shared` block is called `ListFunctions`. It is actually a namespace, in which we can find the functions we defined (well, in fact these are just aliases pointing to the functions we defined, which live in the global context) and a record type that collects all parameters that were abstracted over.
+
+```
+shared ListFunctions
+  ...
+end ListFunctions
+```
+
+Optionally, `shared` blocks can be ended with the `end` keyword. If we use it, we can also optionally include the name of the block the we want to `end`.
+
+```
+section OtherListFunctions
+  #(A B : Type)
+  (f : A -> B)
+
+  len : List A -> Nat
+  | [] => z
+  | _ :: t => s (len t)
+
+  app : (l1 l2 : List A) -> List A
+  | []    , _ => l2
+  | h :: t, _ => h :: (app t l2)
+
+  map : List A -> List B
+  | [] => []
+  | h :: t => f h :: map t
+
+end OtherListFunctions
+```
+
+The other kind of grouping mechanism is called a `section`. It works similarly to sections known from Coq and Lean - after the block is opened, we list the parameters and then we define the functions. At the end, we can optionally end the block with the `end` keyword and, also optionally, the block's name.
+
+```
+> :t len
+len : (#A : Type) -> List A -> Nat
+
+> :t app
+app : (#A : Type) -> (l1 l2 : List A) -> List A
+
+> :t map
+map : #(A B : Type) (f : A -> B) -> List A -> List B
+```
+
+After the `section` is closed, all of its parameters are abstracted in all definitions in the section, but this time, in contrast to `shared` blocks, if a parameter is not used, it will NOT be abstracted. The definitions are then added to the global context.
+
+```
+> :def OtherListFunctions.len
+OtherListfunctions.len
+  : (#A : Type) -> List A -> Nat
+  := len
+
+> :def OtherListFunctions.params
+OtherListFunctions.params
+  : Type
+  := #(A B : Type) (f : A -> B)
+
+> :def OtherListFunctions.len.params
+  : Type
+  := (#A : Type)
+```
+
+A section must have a name - the above is called `OtherListFunctions`. Just as for `shared` blocks, the section is actually a namespace, in which we can find aliases for the functions we defined and a record type that collects all the parameters. This time, however, we can also find there record types corresponding to the parameters that were abstracted over in each particular definition, like `OtherListFunctions.len.params` above.
+
+**Status: sections are implemented in Coq and Lean, and work more or less well there (I think from time to time there are some section-specific problems). The namespace-like character of `section`s is not present in these languages, but should be easy to implement, given that namespace work as intended. `shared` blocks are a novel idea of mine, but they are very analogous to `section`s, so if we can get `section`s to work, `shared` blocks will be easy too.**
+
+Not papers:
+- [Sections in Lean](https://leanprover.github.io/theorem_proving_in_lean/dependent_type_theory.html#variables-and-sections)
+- [More about sections in Lean](https://leanprover.github.io/theorem_proving_in_lean/interacting_with_lean.html#more-on-sections)
+- [Sections in Coq](https://coq.inria.fr/refman/language/core/sections.html)
+
+TODO:
+- Maybe `section`s (and other such groupings too) should end with the `end` keyword?
+- Maybe we should be able to name `mutual` blocks?
+
 ## Refinement types <a id="refinements"></a> [↩](#toc)
 
 The idea is to have, for every type `A`, the type `{x : A | P}` where `P` is some decidable strict proposition that the typechecker (or some external SMT solver, but that's meh...) can reason about. The pioneer in this space is [the F* language](https://www.fstar-lang.org/).
@@ -5236,7 +5366,7 @@ We propose a different solution of this problem: we can declare a constructor na
 
 ```
 codata Stream (A : Type) : Type
-& constructor Cons
+constructor Cons
 & hd of A
 & tl of Stream
 
@@ -5245,7 +5375,7 @@ codata CoList (A : Type) : Type
 | Cons of (hd : A, tl : CoList)
 ```
 
-The type family `Stream` defined as above is equivalent to our previous definition, but additionally we get an autogenerated function `Cons : (hd : A, tl : Stream A) -> Stream A`, so that we can write `Cons h t` and we need to use neither tuple syntax (`(hd => h, tl => t)`) nor copattern syntax nor module syntax.
+The type family `Stream` defined as above is equivalent to our previous definition, but additionally we get an autogenerated function `Cons : (hd : A, tl : Stream A) -> Stream A`, so that we can write `Cons h t` and we need to use neither tuple syntax, nor copattern syntax, nor module syntax.
 
 This `Cons` constructor, thanks to its name, induces an autogenerated coercion from `Stream`s to `CoList`s, which could be manually defined as follows.
 
