@@ -56,7 +56,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Coinduction-Corecursion (TODO)](#coinduction-corecursion)
 1. [Mixed Inductive and Coinductive Types (TODO)](#mixed-inductive-coinductive)
     1. [Mixing records and sums: A * (B + C) = (A * B) + (A * C)](#mixing-records-and-sums)
-    1. [Coinduction-Induction](#coinduction-induction)
+    1. [Coinduction-Induction (TODO)](#coinduction-induction)
     1. [Types with inductive and coinductive components (TODO)](#inductive-coinductive-components)
 1. [Sections and automatic abstraction over parameters](#sections)
 1. [Refinement types](#refinements)
@@ -2156,7 +2156,7 @@ TODO:
 
 ### Nested Inductive Types <a id="nested-inductive-types"></a> [↩](#toc)
 
-Nested Inductive Types are inductive types `I` in which the inductive occurrences of `I` appear as an argument of some type family (besides the arrow `(->) : Type -> Type -> Type`, of course). These types can be defined in our language as ordinary inductive types, but writing functions that operate on Nested Inductive Types requires some more explanation.
+Nested Inductive Types are inductive types `I` in which the inductive occurrences of `I` appear as an argument of some type family (besides the arrow `(->) : Type -> Type -> Type`, of course, as it's supported by ordinary inductive types). These types can be defined in our language as ordinary inductive types, but writing functions that operate on Nested Inductive Types requires some more explanation.
 
 One of the most iconic examples of Nested Inductive Types is the type of rose trees, i.e. trees that have a `List` of subtrees.
 
@@ -4453,6 +4453,16 @@ data SumProdProd (A B C D : Type) : Type
 Another possibly useful feature is to be able to put these shared constructor arguments at the end of the constructor's argument list. This is achieved by the above type `SumProdProd A B C D`, which intuitively corresponds to `(A * C * D) + (B * C  * D)`, or, equivalently, to `(A + B) * C * D`.
 
 ```
+data ProdSumProd (A B C D : Type) : Type
+& a of A
+| b of B
+| c of C
+& d of D
+```
+
+Of course, we can put shared constructor arguments both at the beginning and at the end. This is shown above with the type `ProdSumProd A B C D`, which intuitively corresponds to `(A * B * D) + (A * C * D)`, or, equivalently, to `A * (B + C) * D`.
+
+```
 data Nel (A : Type) : Type
 & hd of A
 | Singl
@@ -4467,6 +4477,44 @@ codata CoNel (A : Type) : Type
 We can also use mixed record-sums for defining inductive and coinductive types. Above we see the two most obvious examples: non-empty lists `Nel` and non-empty colists `CoNel`.
 
 `Nel A` is a type whose values have a head `hd` and are either a `Singl`eton, which takes no arguments (besides the `hd`, of course), or a `Cons`, which takes the tail `tl` as an argument (in addition to `hd`, of course). `CoNel`, the type of non-empty colists, is analogous to `Nel`, of course with the twist that it is coinductive instead of inductive.
+
+```
+data ProdProdSum
+  parameters
+  & A B C D : Type
+  sort Type
+  fields
+  & a of A
+  & b of B
+  constructors
+  | c of C
+  | d of D
+
+data SumProdProd
+  parameters
+  & A B C D : Type
+  sort Type
+  constructors
+  | a of A
+  | b of B
+  fields
+  & c of C
+  & d of D
+
+data ProdSumProd
+  parameters
+  & A B C D : Type
+  sort Type
+  fields
+  & a of A
+  constructors
+  | b of B
+  | c of C
+  fields
+  & d of D
+```
+
+Besides the standard syntax, we can also define mixed record-sums using verbose syntax that we have seen before for inductive and coinductive types. Using this syntax, we can add some shared constructor arguments below the `fields` keyword. If the `fields` keyword precedes the `constructors` keyword, then these shared constructor arguments are placed at the front of the constructors. If `fields` follows `constructors`, they are placed at the end. If `fields` appears both before and after `constructors`, some shared constructor arguments are placed at the front and others at the end.
 
 Last but not least, it would be good to know where we can use this weird feature (try to think of a single language that has it!). A general answer is that mixed record-sums are useful every time we needto attach some metadata to a sum or an inductive type. A more specific one would be parsers - these usually are sums (many possible productions), but also need to store metadata about number line, column and possibly much more.
 
@@ -4702,7 +4750,6 @@ shared ListFunctions
 
 In the above snippet, we have used the `shared` keyword to define a few list functions which all work for a given type `A` and a `Bool`ean predicate `p : A -> Bool`. We list these parameters right after we open the `shared` block and then we define the functions like usual, just without mentioning the parameters.
 
-
 ```
 > :t filter
 filter : (#A : Type, p : A -> Bool) -> List A -> List A
@@ -4790,6 +4837,65 @@ OtherListFunctions.params
 ```
 
 A section must have a name - the above is called `OtherListFunctions`. Just as for `shared` blocks, the section is actually a namespace, in which we can find aliases for the functions we defined and a record type that collects all the parameters. This time, however, we can also find there record types corresponding to the parameters that were abstracted over in each particular definition, like `OtherListFunctions.len.params` above.
+
+```
+shared SharedIndicesAndSort
+  parameters
+  & A : Type
+
+  indices
+  & n : Nat
+
+  sort Type
+
+  data Vec
+  | Nil  : Vec 0
+  | Cons : (hd : A, #n : Nat, tl : Vec n) -> Vec (s n)
+
+  data IBTree
+  | E : IBTree 0
+  | N : (root : A) #(hl hr : Nat) (l : IBTree h1, r : IBTree h2) -> IBTree (s (max hl hl))
+```
+
+We can use `shared` blocks not only to define functions, but also to define types. In these `shared` blocks we can share not only parameters, but also `indices` and the `sort` of the type being defined. Note: if we declare `indices` or `sort` in a `shared` block, we can't define functions in this block, since `shared` blocks must abstract over everything they contain.
+
+```
+section SectionWithIndicesAndSort
+  parameters
+  & A B : Type
+  & f : A -> B
+
+  indices
+  & n : Nat
+
+  sort Type
+
+  data List
+  | Nil
+  | Cons of (hd : A, tl : List)
+
+  data Vec
+  | Nil  : Vec 0
+  | Cons : (hd : A, #n : Nat, tl : Vec n) -> Vec (s n)
+
+  data IBTree
+  | E : IBTree 0
+  | N : (root : A) #(hl hr : Nat) (l : IBTree h1, r : IBTree h2) -> IBTree (s (max hl hl))
+
+  mapl : (l : List A) -> List B
+  | Nil  => Nil
+  | Cons => Cons (f l.hd) (mapl l.tl)
+
+  mapv : (#n : Nat, v : Vec A n) -> Vec B n
+  | Nil  => Nil
+  | Cons => Cons (f v.hd) (mapv v.tl)
+
+  mapibt : (#h : Nat, t : IBTree A h) -> IBTree B h
+  | E => E
+  | N => N (f t.root) (mapibt t.l) (mapibt t.r)
+```
+
+Last but not least, we can also use the `indices` and `sort` keyword in `section`s. This time, because `section`s abstract only over whatever is used by a particular definition, we can define functions inside a `section` which declares `indices` and/or a `sort`.
 
 **Status: sections are implemented in Coq and Lean, and work more or less well there (I think from time to time there are some section-specific problems). The namespace-like character of `section`s is not present in these languages, but should be easy to implement, given that namespace work as intended. `shared` blocks are a novel idea of mine, but they are very analogous to `section`s, so if we can get `section`s to work, `shared` blocks will be easy too.**
 
