@@ -64,6 +64,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Subtyping, coercions and subtype universes](#subtyping)
 1. [Type-level rewriting](#type-level-rewriting)
 1. [TODO: Missing features](#TODO)
+    1. [List notation for `List`-like types](#list-notation)
     1. [Singleton Types](#singletons)
     1. [Generic programming](#generic)
     1. [Quantitative Type Theory](#quantities)
@@ -1713,7 +1714,6 @@ Papers:
 
 TODO:
 - Make sure that `@` used for as-patterns doesn't clash with `@` used for explicit arguments and `@` used for name concretion.
-- Describe list notation for list-like types.
 - Come up with some syntax for explicit arguments in function applications!
 
 ### Various syntactic conveniences for inductive types <a id="syntactic-conveniences-for-inductives"></a> [↩](#toc)
@@ -2144,6 +2144,22 @@ mutual
 Last but not least, besides the standard `and` syntax that we have seen, there's also an alternative syntax for defining mutual inductive types and mutual recursive functions. We can define them in blocks which start with the keyword `mutual`. Then, we may list parameters shared by all definitions. Finally, we may give the definitions proper, _without_ using the `and` keyword.
 
 Above we show how to use this syntax to once more define `List'`, `NonEmptyList`, `mapl`, and `mapne`. It may not seem very useful, because the new definitions are longer than the original ones, but the `mutual` block style definitions should prove useful when there are many definitions that share many parameters - in such cases we save quite a lot of writing.
+
+```
+mutual
+  ...
+end
+
+mutual NamedMutualBlock
+  ...
+end
+
+mutual NamedMutualBlock'
+  ...
+end NamedMutualBlock'
+```
+
+As a slight readability bonus, we may optionally end `mutual` definitions with the `end` keyword. We may also optionally name the `mutual` block - this provides even more readability. If a named `mutual` block is ended with the `end` keyword, we may also repeat its name after the `end` keyword, for even more readability.
 
 Not papers:
 - [Syntax of mutual blocks in Agda](https://agda.readthedocs.io/en/latest/language/mutual-recursion.html#mutual-recursion-mutual-block)
@@ -3619,7 +3635,7 @@ mutual
   | Cons t ts => Cons (cltmap t) (clomap ts)
 ```
 
-As for mutual inductive types, we can put mutual coinductive/corecursive definitions into `mutual` blocks which allow us to specify parameters shared across definitions. The above snippet shows how the definitions of `CoListTree`, `CoListOfCoListTree`, `cltmap` and `clomap` look in this syntax.
+As for mutual inductive types, we can put mutual coinductive/corecursive definitions into `mutual` blocks which allow us to specify parameters shared across definitions. The above snippet shows how the definitions of `CoListTree`, `CoListOfCoListTree`, `cltmap` and `clomap` look in this syntax. Also similarly to mutual inductives, we may optionally provide a name for the whole `mutual` block and/or end it with the `end` keyword.
 
 Are Mutually Coinductive Types good for anything besides encoding Nested Coinductive Types? As of now probably not, but they become a lot more useful once we have Coinductive Families at our disposal...
 
@@ -4905,8 +4921,7 @@ Not papers:
 - [Sections in Coq](https://coq.inria.fr/refman/language/core/sections.html)
 
 TODO:
-- Maybe `section`s (and other such groupings too) should end with the `end` keyword?
-- Maybe we should be able to name `mutual` blocks?
+- Move the section on `section`s to the section on basic syntax (or to that on "advanced syntax").
 
 ## Refinement types <a id="refinements"></a> [↩](#toc)
 
@@ -6078,6 +6093,46 @@ TODO:
 # TODO: Missing features <a id="TODO"></a> [↩](#toc)
 
 This wishlist is not comprehensive. We could probably do better (i.e. have more nice things), but we have to stop somewhere, not to mention that all the interactions between all the different features blow up the complexity of the language dramatically.
+
+## List notation for `List`-like types <a id="list-notation"></a> [↩](#toc)
+
+When we defined `List` for the first time, we named the constructors `[]` and `_::_`. These correspond to the usual `Nil` and `Cons`, respectively.
+
+But in most functional languages, we are accustomed to the list syntax being `[1, 2, 3, 4, 5]` (even though the separator may vary). How can we make this syntax available in our language?
+
+Our language is even more ambitious - we want to use this syntax for any listlike type. By "listlike", I mean a type that has a nil and a cons, represented by `Nil` and `Cons`, such that `Nil` means "the end" and `Cons` means "put one more thing at the front". The notation, however it is realized, translates `[]` to `Nil` and `[h, ...]` to `Cons h ...`.
+
+```
+l : List Nat := [1, 2, 3, 4, 5]
+
+v : Vector Nat 5 := [1, 2, 3, 4, 5]
+
+q : Queue Nat := [1, 2, 3, 4, 5]
+
+d : Deque Nat := [1, 2, 3, 4, 5]
+
+bv : BitVector 5 := [1, 1, 0, 0, 1]
+
+// Assuming that `G` is a graph in which `e1`, `e2`, `e3`, `e4` and `e5` are
+// paths whose sources and targets are compatible.
+p : Path G := [e1, e2, e3, e4, e5]
+```
+
+Examples of listlike types include not only `List`, but also `Vec` and many more, like queues, deques, sequences, bit vectors, paths in graphs, and so on.
+
+The notation can be realized in a few ways:
+- Using a typeclass - we need to define `Nil` and `Cons`. However, it might be hard to come up with a generic interface for listlike types.
+- Attach the notation to any (co)inductive types whose constructor are named `Nil` and `Cons`, provided that their types are ok. Again, it might be hard to decide whether `Cons` has the right type or not.
+- Make the notation available only for built-in types. This is bad, because we don't want to make lists or vectors built-in.
+
+Papers:
+- None.
+
+**Status: speculations.**
+
+TODO:
+- Look for some papers.
+- Think about it for some more time.
 
 ## Singleton Types <a id="singletons"></a> [↩](#toc)
 
