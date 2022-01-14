@@ -1,26 +1,26 @@
 // A type of integers modulo 2...
 data Z2 : Type
 | z
-| s (x : Z2)
+| s with (x : Z2)
   | s k => k
 
 // Also integers mod 2, but an alternative implementation.
 data Z2' : Type :=
-| in (n : Nat)
+| in with (n : Nat)
   | s (s n) => in n
 
 // Integers mod n in general?
 
 data Zmod (n : nat) : Type
-| in (k : Nat)
+| in with (k : Nat)
   | in k => if k <? n then canonical else in (mod k n)
 
 // Lists of natural numbers without consecutive repetitions.
 
 data WList : Type
 | wnil
-| wcons (n : Nat) (l : WList)
-  | n, wcons m w => if n =? m then wcons m w else canonical
+| wcons of (n : Nat, l : WList) with l
+  | wcons m w => if n =? m then wcons m w else canonical
 
 // Here the keyword `canonical` denotes that in the given case the constructor
 // does not compute.
@@ -29,11 +29,13 @@ data WList : Type
 
 data UList : Type
 | unil
-| ucons (n : Nat) (l : UList)
-  | n, w => if elem n w then w else canonical
+| ucons of (n : Nat, l : UList) with l
+  | w => if elem n w then w else canonical
 
-with elem : Nat -> UList -> Bool
-| _, unil => ff
-| n, ucons m u => n =? m || elem n u
+and
+
+elem (n : Nat) : UList -> Bool
+| unil => ff
+| ucons m u => n =? m || elem u
 
 // We have `ucons 5 (ucons 0 (ucons 5 unil)) => ucons 0 (ucons 5 nil)`.

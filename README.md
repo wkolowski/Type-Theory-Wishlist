@@ -2264,20 +2264,42 @@ TODO:
 
 ### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="computational-inductive-types"></a> [↩](#toc)
 
-The basic idea here is that in inductive type definitions constructors can pattern match on their arguments and compute (almost) like ordinary recursive functions. Let's see an example.
+Take a look at the inductive definition below.
 
 ```
 data Z : Type
 | z
 | s of (pred : Z)
-  | p k => k
 | p of (succ : Z)
+```
+
+This is supposed to be an inductive definition of the type of integers `Z`, very similar in spirit to the definition of `Nat`. There are three constructors: `z` is zero, `s`is successor and `p` is predecessor. But this is not a good definition of `Z`, because it does not represent the integers - there are terms like `s (p z)` which do not correspond to numbers.
+
+However, all is not lost yet - we can endow constructors of inductive types with additional computation rules, which can get rid of the superfluous terms. They are introduced by the `with` keyword, which is followed by a list of constructor arguments, and then we write an ordinary definition by pattern matching (and possibly recursion) in the lines below. To sum up, in our language constructors can compute and types which make use of this feature are called Computational Inductive Types.
+
+```
+data Z : Type
+| z
+| s of (pred : Z) with pred
+  | p k => k
+| p of (succ : Z) with succ
   | s k => k
 ```
 
-The above is a definition of the type of integers `Z` with three constructors: `z` - zero, `s`- successor, `p` - predecessor. Using ordinary inductive types this is not a good definition, because it does not represent the integers - there are terms like `s (p z)` which do not correspond to numbers. But in the above definition the constructors `s` and `p` have associated computation rules, which say that `s (p k)` computes to `k` (this is the rule for `s`) and that `p (s k)` computes to `k` (this is the rule for `p`). This means that the only legal closed normal form terms of type `Z` are `z`, finitely many `s`s applied to `z` and finitely many `p`s applied to `z`. Therefore `Z` is a good representation of the integers.
+The above is a proper definition of the type of integers `Z` - the constructors `s` and `p` have associated computation rules, which say that `s (p k)` computes to `k` (this is the rule for `s`) and that `p (s k)` computes to `k` (this is the rule for `p`). This means that the only legal closed normal form terms of type `Z` are `z`, finitely many `s`s applied to `z` and finitely many `p`s applied to `z`. Therefore `Z` is a good representation of the integers.
 
-Note that the patterns allowed for constructors' computation rules are using first-match semantics, but that may change in the future.
+Note that the computation rules that are allowed for constructors differ a bit from ordinary definitions by pattern matching. First, the only allowed semantics is using first-match semantics. Second, the patterns need not be exhaustive - if they aren't, no computation takes place. Also note that we are matching only the constructor arguments and NOT the constructor itself - if the first rule for `s` said `s (p k) => k`, this would be mean it is `s (s (p k))` that reduces to `k`, not `s (p k)`.
+
+```
+data Z : Type
+| z
+| s with (pred : Z)
+  | p k => k
+| p with (succ : Z)
+  | s k => k
+```
+
+We also have a tiny syntax sugar: instead of defining constructor arguments in the `of` clause and then using `with` to say which ones we want to match on, we can define new constructor arguments directly in the `with` clause. This means that if we want to match on all arguments of a given constructor, we can drop the `of` completely and define all constructor arguments using `with`, as shown in the example above.
 
 ```
 abs : Z -> Z
@@ -2286,20 +2308,21 @@ abs : Z -> Z
 | p k => s (abs k)
 ```
 
-We can define functions using pattern matching and structural recursion, just like for ordinary inductive types. We only need to handle patterns that correspond to closed terms in normal form - terms that will be "computed away" by constructors' computation rules need not (and cannot) be handled. For `Z` this means that we need to handle `z`, `s k` and `p k`, but we must not handle `s (p k)` or `p (s k)`, and optionally we may separately handle `s z`, `p z` etc.
+We can define functions out of Computation Inductive Types using pattern matching and structural recursion, just like for ordinary inductive types. We only need to handle patterns that correspond to closed terms in normal form - terms that will be "computed away" by constructors' computation rules need not (and cannot) be handled. For `Z` this means that we need to handle `z`, `s k` and `p k`, but we must not handle `s (p k)` or `p (s k)`, and optionally we may separately handle `s z`, `p z` etc.
 
 In the above example we want to compute the absolute value of the argument. For non-negative integers this is easy and we just return the argument, whereas for negative numbers we need to recursively turn predecessors into successors.
 
 See [this file](Induction/ComputationalInductiveTypes/Z.ttw) for a more thorough explanation and exploration of the type of integers defined using Computational Inductive Types.
 
 Papers:
-- ~~None, this idea is brand new invention of mine.~~
 - It turns out that the idea of Computational Inductive Types was invented almost 40 years ago in the language Miranda: [Laws in Miranda](https://sci-hub.se/https://doi.org/10.1145/319838.319839)
 
 **Status: highly experimental. It looks like if we put reasonable constraints on the kinds of computation rules associated with constructors, there isn't any abvious contradiction, nontermination or anything like that. However, there are no prototypes and no papers, except that some Computational Inductive Types can be simulated using [Self Types](https://github.com/uwu-tech/Kind/blob/master/blog/1-beyond-inductive-datatypes.md).**
 
 TODO:
 - Come up with more examples of useful Computational Inductive Types.
+- Why not allow Overlapping and Order-Independent Patterns in CITs?
+- Investigate Computation Coinductive Types (for both negative and positive coinductive types).
 
 ### [Higher Inductive Types](Induction/HIT) <a id="higher-inductive-types"></a> [↩](#toc)
 
@@ -2307,19 +2330,19 @@ Higher Inductive Types are inductive types which can be defined using not only p
 
 ```
 data Set (A : Type) : Type
-| in of (x : A)
+| in of A
 | id
-| union of (x y : Set A)
+| union of (x y : Set)
   | id, y  => y
   | x , id => x
   | union x y, z => union x (union y z)
-| comm of (x y : Set A) with (i : I)
+| comm of (x y : Set) with (i : I)
   | i0 => union x y
   | i1 => union y x
-| idem of (x : Set A) with (i : I)
+| idem of (x : Set) with (i : I)
   | i0 => union x x
   | i1 => x
-| isSet of (x y : Set A) (p q : x = y) (i j : I) with i
+| isSet of (x y : Set) (p q : x = y) (i j : I) with i
   | i0 => p j
   | i1 => q j
 ```
@@ -2407,9 +2430,9 @@ The basics of names and nominal function types are described [here](#names). In 
 
 ```
 data Term : Type
-| Var of (x : Name Term)
+| Var of Name Term
 | App of (l r : Term)
-| Lam of (t : ∇ α : Term. Term)
+| Lam of (body : ∇ α : Term. Term)
 ```
 
 Representing lambda terms is easy enough. A term is either a variable which is just a name for a term wrapped in the constructor `Var`, an application of one term to another, represented with `App`, or a `Lam`bda abstraction, represented as a term that binds a name.
@@ -2607,7 +2630,7 @@ Pattern matching and recursion on elements of nested inductive families work as 
 
 ```
 data Lam : Type -> Type
-| Var : (#A : Type, n : Nat) -> Lam A
+| Var : (#A : Type, var : Nat) -> Lam A
 | App : (#A : Type, l r : Lam A) -> Lam A
 | Abs : (#A : Type, body : Lam (Option A)) -> Lam A
 ```
@@ -2657,7 +2680,7 @@ data Complete : (A : Type) -> Type
 | N of (v : A, ts : Complete (A * A))
 
 data Lam : (A : Type) -> Type
-| Var of (n : Nat)
+| Var of Nat
 | App of (l r : Lam A)
 | Abs of (body : Lam (Option A))
 
@@ -2816,8 +2839,8 @@ data U : Type
 | +  of (u1 u2 : U)
 | *  of (u1 u2 : U)
 | →  of (u1 u2 : U)
-| pi of (dom : U) (cod : El dom -> U)
-| eq of (u : U) (x y : El u)
+| pi of (dom : U, cod : El dom -> U)
+| eq of (u : U, x y : El u)
 
 and
 
@@ -2837,11 +2860,11 @@ This is a definition of a universe of codes `U`, which contains codes for the `E
 data U : Type
 | 0
 | 1
-| + of (u1 u2 : U)
+| + with (u1 u2 : U)
   | 0, u => u
   | u, 0 => u
   | u1 + u2, u3 => u1 + (u2 + u3)
-| * of (u1 u2 : U)
+| * with (u1 u2 : U)
   | 0, _ => 0
   | _, 0 => 0
   | 1, u => u
@@ -2849,19 +2872,19 @@ data U : Type
   | u1 * u2, u3 => u1 * (u2 * u3)
   | u1, u2 + u3 => (u1 * u2) + (u1 * u3)
   | u1 + u2, u3 => (u1 * u3) + (u2 * u3)
-| → of (u1 u2 : U)
+| → with (u1 u2 : U)
   | _, 1 => 1
   | 0, _ => 1
   | 1, u => u
   | u1 * u2, u3 => u1 → (u2 → u3)
   | u1 + u2, u3 => (u1 → u3) * (u2 → u3)
   | u1, u2 * u3 => (u1 → u2) * (u1 → u3)
-| pi of (dom : U) (cod : El dom -> U)
+| pi with (dom : U, cod : El dom -> U)
   | 0, _ => 1
   | 1, _ => cod unit
   | u1 * u2, _ => pi u1 (fun x => pi u2 (fun y => cod (x, y)))
   | u1 + u2, _ => pi u1 (fun x => dom (inl x)) * pi u2 (fun y => dom (inr y))
-| eq of (u : U) (x y : El u)
+| eq with (u : U, x y : El u)
   | 0     , _       , _        => Unit
   | 1     , _       , _        => Unit
   | u + v , inl x'  , inl y'   => eq u x' y'
@@ -2888,7 +2911,7 @@ We can combine induction-recursion with Computational Inductive Types to get a m
 ```
 data BHeap (R : A -> A -> Prop) : Type
 | E
-| N of (v : A, l r : BHeap R, okl : OK R v l, okr : OK R v r)
+| N of (v : A, l r : BHeap, okl : OK R v l, okr : OK R v r)
 
 and
 
@@ -3391,7 +3414,7 @@ codata StreamOfPositives : Type
 
 codata CoListOfPositives : Type
 | Nil
-| Cons of (hd : Nat, hd is s, tl : CoListOfEvens)
+| Cons of (hd : Nat, hd is s, tl : CoListOfPositives)
 ```
 
 Just as for inductives, we can have unnamed constructor arguments for positive coinductive types, provided that the field's type is a proposition that can be decided and inferred automatically. But there's more: we can also use unnamed fields in definitions of negative coinductive types. The above snippet shows definitions of a stream of positive naturals and a colist of positive naturals.
@@ -3841,8 +3864,8 @@ data CoVecF (A : Type) (F : CoNat -> Type) : CoNat -> Type
 First, we define `CoVecF`, the base functor of `CoVec`, defined inductively. It is like `CoVec` but with self-references replaced with arguments of type `F c` which is a parameter.
 
 ```
-codata CoVec (A : Type) (c : CoNat) : Type
-& out of CoVecF A (CoVec A) c
+codata CoVec (A : Type) : (c : CoNat) -> Type
+& out of CoVecF A CoVec c
 ```
 
 Then we coinductively "tie the knot" of the base functor to get the desired family `CoVec`.
@@ -4277,7 +4300,7 @@ OKX (#X : Type, #R : A -> A -> Prop, v : A) : (h : BHeapX X R) -> Prop
 | N => R v h.v
 
 codata BHeap (R : A -> A -> Type) : Type
-& Out of BHeapX (BHeap R) R
+& Out of BHeapX BHeap R
 
 OK #(R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop :=
   OKX v h.Out
@@ -5124,17 +5147,17 @@ This feature allows us to define the operation known under many names: propositi
 // Propositional truncation.
 %Truncated
 data Squash (A : Type) : hProp
-| sq of (x : A)
+| sq of A
 
 // Strict truncation.
 %Truncated
 data ||_|| (A : Type) : Prop
-| |_| of (x : A)
+| |_| of A
 
 // Also pretty useful one: strict set truncation.
 %Truncated
 data SetSquash (A : Type) : Set
-| in of (x : A)
+| in of A
 ```
 
 The price we must pay for non-strict truncation is that we can eliminate truncated types `A : hType h p` only when constructing elements of types `B : hType h' p'` with `h' <= h`, i.e. of the same or lower h-level.
@@ -5173,12 +5196,12 @@ even : SNat -> Type
 // Legal.
 data Even : SNat -> Prop
 | Ez  : Even z
-| Ess : (#n : SNat) (e : Even n) -> Even (s (s n))
+| Ess : (#n : SNat, e : Even n) -> Even (s (s n))
 
 // Illegal?
 data Even : SNat -> Type
 | Ez  : Even z
-| Ess : (#n : SNat) (e : Even n) -> Even (s (s n))
+| Ess : (#n : SNat, e : Even n) -> Even (s (s n))
 
 // This definition looks quite illegal: `n = m : Prop` but `P m : Type`.
 transport (#P : SNat -> Type) #(n m : SNat) (x : P n) : n = m -> P m
@@ -5389,15 +5412,15 @@ data Answer : Type
 | No
 
 data Option (A : Type) : Type
-| Yes of (value : A)
+| Yes of A
 | No
 
 data Decision (P : Type) : Type
-| Yes of (yes : P)
-| No  of (no  : ~ P)
+| Yes of P
+| No  of ~ P
 ```
 
-Consider the above definitions of `Answer`, `Option` and `Decision`. `Answer` is a renamed version of `Bool`, with `Yes` instead of `tt` and `No` instead of `ff`. `Option` is defined as usual in ML languages and represents the presence of a `value` (`Yes value`) or lack of a value (`No`). `Decision P` is an analogue of Coq's `sumbool` and represents a decision procedure for the proposition `P`, where the `Yes` constructor carries a proof of `P` and the `No` constructor carries a proof of `~ P`.
+Consider the above definitions of `Answer`, `Option` and `Decision`. `Answer` is a renamed version of `Bool`, with `Yes` instead of `tt` and `No` instead of `ff`. `Option` is defined as usual in ML languages and represents the presence of a value (`Yes v`) or lack of a value (`No`). `Decision P` is an analogue of Coq's `sumbool` and represents a decision procedure for the proposition `P`, where the `Yes` constructor carries a proof of `P` and the `No` constructor carries a proof of `~ P`.
 
 We have `Decision P <: Option P <: Answer` thanks to the autogenerated coercions, which could be manually implemented as
 

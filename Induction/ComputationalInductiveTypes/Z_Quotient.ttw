@@ -1,6 +1,6 @@
 data Z : Type
-  | (_, _) : (n m : Nat) -> Z
-    | s n, s m => (n, m)
+  | (_, _) with (n m : Nat)
+    | s n', s m' => (n', m')
 
 // A different definition of integers, more akin to the classical one in which
 // an integer k is represented by a pair `(n, m)` such that n - m = k. This one

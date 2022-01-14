@@ -1,8 +1,8 @@
 data Z : Type
 | z
-| s (pred : Z)
+| s with (pred : Z)
   | p k => k
-| p (succ : Z)
+| p with (succ : Z)
   | s k => k
 
 // This is the type of integers, defined in a manner similar to the type of

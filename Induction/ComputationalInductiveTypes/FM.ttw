@@ -2,7 +2,7 @@
 data FM (A : Type) : Type
 | id
 | in (x : A)
-| op (l r : FM A)
+| op with (l r : FM)
   | id    , _  => r
   | op x y, z  => op x (op y z)
   | _     , id => l
