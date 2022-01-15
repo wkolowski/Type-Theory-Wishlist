@@ -2086,9 +2086,9 @@ data NonEmptyList (A : Type) : Type
 | Cons of (hd : A, tl : List')
 ```
 
-The above code defines by mutual induction two types - the first represents lists, the other non-empty lists. Values of type `List'` are either `Empty` or they are a `NonEmptyList` wrapped in the constructor `NonEmpty`, whereas `NonEmptyList`s are just a head and a tail (which is a `List'`), wrapped in the constructor `Cons`.
+The above code defines by mutual induction two types - the first represents lists, the other non-empty lists (components of a mutual definition are separated by the `and `keyword). Values of type `List'` are either `Empty` or they are a `NonEmptyList` wrapped in the constructor `NonEmpty`, whereas `NonEmptyList`s are just a head and a tail (which is a `List'`), wrapped in the constructor `Cons`.
 
-Note that the distinction between parameters and indices is upheld - we don't need to write the type parameter `A` neither when referring to `List'` in the `Cons` constructor, nor when referring to `NonEmptyList` in the `NonEmpty` constructor. Components of a mutual definition are separated by the `and `keyword.
+Note that our convention regarding parameters is upheld - we don't need to write the type parameter `A`, neither when referring to `List'` in the `Cons` constructor, nor when referring to `NonEmptyList` in the `NonEmpty` constructor. However, this is the case only because both types have the same parameters - as soon as they differ, we need to explicitly write them in all occurrences of a given type, except in its own definition.
 
 ```
 mapl (f : A -> B) : List' A -> List' B
@@ -2103,7 +2103,7 @@ mapne (f : A -> B) : NonEmptyList A -> NonEmptyList B
 
 Functions out of mutual inductive types can be defined by mutual recursion. Above, we define the two counterparts of usual `List`'s `map`. The function `mapl`, which maps `f` over a `List'`, refers in its `NonEmpty` case to `mapne`, which maps `f` over a `NonEmptyList`.
 
-Note that the distinction between parameters and indices is also upheld here - we don't need to mention the function `f` when applying either `mapl` or `mapne`. Also note that we could have called both `mapl` and `mapne` just `map`, but we didn't do that to make the example less confusing. Just as for types, both definitions are separated by the `and` keyword.
+Note that our convention regarding parameters is also upheld here - we don't need to mention the function `f` when applying either `mapl` or `mapne`. Just as for mutual type definitions, this is the case only when all of the mutual definitions have the same parameters - in case they don't, we need to explicitly provide them in all recursive calls, except when a function calls itself directly. Also note that we could have called both `mapl` and `mapne` just `map`, but we didn't do that to make the example less confusing. Just as for types, both definitions are separated by the `and` keyword.
 
 ```
 even : Nat -> Bool
@@ -2695,8 +2695,7 @@ Not papers:
 - [Non-regular Parameters are OK](https://gallais.github.io/blog/non-regular-parameters.html) (a blogpost which explains how a translation from uniform indices (i.e. non-uniform parameters) to ordinary inductive families works)
 
 Papers:
-- [Semantical Investigations in Intuitionistic Set Theory
-and Type Theories with Inductive Families](http://www.lsv.fr/~barras/habilitation/barras-habilitation.pdf) (see section 8.6.1)
+- [Semantical Investigations in Intuitionistic Set Theory and Type Theories with Inductive Families](http://www.lsv.fr/~barras/habilitation/barras-habilitation.pdf) (see section 8.6.1)
 
 **Status: Agda and Coq have a similar syntax sugar called _non-uniform parameters_, which is like a dual of our syntax sugar for _uniform indices_. Haskell also supports this, but here it is a full-fledged language feature instead of just syntax sugar. Therefore I think supporting implementing the above syntax sugar for uniform indices would be trivial. Caveat: naive translation from uniform indices to ordinary inductive families raises universe levels, so we need a more elaborate translation (see section 8.6.1 of the above habilitation thesis).**
 
@@ -2797,20 +2796,49 @@ In the above example, `Dense-R R` is the dense completion of its parameter relat
 Note that the constructors of `Dense` refer to `Dense-R`, the constructors of `Dense-R` refer to constructors of `Dense`, and the indices of `Dense-R` refer to `Dense`. This is characteristic of induction-induction. Also note that `eq` is a path constructor - we may freely mix inductive-inductive types with higher inductive types.
 
 ```
+mutual
+  (R : A -> A -> Prop)
+
+  data Dense : Type
+  | in  of A
+  | mid of #(l r : Dense) (H : Dense-R l r)
+  | eq  of #(x   : Dense) (H : Dense-R x x) with (i : I)
+    | i0 => mid x x H
+    | i1 => in x
+
+  data Dense-R : (x y : Dense) -> Prop
+  | in   of (x is in, y is in, H : R x.in y.in)
+  | midl of (x is mid, p : x.r = y)
+  | midr of (y is mid, p : x = y.l)
+```
+
+Note that inductive-inductive types are not confined to ordinary syntax for inductives - they can use `mutual` blocks, syntax sugar for uniform indices, the `is` syntax for single-case pattern matching, and so on.
+
+```
 data BHeap (R : A -> A -> Prop) : Type
 | E
-| N of (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
+| N of (v : A, l r : BHeap, okl : OK R v l, okr : OK R v r)
 
 and
 
-data OK (R : A -> A -> Prop) : A -> BHeap -> Prop
-| OK-E : OK E
+data OK (R : A -> A -> Prop) : A -> BHeap R -> Prop
+| OK-E : (v : A) -> OK v E
 | OK-N : (v x : A) (l r : BHeap R) (okl : OK x l) (okr : OK x r) -> R v x -> OK v (N x l r)
 ```
 
 Another classic use of induction-induction is to define data structures with non-trivial invariants (like sorted lists or BSTs). Above, we define the type of binary heaps (ordered by the relation `R`), which can be either `E`mpty, or consist of a `N`ode that holds a `v`alue and two subheaps `l` and `r`, which are `OK`, i.e. satisfy the (one-layer) heap condition, which holds for empty heaps and for nodes whose value is smaller than the values in their subheaps.
 
 Binary heaps could be easily defined even without induction-induction, by first defining binary trees inductively, then the heap condition as an inductive family and finally by putting them together in a dependent record and lifting all binary tree operations to binary heaps. Note, however, that an inductive-inductive definition is so much simpler and more elegant.
+
+```
+data BHeap (R : A -> A -> Prop) : Type
+| E
+| N of
+  & root : A
+  & l r : BHeap
+  & okl : l is N -> R root l.root
+  & okr : r is N -> R root r.root
+```
 
 Papers:
 - [Inductive-inductive definitions](http://www.cs.swan.ac.uk/~csetzer/articlesFromOthers/nordvallForsberg/phdThesisForsberg.pdf)
@@ -4086,8 +4114,8 @@ codata BHeap (R : A -> A -> Prop) : Type
 & root of A
 & l    of BHeap
 & r    of BHeap
-& okl  of OK root l
-& okr  of OK root r
+& okl  of OK R root l
+& okr  of OK R root r
 
 and
 
@@ -4117,7 +4145,7 @@ map-ok
   (R : A -> A -> Prop) (S : B -> B -> Prop)
   (f : A -> B)
   (pres : #(x y : A) -> R x y -> S (f x) (f y))
-  : (#v : A, #h : BHeap R, p : OK v h) -> OK (f v) (map h)
+  : (#v : A, #h : BHeap R, p : OK R v h) -> OK S (f v) (map h)
 & ok => pres p.ok
 ```
 
@@ -4171,13 +4199,13 @@ We can also have positive coinductive-coinductive types. Let's see how this work
 ```
 codata BHeap (R : A -> A -> Prop) : Type
 | E
-| N of (root : A, l r : BHeap, okl : OK root l, okr : OK root r)
+| N of (root : A, l r : BHeap, okl : OK R root l, okr : OK R root r)
 
 and
 
 codata OK (R : A -> A -> Prop) : A -> BHeap -> Prop
 | OK-E : #(root : A) -> OK root E
-| OK-N : #(root x : A) #(l r : BHeap) (okl : OK x l) (okr : OK x r) (p : R root x) -> OK root (N x l r okl okr)
+| OK-N : #(root x : A) #(l r : BHeap R) (okl : OK x l) (okr : OK x r) (p : R root x) -> OK root (N x l r okl okr)
 ```
 
 This time, our heaps are either `E`mpty or a `N`ode with a value at the `root` and with two subtrees, together with proofs establishing that the node satisfies the heap property.
@@ -4204,7 +4232,7 @@ map-ok
   (R : A -> A -> Prop) (S : B -> B -> Prop)
   (f : A -> B)
   (pres : #(x y : A) -> R x y -> S (f x) (f y))
-  : (#root : A, #h : BHeap R, ok : OK root h) -> OK (f root) (map h)
+  : (#root : A, #h : BHeap R, ok : OK R root h) -> OK S (f root) (map h)
 | OK-E => OK-E
 | OK-N => OK-N
   & okl => map-ok ok.okl
@@ -4277,7 +4305,7 @@ Let's try to use induction-recursion syntax together with the `codata` keyword a
 ```
 codata BHeap (R : A -> A -> Prop) : Type
 | E
-| N of (v : A, l r : BHeap, okl : OK v l, okr : OK v r)
+| N of (v : A, l r : BHeap, okl : OK R v l, okr : OK R v r)
 
 and
 
@@ -4305,6 +4333,8 @@ codata BHeap (R : A -> A -> Type) : Type
 OK #(R : A -> A -> Prop) (v : A) : (h : BHeap R) -> Prop :=
   OKX v h.Out
 ```
+
+TODO: THE DESUGARING IS ILL-TYPED!
 
 The desugaring is pretty self-explanatory. We define `BHeapX` and `OKX` by induction-recursion and then tie the knot by defining `BHeap` coinductively as the fixpoint of `BHeap` and `OK` as a wrapper around `OKX`.
 
@@ -4630,6 +4660,7 @@ toStream : (f : SP A B) (s : Stream A) -> Stream B
 | Get => toStream' (f.gsp s.hd) s.tl
 
 and
+
 toStream' : (g : GetSP A B) (s : Stream A) -> Stream B
 | Put
   & hd => g.hd
@@ -4665,10 +4696,10 @@ The last thing we should probably want to know is how does this desugar.
 ```
 data SP' (X Y A B : Type) : Type
 | Put' of (hd : B, tl : X)
-| Get' of (gsp : A -> Y)
+| Get' of A -> Y
 
 data GetSP' (X A B : Type) : Type
-| In of (in : SP' X GetSP' A B)
+| In of SP' X GetSP' A B
 
 codata SP (A B : Type) : Type
 & Out of SP' SP (GetSP' SP A B) A B
