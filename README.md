@@ -32,6 +32,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
     1. [Mutual Inductive Types](#mutual-inductive-types)
     1. [Nested Inductive Types](#nested-inductive-types)
+    1. [Negative Inductive Types](#negative-inductive-types)
     1. [Computational Inductive Types](#computational-inductive-types)
     1. [Higher Inductive Types](#higher-inductive-types)
     1. [Nominal Inductive Types](#nominal-inductive-types)
@@ -2261,6 +2262,67 @@ Not papers:
 
 TODO:
 - Write some example code.
+
+### Negative Inductive Types <a id="negative-inductive-types"></a> [↩](#toc)
+
+So far we have only seen _Positive_ Inductive Types. By positive, I mean that these types are like (extensible) sums, i.e. they can be made using one of possibly many different constructors, which then take a record of arguments.
+
+In our language, we can have not only Positive Inductive Types, but also _Negative_ Inductive Types. By negative I mean that these types are like records, i.e. they can have many fields of different types, which we then need to provide to define a value of the type. But there's one thing that makes them different from records: we can have fields of the same type that is being defined.
+
+Let's see an example which will make everything clearer.
+
+```
+data NETree (A : Type) : Type
+& root of A
+& ts   of List NETree
+```
+
+The above snippet defines the type `NETree`, whose name is an abbreviation of "non-empty tree". Values of this type are trees that have a `root` and a `List` of subtrees, which are `NETree`s themselves.
+
+The syntax of our definition is as follows. We start with the `data` keyword - we are defining an inductive type. Then we provide the parameters (in our case `A : Type`) and the universe to which the defined type belongs (i.e. `Type`). Then in each line, starting with the symbol `&`, we list fields that values of the type must have, just like for records.
+
+```
+map-net (f : A -> B) : (t : NETree A) -> NETree B
+& root => f t.root
+& ts   => map mapnet ts
+```
+
+We can define functions out of Negative Inductive Types using copattern syntax.
+
+```
+data NEBTree (A : Type) : Type
+& root of A
+& l r  of Option NEBTree
+
+map (f : A -> B) : (t : NEBTree A) -> NEBTree B
+& root => f t.root
+& l with t.l
+  | None => None
+  | Some l' => Some (map l')
+& r with t.r
+  | None => None
+  | Some r' => Some (map r')
+```
+
+```
+data NETree (A : Type) : Type
+& root of A
+& subs of ListNETree A
+
+and
+
+data ListNETree (A : Type) : Type
+| Nil
+| Cons of (hd : NETree A, tl : ListNETree)
+```
+
+Papers:
+- TODO.
+
+**Status: Coq allows inductive records in addition to native records (i.e. primitive projections) and also allows mutual inductive records (but they must be defined using the `Inductive` keyword). Agda similarly allows defining mutually inductive record types. Mutually defined positive and negative inductives are more suspicious, but since negative inductive can be translated to positive ones, I think this shouldn't pose a problem.**
+
+TODO:
+- Finish this section.
 
 ### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="computational-inductive-types"></a> [↩](#toc)
 
