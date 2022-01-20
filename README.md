@@ -2267,7 +2267,7 @@ TODO:
 
 So far we have only seen _Positive_ Inductive Types. By positive, I mean that these types are like (extensible) sums, i.e. they can be made using one of possibly many different constructors, which then take a record of arguments.
 
-In our language, we can have not only Positive Inductive Types, but also _Negative_ Inductive Types. By negative I mean that these types are like records, i.e. they can have many fields of different types, which we then need to provide to define a value of the type. But there's one thing that makes them different from records: we can have fields of the same type that is being defined.
+In our language, we can have not only Positive Inductive Types, but also _Negative_ Inductive Types. By negative I mean that these types are like records, i.e. they can have many fields of different types, which we then need to provide to define a value of the type. But there's one thing that makes them different from records: we can have fields of the same type that is being defined, and in general the field types can mention the type being defined.
 
 Let's see an example which will make everything clearer.
 
@@ -2279,15 +2279,71 @@ data NETree (A : Type) : Type
 
 The above snippet defines the type `NETree`, whose name is an abbreviation of "non-empty tree". Values of this type are trees that have a `root` and a `List` of subtrees, which are `NETree`s themselves.
 
-The syntax of our definition is as follows. We start with the `data` keyword - we are defining an inductive type. Then we provide the parameters (in our case `A : Type`) and the universe to which the defined type belongs (i.e. `Type`). Then in each line, starting with the symbol `&`, we list fields that values of the type must have, just like for records.
+The syntax of our definition is as follows. We start with the `data` keyword, which indicates that we are defining an inductive type. Then we provide the parameters (in our case `A : Type`) and the universe to which the defined type belongs (for us, `Type`). Then in each line, starting with the symbol `&`, we list fields that values of the type must have, just like for records.
+
+```
+data NETree (A : Type) : Type
+& root of A
+| Cons of (ts : List NETree)
+```
+
+```
+data NETree (A : Type) : Type
+constructor N
+& root of A
+& ts   of List NETree
+```
+
+Note that we can optionally provide a name for the type's only constructor. For `NETree`, we chose `N`, our standard name for `N`odes of trees.
+
+```
+t : NETree Nat
+& root => 42
+& ts   => []
+```
+
+Values of the type `NETree` can be introduced using copattern syntax, the same one that we have used for defining records.
+
+```
+leftmost : (t : NETree A) -> A
+| N with t.ts
+  | Nil  => t.root
+  | Cons => leftmost t.ts.hd
+```
+
+Eliminating inductive records is a bit less nice than defining them. As an example, we try to define the function `leftmost`, which retrieves the leftmost values from `t : NETree`. The default way to define it is to match on `t`. This isn't very informative, because `t` must have been introduced using the constructor `N`, but having matched `t` we can quickly match on `t.ts` using a `with`-clause. The rest of the definition is trivial: if there's no subtrees, we return the `root`, and if there are, we recursively descend to the first (i.e. leftmost) subtree.
+
+```
+leftmost : (t : NETree A) -> A with t.ts
+| Nil  => t.root
+| Cons => leftmost t.ts.hd
+```
+
+Note that we have an experimental syntax sugar which allows us to use the `with`-clause without previously matching anything.
+
+```
+leftmost : (t : NETree A) -> A :=
+  if t.ts is Cons then leftmost t.ts.hd else t.root
+```
+
+A much shorter way of achieving the same is to use the `is` syntax for single-case pattern matching. For `leftmost` it works perfectly, resulting in a one-liner, but in general it is not the ultimate solution.
+
+```
+leftmost : (t : NETree A) -> A
+if t is N r [] then r
+| N r []        => r
+| N _ (t' :: _) => leftmost t'
+```
+
+Another possibility to define `leftmost` is to use a more traditional, nested pattern matching on `t` together with its arguments. In case `t.ts` is `[]`, we return the `r`oot. Otherwise, we recursively look for the `leftmost` value from `t'`, the left subtree of `t`.
 
 ```
 map-net (f : A -> B) : (t : NETree A) -> NETree B
 & root => f t.root
-& ts   => map mapnet ts
+& ts   => map map-net t.ts
 ```
 
-We can define functions out of Negative Inductive Types using copattern syntax.
+Defining functions into `NETree`s is much easier, as shown in the above example of `map`. We define the fields of the result `NETree` using copattern syntax, while at the same time taking apart the input `NETree` using dot syntax.
 
 ```
 data NEBTree (A : Type) : Type
@@ -2304,6 +2360,14 @@ map (f : A -> B) : (t : NEBTree A) -> NEBTree B
   | Some r' => Some (map r')
 ```
 
+TODO
+
+```
+// An example of negative mutual inductive types.
+```
+
+TODO
+
 ```
 data NETree (A : Type) : Type
 & root of A
@@ -2316,6 +2380,8 @@ data ListNETree (A : Type) : Type
 | Cons of (hd : NETree A, tl : ListNETree)
 ```
 
+TODO
+
 Papers:
 - TODO.
 
@@ -2323,6 +2389,7 @@ Papers:
 
 TODO:
 - Finish this section.
+- Reconsider the syntax sugar for `with`.
 
 ### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="computational-inductive-types"></a> [↩](#toc)
 
