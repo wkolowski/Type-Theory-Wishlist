@@ -2283,12 +2283,6 @@ The syntax of our definition is as follows. We start with the `data` keyword, wh
 
 ```
 data NETree (A : Type) : Type
-& root of A
-| Cons of (ts : List NETree)
-```
-
-```
-data NETree (A : Type) : Type
 constructor N
 & root of A
 & ts   of List NETree
@@ -2311,31 +2305,35 @@ leftmost : (t : NETree A) -> A
   | Cons => leftmost t.ts.hd
 ```
 
-Eliminating inductive records is a bit less nice than defining them. As an example, we try to define the function `leftmost`, which retrieves the leftmost values from `t : NETree`. The default way to define it is to match on `t`. This isn't very informative, because `t` must have been introduced using the constructor `N`, but having matched `t` we can quickly match on `t.ts` using a `with`-clause. The rest of the definition is trivial: if there's no subtrees, we return the `root`, and if there are, we recursively descend to the first (i.e. leftmost) subtree.
+Eliminating inductive records is a bit less nice than defining them. As an example, we define the function `leftmost`, which retrieves the leftmost element from `t : NETree`. The default way to define it is to match on `t`. This isn't very informative, because `t` must have been introduced using the constructor `N`, but having matched `t` we can quickly match on `t.ts` using a `with`-clause. The rest of the definition is trivial: if there's no subtrees, we return the `root`, and if there are, we recursively descend to the left subtree, which is the head of hte list of subtrees.
 
 ```
 leftmost : (t : NETree A) -> A with t.ts
 | Nil  => t.root
 | Cons => leftmost t.ts.hd
+
+leftmost : (t : NETree A) -> A
+with t.ts
+| Nil  => t.root
+| Cons => leftmost t.ts.hd
 ```
 
-Note that we have an experimental syntax sugar which allows us to use the `with`-clause without previously matching anything.
+Note that we have an experimental syntax sugar which allows us to use the `with`-clause without previously matching anything., but I'm not yet sure about its exact form.
 
 ```
 leftmost : (t : NETree A) -> A :=
   if t.ts is Cons then leftmost t.ts.hd else t.root
 ```
 
-A much shorter way of achieving the same is to use the `is` syntax for single-case pattern matching. For `leftmost` it works perfectly, resulting in a one-liner, but in general it is not the ultimate solution.
+A much shorter way of defining `leftmost` is to use the `is` syntax for single-case pattern matching. For `leftmost` it works perfectly, resulting in a one-liner, but in general it is not the ultimate solution.
 
 ```
 leftmost : (t : NETree A) -> A
-if t is N r [] then r
 | N r []        => r
 | N _ (t' :: _) => leftmost t'
 ```
 
-Another possibility to define `leftmost` is to use a more traditional, nested pattern matching on `t` together with its arguments. In case `t.ts` is `[]`, we return the `r`oot. Otherwise, we recursively look for the `leftmost` value from `t'`, the left subtree of `t`.
+Another possibility to define `leftmost` is to use a more traditional, nested pattern matching on `t` together with its arguments. In case `t.ts` is `[]`, we return the `r`oot. Otherwise, we recursively look for the `leftmost` element of `t'`, the left subtree of `t`.
 
 ```
 map-net (f : A -> B) : (t : NETree A) -> NETree B
@@ -2343,7 +2341,7 @@ map-net (f : A -> B) : (t : NETree A) -> NETree B
 & ts   => map map-net t.ts
 ```
 
-Defining functions into `NETree`s is much easier, as shown in the above example of `map`. We define the fields of the result `NETree` using copattern syntax, while at the same time taking apart the input `NETree` using dot syntax.
+Defining functions into `NETree`s is much easier, as shown in the above example of `map`. We define the fields of the result `NETree` using copattern syntax, while at the same time taking apart the input `NETree` by accessing its fields using dot syntax. Note that the recursive call is `map map-net t.ts`, i.e. we are dealing with higher-order recursion. This is caused by the fact that `t.ts` is a `List` of `NETree`s, so `NETree` itself is a [Nested Inductive Type](#nested-inductive-types).
 
 ```
 data NEBTree (A : Type) : Type
@@ -2360,16 +2358,22 @@ map (f : A -> B) : (t : NEBTree A) -> NEBTree B
   | Some r' => Some (map r')
 ```
 
-TODO
+It is very common for Negative Inductive Types to be Nested Inductive Types. The snippet above defines `NEBTree`, a binary variant of `NETree` in which the two subtrees are wrapped in an `Option`. To define the corresponding `map` function, we need to match on the subtrees using a `with`-clause. As you can see, `NEBTree` is also a Nested Inductive Types, although a simpler one than `NETree`.
 
 ```
-// An example of negative mutual inductive types.
+data BadTree (A : Type) : Type
+& root of A
+& l r  of BadTree
+
+BadTree-Empty (#A : Type) : (t : BadTree A) -> Empty :=
+  BadTree-Empty t.l
 ```
 
-TODO
+The reason that Negative Inductive Types are usually nested is that non-nested negative inductives are usually uninhabited. The above snippet defines `BadTree`, a type of non-empty (in the sense of necessarily having an element) binary trees, in which the subtrees are not wrapped in an `Option`. This type, however, turns out to be empty. The reason is that `BadTree` lacks a "base case", so all such trees would have to be of infinite height, but inductive types must be of finite height. Thus, `BadTree` is uninhabited.
 
 ```
 data NETree (A : Type) : Type
+constructor N
 & root of A
 & subs of ListNETree A
 
@@ -2380,10 +2384,16 @@ data ListNETree (A : Type) : Type
 | Cons of (hd : NETree A, tl : ListNETree)
 ```
 
-TODO
+Besides nesting, another way to make inhabited Negative Inductive Types is to define them mutually with some other types. The above example shows an alternative way of defining `NETree`, mutually inductively with the type `ListNETree`, which is equivalent to `List (NETree A)`. Note that `ListNETree` is an ordinary (i.e. positive) inductive type - mixing positive and negative inductive types in mutual definitions poses no problem.
 
-Papers:
-- TODO.
+```
+```
+
+TODO: desugaring
+
+Not papers:
+- [Records in Coq](https://coq.inria.fr/refman/language/core/records.html)
+- [Records in Agda](https://agda.readthedocs.io/en/latest/language/record-types.html)
 
 **Status: Coq allows inductive records in addition to native records (i.e. primitive projections) and also allows mutual inductive records (but they must be defined using the `Inductive` keyword). Agda similarly allows defining mutually inductive record types. Mutually defined positive and negative inductives are more suspicious, but since negative inductive can be translated to positive ones, I think this shouldn't pose a problem.**
 
@@ -2461,7 +2471,7 @@ Higher Inductive Types are inductive types which can be defined using not only p
 data Set (A : Type) : Type
 | in of A
 | id
-| union of (x y : Set)
+| union with (x y : Set)
   | id, y  => y
   | x , id => x
   | union x y, z => union x (union y z)
@@ -2476,7 +2486,7 @@ data Set (A : Type) : Type
   | i1 => q j
 ```
 
-Consider this higher-inductive definition of a set, in the sense of a collection of things of type `A`. This type has three point constructors (including one with additional computation rules) and three path constructors (including a two-dimensional one).
+Consider this higher-inductive definition of a set, in the sense of a collection of things of the same type. This type has three point constructors (including one with additional computation rules) and three path constructors (including a two-dimensional one).
 
 The constructor `in` can be used to construct a singleton set (which is an embedding of `A` in `Set`, hence the name), `id` is the empty set (which is the `id`entity of set union, hence the name) and `union` denotes set union. The additional computation rules of `union` guarantee that it is associative and that its neutral element is the empty set `id`.
 

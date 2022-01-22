@@ -1,19 +1,19 @@
 data Set (A : Type) : Type
-| in (x : A)
+| in of A
 | id
-| union (x y : Set A)
+| union with (x y : Set A)
   | id, y  => y
   | x , id => x
   | union x y, z => union x (union y z)
-| comm (x y : Set A) (i : I)
+| comm of (x y : Set A) with (i : I)
   | i0 => union x y
   | i1 => union y x
-| idem (x : Set A) (i : I)
+| idem of (x : Set A) with (i : I)
   | i0 => union x x
   | i1 => x
-| isSet (x y : Set A) (p q : x = y) (i j : I)
-  | i0, _ => p j
-  | i1, _ => q j
+| isSet of (x y : Set A) (p q : x = y) (i j : I) with i
+  | i0 => p j
+  | i1 => q j
 
 map (f : A -> B) : Set A -> Set B
 | in    x           => in (f x)
