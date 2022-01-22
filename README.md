@@ -30,6 +30,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
         1. [Syntax sugar for bundled parameters](#bundled-parameters)
     1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
     1. [Decidable Equality Patterns](#decidable-equality-patterns)
+    1. [A more flexible syntax for pattern matching](#flexible-pattern-matching)
     1. [Mutual Inductive Types](#mutual-inductive-types)
     1. [Nested Inductive Types](#nested-inductive-types)
     1. [Negative Inductive Types](#negative-inductive-types)
@@ -2072,6 +2073,34 @@ Not papers:
 
 **Status: no papers and nowhere implemented, but looks very easy to get right.**
 
+### A more flexible syntax for pattern matching <a id="flexible-pattern-matching"></a> [↩](#toc)
+
+So far we have seen the usual syntax and semantics for pattern matching, i.e. patterns written positionally that then get interpreted using the first-match semantics. We have also seen an alternative syntax for pattern matching in which we don't need to name pattern variables, but instead we refer to constructor arguments with dot syntax, and an alternative semantics, which we call Overlapping and Order-Independent Patterns.
+
+Now it's time to see an extended version of the alternative syntax, which we will call _Flexible Patterns_ or _Flexible Pattern Matching_. The idea is an extension of what we have already seen - we can omit pattern arguments and only write the constructor names. In case we want to make a nested pattern, we can do so without reverting to positional arguments.
+
+Besides, we can also omit writing the `_` patterns when we're matching multiple inputs. To do this, we use the `is` syntax inside ordinary patterns, and simply don't write any of the other patterns.
+
+```
+last : (l : List A) -> Option A
+| Nil  => None
+| Cons => if l.tl is Nil then Some l.hd else last l.tl
+
+last : (l : List A) -> Option A
+| Nil  => None
+| Cons with l.tl
+  | Nil  => Some l.hd
+  | Cons => last l.tl
+
+last : (l : List A) -> Option A
+| Nil  => None
+| Cons (tl is Nil) => Some l.hd
+| Cons (tl is Cons) => last l.tl
+  | Nil  => Some l.hd
+  | Cons => last l.tl
+```
+
+
 ### Mutual Inductive Types <a id="mutual-inductive-types"></a> [↩](#toc)
 
 Ordinary inductive types can refer to themselves in the constructors' arguments. Mutual Inductive Types generalize this setting - now inductives in the constructors' arguments can refer to other inductive types that in turn refer to them.
@@ -2387,9 +2416,17 @@ data ListNETree (A : Type) : Type
 Besides nesting, another way to make inhabited Negative Inductive Types is to define them mutually with some other types. The above example shows an alternative way of defining `NETree`, mutually inductively with the type `ListNETree`, which is equivalent to `List (NETree A)`. Note that `ListNETree` is an ordinary (i.e. positive) inductive type - mixing positive and negative inductive types in mutual definitions poses no problem.
 
 ```
+data NETree' (A : Type) : Type
+| N of (root : A, ts : List NETree')
+
+root : (t : NETree' A) -> A
+| N => t.root
+
+ts : (t : NETree' A) -> List (NETree' A)
+| N => t.ts
 ```
 
-TODO: desugaring
+Last but not least, we should note that Negative Inductive Types are not a primitive, built-in feature of our language - they are just syntax sugar for Positive Inductive Types with one constructor. The desugaring of `NETree`, called `NETree'`, is shown in the snippet above. The field accessors are generated automatically.
 
 Not papers:
 - [Records in Coq](https://coq.inria.fr/refman/language/core/records.html)
@@ -2427,7 +2464,7 @@ data Z : Type
 
 The above is a proper definition of the type of integers `Z` - the constructors `s` and `p` have associated computation rules, which say that `s (p k)` computes to `k` (this is the rule for `s`) and that `p (s k)` computes to `k` (this is the rule for `p`). This means that the only legal closed normal form terms of type `Z` are `z`, finitely many `s`s applied to `z` and finitely many `p`s applied to `z`. Therefore `Z` is a good representation of the integers.
 
-Note that the computation rules that are allowed for constructors differ a bit from ordinary definitions by pattern matching. First, the only allowed semantics is using first-match semantics. Second, the patterns need not be exhaustive - if they aren't, no computation takes place. Also note that we are matching only the constructor arguments and NOT the constructor itself - if the first rule for `s` said `s (p k) => k`, this would be mean it is `s (s (p k))` that reduces to `k`, not `s (p k)`.
+Note that the computation rules that are allowed for constructors differ a bit from ordinary definitions by pattern matching. First, the patterns need not be exhaustive - if they aren't, no computation takes place. Second, note that we are matching only the constructor arguments and NOT the constructor itself - if the first rule for `s` said `s (p k) => k`, this would be mean it is `s (s (p k))` that reduces to `k`, not `s (p k)`.
 
 ```
 data Z : Type
@@ -2451,7 +2488,41 @@ We can define functions out of Computation Inductive Types using pattern matchin
 
 In the above example we want to compute the absolute value of the argument. For non-negative integers this is easy and we just return the argument, whereas for negative numbers we need to recursively turn predecessors into successors.
 
-See [this file](Induction/ComputationalInductiveTypes/Z.ttw) for a more thorough explanation and exploration of the type of integers defined using Computational Inductive Types.
+See [this file](Induction/ComputationalInductiveTypes/Z.ttw) for a more thorough explanation and exploration of the type of integers defined using Computational Inductive Types and [this directory](Induction/ComputationalInductiveTypes/) for more code on the topic.
+
+#### CITs using Overlapping and Order-Independent Patterns
+
+In a previous version of this section, it was stated that Computational Inductive Types only allow first-match semantics for the additional computation rules. I can't remember why I wrote this, so let's say that for now Overlapping and Order-Independent Patterns are also ok for defining CITs.
+
+```
+%OverlappingPatterns
+data FM (A : Type) : Type
+| in of A
+| id
+| op with (l r : FM)
+  | id    , _  => r
+  | op x y, z  => op x (op y z)
+  | _     , id => l
+```
+
+As an example, consider `FM A`, the type which is the carrier of the free monoid on type `A` (this type is developed in more depth [here](Induction/ComputationalInductiveTypes/FM.ttw)). There are three constructors: `in` for `in`jecting values of type `A` into `FM A`, `id` is the identity element, and `op` is the monoid operation.
+
+`op` has three additional computational rules which guarantee that `op` is associative and `id` is its identity. Note that the last two patterns are overlapping in case `l` is `op x y` and `r` is `id`. This overlap is marked by the `OverlappingPatterns` directive placed above the type declaration, which signalizes that all pattern matching in the type uses the overlapping patterns semantics.
+
+The overlap is fine, because on the one hand we have `op (op x y) id => op x (op y id) => op x y` and on the other hand we have `op (op x y) id => op x y`, so that the right-hand sides are computationally equal if the patterns overlap. The first and third patterns are also overlapping, but it's obvious that this overlap is fine too.
+
+```
+data FM (A : Type) : Type
+| in of A
+| id
+%OverlappingPatterns
+| op with (l r : FM)
+  | id    , _  => r
+  | op x y, z  => op x (op y z)
+  | _     , id => l
+```
+
+If we want to be more granular, we can put the `OverlappingPattern` directive (and its counterpart, `FirstMatch`) directly above the constructor, which makes it apply only to that particular constructor. This way we can mix computational rules based on both `OverlappingPatterns` and `FirstMatch` in a single type.
 
 Papers:
 - It turns out that the idea of Computational Inductive Types was invented almost 40 years ago in the language Miranda: [Laws in Miranda](https://sci-hub.se/https://doi.org/10.1145/319838.319839)
@@ -2460,8 +2531,7 @@ Papers:
 
 TODO:
 - Come up with more examples of useful Computational Inductive Types.
-- Why not allow Overlapping and Order-Independent Patterns in CITs?
-- Investigate Computation Coinductive Types (for both negative and positive coinductive types).
+- Investigate Computational Coinductive Types (for both negative and positive coinductive types).
 
 ### [Higher Inductive Types](Induction/HIT) <a id="higher-inductive-types"></a> [↩](#toc)
 
@@ -5505,7 +5575,7 @@ Not very relevant papers:
 | Advanced subtyping for records | [complicated](Records/TurboRecords.ttw) | |
 | Width-subtyping for sums | `s1 <: s1 \| s2` <br> `s2 <: s1 \| s2` | TODO |
 | Depth-subtyping for sums | if `c : A <: A'` <br> then `[a : A] <: [a : A']` | `fun x => a (case x of \| a v => c v)` |
-| Injection subtyping for sums | `a : A <: [a :> A]` | Note: this only works if the coonstructor is declared as a coercion constructor |
+| Injection subtyping for sums | `a : A <: [a :> A]` | Note: this only works if the constructor is declared as a coercion constructor |
 | Compatibility of subtyping with `\|` | if `c1 : s1 <: s1'` <br> and `c2 : s2 <: s2'` <br> then `s1 \| s2 <: s1' \| s2'` | TODO |
 | Another kind of compatibility | if `s <: s1` <br> and `s <: s2` <br> then `s <: s1 \| s2` | TODO |
 
@@ -6422,6 +6492,5 @@ TODO:
 ## Tooling <a id="tooling"></a> [↩](#toc)
 
 [The Unison Language](https://www.unisonweb.org/) has a very futuristic tooling and some good ideas, including:
-- codebases - Unison code is literraly stored as an AST in a nice database managed with a dedicated tool
-- everything can be referred to by its hash and names are just metadata, so it is easy to rename stuff and perform other similar magic like caching tests
-- Unison has typed documentation which prevents it from going out of sync with the code
+- Codebases: Unison code is literally stored as an AST in a nice database managed with a dedicated tool
+- Everything can be referred to by its hash. Names are just metadata, so it is easy to rename stuff and perform other similar magic like caching tests.

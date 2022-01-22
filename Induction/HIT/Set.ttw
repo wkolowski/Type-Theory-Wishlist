@@ -2,8 +2,8 @@ data Set (A : Type) : Type
 | in of A
 | id
 | union with (x y : Set A)
-  | id, y  => y
-  | x , id => x
+  | id, y        => y
+  | x , id       => x
   | union x y, z => union x (union y z)
 | comm of (x y : Set A) with (i : I)
   | i0 => union x y
@@ -23,6 +23,24 @@ map (f : A -> B) : Set A -> Set B
 | idem  x       i   => idem  (map x)         i
 | isSet x y p q i j => isSet (map x) (map y) (path i => map (p i)) (path i => map (q i)) i j
 
+// Better syntax.
+map (f : A -> B) : (s : Set A) -> Set B
+| in    => in (f s.in)
+| id    => id
+| union => union (map s.x) (map s.y)
+| comm  => comm  (map s.x) (map s.y) s.i
+| idem  => idem  (map s.x) s.i
+| isSet => isSet (map s.x) (map s.y) (path i => map (s.p i)) (path i => map (s.q i)) s.i s.j
+
+// Even better syntax.
+map (f : A -> B) : (s : Set A) -> Set B
+| in    => in (f in)
+| id    => id
+| union => union (map x) (map y)
+| comm  => comm  (map x) (map y) i
+| idem  => idem  (map x) i
+| isSet => isSet (map x) (map y) (path i => map (p i)) (path i => map (q i)) i j
+
 rev : Set A -> Set A
 | in    x     => in x
 | id          => id
@@ -31,19 +49,30 @@ rev : Set A -> Set A
 | idem  x   i => idem  (rev x)         i
 | isSet x y p q i j => // TODO
 
+// Better syntax for rev.
+rev : (s : Set A) -> Set A
+| in    => in s.x
+| id    => id
+| union => union (rev s.y) (rev s.x)
+| comm  => comm  (rev s.y) (rev s.x) s.i
+| idem  => idem  (rev s.x)           s.i
+| isSet => // TODO
+
 rev-rev : (s : Set A) -> rev s = s
 | in    x     => refl
 | id          => refl
 | union x y   => path i => comm (rev-rev y i) (rev-rev x i) i
 | comm  x y i => // this is hell `rev (comm x y i) => comm (rev y) (rev x) i = comm x y i`
 | idem  x   i => // this too
+| isSet => // TODO
 
 filter (p : A -> Bool) : Set A -> Set A
-| in    x     => if p x then in a else id
+| in    x     => if p x then in x else id
 | id          => id
 | union x y   => union (filter x) (filter y)
 | comm  x y i => comm  (filter x) (filter y) i
 | idem  x   i => idem  (filter x)            i
+| isSet => // TODO
 
 join : Set (Set A) -> Set A
 | in    x     => x
@@ -51,3 +80,12 @@ join : Set (Set A) -> Set A
 | union x y   => union (join x) (join y)
 | comm  x y i => comm  (join x) (join y) i
 | idem  x   i => idem  (join x)          i
+| isSet => // TODO
+
+bind (f : A -> Set B) : (s : Set A) -> Set B
+| in    => f s.in
+| id    => id
+| union => union (bind s.x) (bind s.y)
+| comm  => comm  (join s.x) (join s.y) i
+| idem  => idem  (join s.x)            i
+| isSet => // TODO
