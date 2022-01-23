@@ -2077,15 +2077,65 @@ Not papers:
 
 So far we have seen the usual syntax and semantics for pattern matching, i.e. patterns written positionally that then get interpreted using the first-match semantics. We have also seen an alternative syntax for pattern matching in which we don't need to name pattern variables, but instead we refer to constructor arguments with dot syntax, and an alternative semantics, which we call Overlapping and Order-Independent Patterns.
 
-Now it's time to see an extended version of the alternative syntax, which we will call _Flexible Patterns_ or _Flexible Pattern Matching_. The idea is an extension of what we have already seen - we can omit pattern arguments and only write the constructor names. In case we want to make a nested pattern, we can do so without reverting to positional arguments.
-
-Besides, we can also omit writing the `_` patterns when we're matching multiple inputs. To do this, we use the `is` syntax inside ordinary patterns, and simply don't write any of the other patterns.
+Now it's time to see an extended version of the alternative syntax, which we call _Flexible Patterns_. The idea is an extension of what we have already seen - we can omit pattern arguments and only write the constructor names. In this section, we will compare Flexible Patterns with the traditional syntax on a case by case basis.
 
 ```
+%StandardPatterns
+map (f : A -> B) : List A -> List B
+| Nil => Nil
+| Cons h t => Cons (f h) (map t)
+
+%FlexiblePatterns
+map (f : A -> B) : (l : List A) -> List B
+| Nil  => Nil
+| Cons => Cons (f l.hd) (map l.tl)
+```
+
+Let's start with the very basics. The first definition of `map` uses standard pattern matching. In the second patern, we write `Cons h t`, so that on the right-hand side we can refer to the list's head as `h` and to its tail as `t`.
+
+The second definition of `map` uses Flexible Patterns. In the second pattern we write just `Cons`, without binding its arguments, and then on the right-hand side we refer to the head and tail of the list as `l.hd` and `l.tl`, respectively, where `l` is the name of the list.
+
+Note that we have two directives that we can optionally use to mark the particular pattern matching syntax we use - `%FlexiblePatterns` refers to the new syntax, whereas `%StandardPatterns` refers to the old syntax. However, in the rest of the section we won't use these directives, and instead we follow the convention that the first definition uses FlexiblePatterns, whereas the second uses the standard syntax.
+
+```
+last : List A -> Option A
+| Nil => None
+| Cons h Nil => Some h
+| Cons _ t => last t
+
 last : (l : List A) -> Option A
 | Nil  => None
-| Cons => if l.tl is Nil then Some l.hd else last l.tl
+| Cons (tl is Nil) => Some l.hd
+| Cons => last l.tl
+```
 
+In the above example, we define the function `last` using nested patterns. Note that in both cases, we use the first-match semantics.
+
+Using the standard syntax, we write `Cons h Nil` to match the singletion list `[h]` and `Cons _ t` to match a non-singleton list and name it's tail `t`.
+
+Using Flexible Patterns, we match the singleton list `[h]` using the pattern `Cons (tl is Nil)`, and the non-singleton list simply using `Cons`.
+
+```
+%OverlappingPatterns
+last : List A -> Option A
+| Nil => None
+| Cons h Nil => Some h
+| Cons _ t@(Cons _ _) => last t
+
+%OverlappingPatterns
+last : (l : List A) -> Option A
+| Nil  => None
+| Cons (tl is Nil) => Some l.hd
+| Cons (tl is Cons) => last l.tl
+```
+
+If we wanted to use `%OverlappingPatterns`, the patterns become a bit more complicated. The standard pattern for `[h]` is still `Cons h Nil`, but to match a non-singleton list we need to write `Cons _ @t(Cons _ _)`, with the as-pattern `@t` used to refer to the whole `Cons _ _` on the right-hand side.
+
+Using Flexible Patterns, things look much more uniform: to match a singleton list, we write `Cons (tl is Nil)` and to match a non-singleton list, we write `Cons (tl is Cons)`.
+
+In general, nested standard patterns have the form `C ... (C' ... (C'' ...))`, whereas nested flexible patterns have the form `C (arg is C' (arg' is C'' (...)))`.
+
+```
 last : (l : List A) -> Option A
 | Nil  => None
 | Cons with l.tl
@@ -2094,12 +2144,31 @@ last : (l : List A) -> Option A
 
 last : (l : List A) -> Option A
 | Nil  => None
-| Cons (tl is Nil) => Some l.hd
-| Cons (tl is Cons) => last l.tl
-  | Nil  => Some l.hd
-  | Cons => last l.tl
+| Cons => if l.tl is Nil then Some l.hd else last l.tl
 ```
 
+Note that neither the standard nor the flexible syntax from the previous example seems to be the best way of defining the function `last`. Instead, it seems that the most elegant way is to use a `with`-clause, like in the snippet above. Also note that using the `is` syntax turns out to also be a quite elegant choice for `last`.
+
+```
+
+match x, y, z, w with
+| x is Cons => ...
+| z is Cons => ...
+| _ => 
+```
+
+Papers:
+- None, this is my own invention.
+
+**Status: Flexible Patterns are very speculative, as the idea is mine. However, I think it would be moderately easy to implement them.**
+
+TODO:
+- Finish this section.
+- Look for papers.
+- Rethink the two syntaxes of pattern matching.
+- Try to find other possible pattern matching syntaxes.
+- Find other semantics for pattern matching.
+- How does this dualize to copattern matching?
 
 ### Mutual Inductive Types <a id="mutual-inductive-types"></a> [↩](#toc)
 
