@@ -2095,7 +2095,7 @@ Let's start with the very basics. The first definition of `map` uses standard pa
 
 The second definition of `map` uses Flexible Patterns. In the second pattern we write just `Cons`, without binding its arguments, and then on the right-hand side we refer to the head and tail of the list as `l.hd` and `l.tl`, respectively, where `l` is the name of the list.
 
-Note that we have two directives that we can optionally use to mark the particular pattern matching syntax we use - `%FlexiblePatterns` refers to the new syntax, whereas `%StandardPatterns` refers to the old syntax. However, in the rest of the section we won't use these directives, and instead we follow the convention that the first definition uses FlexiblePatterns, whereas the second uses the standard syntax.
+Note that we have two directives that we can optionally use to mark the particular pattern matching syntax we use - `%FlexiblePatterns` refers to the new syntax, whereas `%StandardPatterns` refers to the old syntax. However, in the rest of the section we won't use these directives, and instead we follow the convention that the first definition uses the standard syntax, whereas the second uses Flexible Patterns.
 
 ```
 last : List A -> Option A
@@ -2147,18 +2147,27 @@ last : (l : List A) -> Option A
 | Cons => if l.tl is Nil then Some l.hd else last l.tl
 ```
 
-Note that neither the standard nor the flexible syntax from the previous example seems to be the best way of defining the function `last`. Instead, it seems that the most elegant way is to use a `with`-clause, like in the snippet above. Also note that using the `is` syntax turns out to also be a quite elegant choice for `last`.
+Note that neither the standard nor the flexible syntax from the previous example seems to be the best way of defining the function `last`. Instead, it seems that the most elegant way is to use a `with`-clause, like in the snippet above. Also note that using the `is` syntax turns out to also be quite an elegant choice for `last`.
 
 ```
+zipWith (f : A -> B -> C) : (la : List A, lb : List B) -> List C
+| Nil      , _         => Nil
+| _        , Nil       => Nil
+| Cons a ta, Cons b tb => Cons (f a b) (zipWith ta tb)
 
-match x, y, z, w with
-| x is Cons => ...
-| z is Cons => ...
-| _ => 
+zipWith (f : A -> B -> C) : (la : List A, lb : List B) -> List C
+| Nil, _ => Nil
+| _, Nil => Nil
+| Cons a ta, Cons b tb => Cons (f a b) (zipWith ta tb)
+
+zipWith (f : A -> B -> C) : (la : List A, lb : List B) -> List C
+| la is Nil => Nil
+| lb is Nil => Nil
+| Cons, Cons => Cons (f la.hd lb.hd) (zipWith la.tl lb.tl)
 ```
 
 Papers:
-- None, this is my own invention.
+- None, this is my own idea.
 
 **Status: Flexible Patterns are very speculative, as the idea is mine. However, I think it would be moderately easy to implement them.**
 
