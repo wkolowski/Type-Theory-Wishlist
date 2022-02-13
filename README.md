@@ -2129,11 +2129,9 @@ last : (l : List A) -> Option A
 | Cons (tl is Cons) => last l.tl
 ```
 
-If we wanted to use `%OverlappingPatterns`, the patterns become a bit more complicated. The standard pattern for `[h]` is still `Cons h Nil`, but to match a non-singleton list we need to write `Cons _ @t(Cons _ _)`, with the as-pattern `@t` used to refer to the whole `Cons _ _` on the right-hand side.
+If we wanted to use `%OverlappingPatterns`, the patterns become a bit more complicated. The standard pattern for `[h]` is still `Cons h Nil`, but to match a non-singleton list we need to write `Cons _ @t(Cons _ _)`, with the as-pattern `t@` used to refer to the whole `Cons _ _` on the right-hand side.
 
 Using Flexible Patterns, things look much more uniform: to match a singleton list, we write `Cons (tl is Nil)` and to match a non-singleton list, we write `Cons (tl is Cons)`.
-
-In general, nested standard patterns have the form `C ... (C' ... (C'' ...))`, whereas nested flexible patterns have the form `C (arg is C' (arg' is C'' (...)))`.
 
 ```
 last : (l : List A) -> Option A
@@ -2150,11 +2148,67 @@ last : (l : List A) -> Option A
 Note that neither the standard nor the flexible syntax from the previous example seems to be the best way of defining the function `last`. Instead, it seems that the most elegant way is to use a `with`-clause, like in the snippet above. Also note that using the `is` syntax turns out to also be quite an elegant choice for `last`.
 
 ```
-zipWith (f : A -> B -> C) : (la : List A, lb : List B) -> List C
-| Nil      , _         => Nil
-| _        , Nil       => Nil
-| Cons a ta, Cons b tb => Cons (f a b) (zipWith ta tb)
+third : (l : List A) -> Option A
+| Cons _ (Cons _ (Cons _ (Cons x _))) => Some x
+| _ => None
 
+third : (l : List A) -> Option A
+| Cons (tl is Cons (tl is Cons (tl is Cons))) => Some l.tl.tl.tl.hd
+| _ => None
+```
+
+In general, nested standard patterns have the form `C ... (C' ... (C'' ...))`, whereas nested flexible patterns have the form `C (arg is C' (arg' is C'' (...)))`.
+
+This is shown in the snippet above where we define the function `third`, which retrieves the third element from a list. With standard patterns, we just need to put 4 `Cons`s together (we start indexing at zero), whereas with flexible patterns we have a similar, but a bit longer and more annoying chains of `Cons (tl is Cons (...))`.
+
+```
+%FlexiblePatterns
+third : (l : List A) -> Option A
+| l.tl.tl.tl is Cons => Some l.tl.tl.tl.hd
+| _ => None
+
+%FlexiblePatterns
+third : (l : List A) -> Option A
+| tl.tl.tl is Cons => Some l.tl.tl.tl.hd
+| _ => None
+```
+
+To save ourselves from typing `(Cons (tl is ...))`, we allow to write this pattern differently: we can use the dot syntax on the left-hand side of the pattern, like `l.tl.tl.tl`, and then use an `is`-clause to specify what this chain of field accessors should match. This way, `l.tl.tl.tl is Cons` is a pattern that says "the tail of the tail of the tail of `l` is made with the `Cons` constructor". To be even more concise, we also allow dropping the initial `l`, since we know that `tl` must refer to `l.tl` (if we had two lists, we would need to write their names explicitly for disambiguation, though).
+
+```
+data Color
+& r g b a of u8
+
+f : (l : List (List Color)) -> Option u8
+| l.tl.hd.tl is Cons => Some l.tl.hd.tl.hd.a
+```
+
+Of course, we can use this chained-dot-patterns also for non-recursive constructor arguments - i.e. we can use them to match nested records. In the above example, we show how to get the alpha channel from the `Color` with coordinate `(1, 1)` in a two-dimensional `List` of `List`s.
+
+```
+data BT (A : Type) : Type
+| E
+| N of (v : A, l r : BT)
+
+weird-test : (t : BT A) -> Type
+| t.l.l.l.(l is N, r is N) => t.l.l.l.l.v = t.l.l.l.r.v
+```
+
+Another nice convenience feature when using these chained-dot-patterns is that we can avoid repeating prefixes when we want to match two or more deeply nested values. In the example above, we want to compare the values that are four times to the left of the root and three times to the left and once to the right. We can do this with the pattern `t.l.l.l.(l is N, r is N)`, which should be interpreted as a conjunction of `t.l.l.l.l is N` and `t.l.l.l.r is N`. These kinds of _branching patterns_ can also be nested themselves.
+
+```
+@FlexiblePatterns
+f : (l : List (List Color)) -> Option u8
+| x@(l.tl.hd.tl) is Cons => Some x.hd.a
+
+@FlexiblePatterns
+weird-test : (t : BT A) -> Type
+| x@(t.l.l.l).(l is N, r is N) => x.l.v = x.r.v
+```
+
+Chained-dot-patterns are really nice, but they can get a bit heavy syntactically. In the snippet above we define the functions `f`and `weird-test` once more, but this time we combine the chained-dot-patterns with as-patterns, using the `name@pattern` syntax, to avoid having to repeat a long chain of accessors.
+
+```
 zipWith (f : A -> B -> C) : (la : List A, lb : List B) -> List C
 | Nil, _ => Nil
 | _, Nil => Nil
@@ -2166,18 +2220,21 @@ zipWith (f : A -> B -> C) : (la : List A, lb : List B) -> List C
 | Cons, Cons => Cons (f la.hd lb.hd) (zipWith la.tl lb.tl)
 ```
 
+The next feature of flexible patterns is that they avoid writing too many underscores. In the snippet above, we define the function `zipWith` on `List`s. There are two `Nil` cases and using standard syntax we need to write them both in full as `Nil, _` and `_, Nil`, respectively, whereas using flexible patterns we can simply write `la is Nil` and `lb is Nil`, respectively, without mentioning any patterns for the list that we don't care about.
+
+
 Papers:
 - None, this is my own idea.
 
 **Status: Flexible Patterns are very speculative, as the idea is mine. However, I think it would be moderately easy to implement them.**
 
 TODO:
-- Finish this section.
-- Look for papers.
+- Search for papers.
 - Rethink the two syntaxes of pattern matching.
 - Try to find other possible pattern matching syntaxes.
 - Find other semantics for pattern matching.
 - How does this dualize to copattern matching?
+- Find out how to combine standard pattern matching with Overlapping and Order-Independent Patterns.
 
 ### Mutual Inductive Types <a id="mutual-inductive-types"></a> [↩](#toc)
 
