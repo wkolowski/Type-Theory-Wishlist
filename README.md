@@ -60,22 +60,22 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Mixing records and sums: A * (B + C) = (A * B) + (A * C)](#mixing-records-and-sums)
     1. [Coinduction-Induction (TODO)](#coinduction-induction)
     1. [Types with inductive and coinductive components (TODO)](#inductive-coinductive-components)
-1. [Sections and automatic abstraction over parameters](#sections)
+1. [Shared blocks, sections and automatic abstraction over parameters ](#sections)
 1. [Refinement types](#refinements)
 1. [Universes](#universes)
 1. [Subtyping, coercions and subtype universes](#subtyping)
 1. [Type-level rewriting](#type-level-rewriting)
 1. [TODO: Missing features](#TODO)
-    1. [List notation for `List`-like types](#list-notation)
     1. [Singleton Types](#singletons)
-    1. [Generic programming](#generic)
     1. [Quantitative Type Theory](#quantities)
     1. [Graded Modalities](#graded-modalities)
     1. [Typed Holes](#holes)
     1. [Tactics](#tactics)
     1. [Metaprogramming](#metaprogramming)
-    1. [Mixfix operators and notation mechanism](#notation)
-    1. [Tooling](#tooling)
+    1. [Generic programming](#generic-programming)
+    1. [List notation for `List`-like types](#list-notation)
+    1. [Mixfix operators, notation mechanism and macros](#macros)
+    1. [Other wildly speculative ideas](#ideas)
 
 ## The Guiding Principle of Syntax <a id="guiding-principle"></a> [↩](#toc)
 
@@ -5236,7 +5236,7 @@ After the `section` is closed, all of its parameters are abstracted in all defin
 
 ```
 > :def OtherListFunctions.len
-OtherListfunctions.len
+OtherListFunctions.len
   : (#A : Type) -> List A -> Nat
   := len
 
@@ -6492,46 +6492,6 @@ TODO:
 
 This wishlist is not comprehensive. We could probably do better (i.e. have more nice things), but we have to stop somewhere, not to mention that all the interactions between all the different features blow up the complexity of the language dramatically.
 
-## List notation for `List`-like types <a id="list-notation"></a> [↩](#toc)
-
-When we defined `List` for the first time, we named the constructors `[]` and `_::_`. These correspond to the usual `Nil` and `Cons`, respectively.
-
-But in most functional languages, we are accustomed to the list syntax being `[1, 2, 3, 4, 5]` (even though the separator may vary). How can we make this syntax available in our language?
-
-Our language is even more ambitious - we want to use this syntax for any listlike type. By "listlike", I mean a type that has a nil and a cons, represented by `Nil` and `Cons`, such that `Nil` means "the end" and `Cons` means "put one more thing at the front". The notation, however it is realized, translates `[]` to `Nil` and `[h, ...]` to `Cons h ...`.
-
-```
-l : List Nat := [1, 2, 3, 4, 5]
-
-v : Vector Nat 5 := [1, 2, 3, 4, 5]
-
-q : Queue Nat := [1, 2, 3, 4, 5]
-
-d : Deque Nat := [1, 2, 3, 4, 5]
-
-bv : BitVector 5 := [1, 1, 0, 0, 1]
-
-// Assuming that `G` is a graph in which `e1`, `e2`, `e3`, `e4` and `e5` are
-// paths whose sources and targets are compatible.
-p : Path G := [e1, e2, e3, e4, e5]
-```
-
-Examples of listlike types include not only `List`, but also `Vec` and many more, like queues, deques, sequences, bit vectors, paths in graphs, and so on.
-
-The notation can be realized in a few ways:
-- Using a typeclass - we need to define `Nil` and `Cons`. However, it might be hard to come up with a generic interface for listlike types.
-- Attach the notation to any (co)inductive types whose constructor are named `Nil` and `Cons`, provided that their types are ok. Again, it might be hard to decide whether `Cons` has the right type or not.
-- Make the notation available only for built-in types. This is bad, because we don't want to make lists or vectors built-in.
-
-Papers:
-- None.
-
-**Status: speculations.**
-
-TODO:
-- Look for some papers.
-- Think about it for some more time.
-
 ## Singleton Types <a id="singletons"></a> [↩](#toc)
 
 A singleton type is a type that has exactly one value. We can already express this with in our type theory with the following type.
@@ -6559,20 +6519,6 @@ Papers:
 TODO:
 - Read the papers.
 - Write something.
-
-## Generic programming <a id="generic"></a> [↩](#toc)
-
-Generic functions are functions implemented by recursion on the structure of types in the language. For example, we could implement decidable equality for all types that support it all at once.
-
-Less relevant papers:
-- [Extensible and Modular Generics for the Masses](http://www.cs.ox.ac.uk/bruno.oliveira/extensibleGM.pdf) - how to do generic programming with typeclasses in Haskell
-
-**Status: generic programming is rare. Haskell can do it using typeclasses and Idris 2 allows typecase, but the prospects are meek.**
-
-TODO:
-- Search for papers.
-- Read the papers and see how generic programming and typecase fit into the language.
-- Write something about typeclasses.
 
 ## Quantitative Type Theory <a id="quantities"></a> [↩](#toc)
 
@@ -6620,12 +6566,107 @@ TODO:
 
 ## Tactics <a id="tactics"></a> [↩](#toc)
 
-## Metaprogramming <a id="meta"></a> [↩](#toc)
+TODO
 
-## Mixfix operators and notation mechanism <a id="notation"></a>
+## Metaprogramming <a id="metaprogramming"></a> [↩](#toc)
 
-## Tooling <a id="tooling"></a> [↩](#toc)
+TODO
 
-[The Unison Language](https://www.unisonweb.org/) has a very futuristic tooling and some good ideas, including:
-- Codebases: Unison code is literally stored as an AST in a nice database managed with a dedicated tool
+## Generic programming <a id="generic-programming"></a> [↩](#toc)
+
+Generic functions are functions implemented by recursion on the structure of types in the language. For example, we could implement decidable equality for all types that support it all at once.
+
+Less relevant papers:
+- [Extensible and Modular Generics for the Masses](http://www.cs.ox.ac.uk/bruno.oliveira/extensibleGM.pdf) - how to do generic programming with typeclasses in Haskell
+
+**Status: generic programming is rare. Haskell can do it using typeclasses and Idris 2 allows typecase, but the prospects are meek.**
+
+TODO:
+- Search for papers.
+- Read the papers and see how generic programming and typecase fit into the language.
+- Write something about typeclasses.
+
+## List notation for `List`-like types <a id="list-notation"></a> [↩](#toc)
+
+When we defined `List` for the first time, we named the constructors `[]` and `_::_`. These correspond to the usual `Nil` and `Cons`, respectively.
+
+But in most functional languages, we are accustomed to the list syntax being `[1, 2, 3, 4, 5]` (even though the separator may vary). How can we make this syntax available in our language?
+
+Our language is even more ambitious - we want to use this syntax for any listlike type. By "listlike", I mean a type that has a nil and a cons, represented by `Nil` and `Cons`, such that `Nil` means "the end" and `Cons` means "put one more thing at the front". The notation, however it is realized, translates `[]` to `Nil` and `[h, ...]` to `Cons h ...`.
+
+```
+l : List Nat := [1, 2, 3, 4, 5]
+
+v : Vector Nat 5 := [1, 2, 3, 4, 5]
+
+q : Queue Nat := [1, 2, 3, 4, 5]
+
+d : Deque Nat := [1, 2, 3, 4, 5]
+
+bv : BitVector 5 := [1, 1, 0, 0, 1]
+
+// Assuming that `G` is a graph in which `e1`, `e2`, `e3`, `e4` and `e5` are
+// paths whose sources and targets are compatible.
+p : Path G := [e1, e2, e3, e4, e5]
+```
+
+Examples of listlike types include not only `List`, but also `Vec` and many more, like queues, deques, sequences, bit vectors, paths in graphs, and so on.
+
+The notation can be realized in a few ways:
+- Using a typeclass - we need to define `Nil` and `Cons`. However, it might be hard to come up with a generic interface for listlike types.
+- Attach the notation to any (co)inductive types whose constructor are named `Nil` and `Cons`, provided that their types are ok. Again, it might be hard to decide whether `Cons` has the right type or not.
+- Make the notation available only for built-in types. This is bad, because we don't want to make lists or vectors built-in.
+
+Papers:
+- None.
+
+**Status: speculations.**
+
+TODO:
+- Look for some papers.
+- Think about it for some more time.
+
+## Mixfix operators, notation mechanism and macros <a id="macros"></a>  [↩](#toc)
+
+TODO
+
+## Other wildly speculative ideas <a id="ideas"></a> [↩](#toc)
+
+A nice idea regarding tooling are [Query-Based Compilers](https://ollef.github.io/blog/posts/query-based-compilers.html). Basically, the language should not be just a compiler that reads text from files and outputs assembly code, but a thing that can answer queries, like "What's the type of this term?" or "What terms does this type have?", or "What assembly code would this term be translated to?".
+
+The idea behind query-based compilers is to some extent implemented in the [Unison language](https://www.unisonweb.org/), which also has some other very futuristic tooling and good ideas, including:
+- Codebases: Unison code is literally stored as an AST in a nice database managed with a dedicated tool.
 - Everything can be referred to by its hash. Names are just metadata, so it is easy to rename stuff and perform other similar magic like caching tests.
+
+Since we want to have a query-based compiler whcih is basically the same thing as Unison's codebase manager, adding support for a custom version control system shouldn't be that hard at this point. One very principled VCS is [Pijul](https://pijul.org/). It is based on category theory and allows things like applying independent changes in any order. Note that we don't want to create our own VCS, but rather just make a tool that would generate nice git diffs.
+
+Yet another can of worms is how to interface with real world databases. I think that our language should have a built-in database system that is well-suited to dependently type functional languages based on type theory. There is a kind of database called [Categorical Databases](https://www.categoricaldata.net/) which cold possibly achieve this.
+
+Our language should also be literate. That is, it should support a mode in which writing comments is the default, with the code being secondary. The litreate mode should support ordinary text, markup (like Markdown or HTML), displaying data, graphs, animations etc. and embedding pictures, movies and in general, any value that we can define in our language. Two interesting things in this respect are [Idyll](https://idyll-lang.org/docs) and [Pollen](https://docs.racket-lang.org/pollen/). As for the practicality of this, Haskell and Agda do have literate modes, but I have no idea how they work. Unison supports extensive documentation comments which is somewhat literate, but somewhat different from what we want.
+
+Our language should be batteries-included also when it comes to packaging, deployment and related DevOps activities. In this respect I think that we should not make the mistake of having a custom package manager, but rather just defer to the [Nix package manager](https://nixos.org/). In such a model, a "package" is the same thing as a "codebase".
+
+When we do package management, an important issue is versioning. Since we want to adopt Unison's model in which everything is referred to by its hash, we have a built-in versioning system. However, this versioning system is not semantic by default and I am not sure if semantic versioning can be achieved in such a setup. The idea that "everything is referred to by its hash" is called [Content-addressing](https://flyingzumwalt.gitbooks.io/decentralized-web-primer/content/avenues-for-access/lessons/power-of-content-addressing.html).
+
+Besides a compiled mode and a REPL, our language should also work as an operating system shell. This idea, taken from the paper [A Functional Shell That Operates on Typed and Compiled Applications](https://link.springer.com/chapter/10.1007/11546382_6), means that all shell expressions are strongly typed and only the type correct commands are executed. We can define custom types and functions one the fly, like in the REPL, and then use them to do something useful on our system, and finally discard them or save them to a codebase.
+
+Last but not least, an extension of the idea of language-REPL-as-system-shell is that in the very far future, our language could serve as the core of an operating system of its own. In such a OS, files are typed (and the type supersedes things like file extensions) and are nothing more than just values of some type. The filesystem is a heterogenous tree, with files at the leaves and named directories as the subtrees. Applications are either files with a function type or actions living in the `IO` monad (or any similar monad provided by the language/operating system). Note that this has possibly interesting connections to the Categorical Databases that we discussed earlier.
+
+Not papers:
+- [Query-Based Compilers](https://ollef.github.io/blog/posts/query-based-compilers.html)
+- [Unison](https://www.unisonweb.org/)
+- [Pijul](https://pijul.org/)
+- [Categorical Databases](https://www.categoricaldata.net/)
+- [Idyll](https://idyll-lang.org/docs) and [Pollen](https://docs.racket-lang.org/pollen/)
+- [Nix](https://nixos.org/)
+- [Lesson: The Power of Content-addressing](https://flyingzumwalt.gitbooks.io/decentralized-web-primer/content/avenues-for-access/lessons/power-of-content-addressing.html)
+
+Papers:
+- [A Functional Shell That Operates on Typed and Compiled Applications](https://link.springer.com/chapter/10.1007/11546382_6)
+
+**Status: Extremely wild speculation.**
+
+TODO:
+- First and foremost, learn about the stuff linked to.
+- Think more about how to integrate all this with the language.
+- Split paragraphs into their own sections.
