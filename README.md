@@ -65,6 +65,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Universes](#universes)
 1. [Subtyping, coercions and subtype universes](#subtyping)
 1. [Type-level rewriting](#type-level-rewriting)
+1. [Type copying](#type-copying)
 1. [TODO: Missing features](#TODO)
     1. [Singleton Types](#singletons)
     1. [Quantitative Type Theory](#quantities)
@@ -75,7 +76,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Generic programming](#generic-programming)
     1. [List notation for `List`-like types](#list-notation)
     1. [Mixfix operators, notation mechanism and macros](#macros)
-    1. [Other wildly speculative ideas](#ideas)
+    1. [Ideas](#ideas)
 
 ## The Guiding Principle of Syntax <a id="guiding-principle"></a> [↩](#toc)
 
@@ -6488,6 +6489,186 @@ TODO:
 - Revisit "paths between paths are squares".
 - Write a section on general rewriting in type theory.
 
+## Type copying <a id="type-copying"></a> [↩](#toc)
+
+Sometimes we want to reuse an existing type for some new purpose, but keep it computationally different from the old type (and other copies of the old type) in order to avoid logical errors.
+
+```
+type copy Meter := f64
+type copy Mile := f64
+
+type copy Second := f64
+type copy Kilogram := f64
+```
+
+To copy a type, we use the keyword `type copy`, then follows the name of the new type, then `:=` and then the name of the old type we want to copy. In the snippet above, we make three copies of `f64` - one to represent meters and another to represent miles.
+
+```
+marathon : Meter := 42000
+
+eightMile : Mile := 8
+```
+
+The copied types are very convenient - we can use `f64` literals to define both `Meter`s and `Mile`s.
+
+```
+%Fail // Error: types are not computationally equal.
+test : Meter = f64 := refl
+
+%Fail // Error: types are not computationally equal.
+test' : Mile = f64 := refl
+```
+
+However, being able to use `f64` literals to define `Meter`s and `Mile`s doesn't mean that these new types are computationally equal to the old `f64` - they are not, as shown in the snippet above.
+
+```
+%Fail // Error: expected `f64`, got `Meter`.
+x1 : f64 := marathon
+
+%Fail // Error: expected `f64`, got `Mile`.
+x2 : f64 := eightMile
+
+x1 : f64 := Meter.tof64 marathon
+x2 : f64 := Mile.tof64 eightMile
+```
+
+We also cannot get an `f64` by just defining it to be a `Meter` or a `Mile`. To get an `f64` out of the new types, we need to explicitly cast them to `f64`. We do this using automatically generated conversion functions `Meter.tof64` and `Mile.tof64`, as shown in the snippet above. Under the hood, these conversion functions do nothing - they are identities, so using copied types doesn't incur any overhead.
+
+```
+%Fail // Error: expected `Meter`, got `f64`.
+marathon' : Meter := x1
+
+%Fail // Error: expected `Mile`, got `f64`.
+eightMile' : Mile := x2
+
+marathon' : Meter := Meter.fromf64 x1
+marathon'-marathon : marathon' = marathon := refl
+
+eightMile' : Mile := Mile.fromf64 x2
+eightMile'-eightMile : eightMile' = eightMile := refl
+```
+
+Similarly, we cannot get a `Meter` or a `Mile` simply by defining it to be an `f64`. We need to use automatically generated conversion functions called `Meter.fromf64` and `Mile.fromf64`, respectively, as shown in the snippet above. These conversion functions too are identities under the hood and don't incur any overhead. Also note that the composition of the `to` and `from` conversions is computationally equal to the identity.
+
+```
+%Fail // Error: types are not computationally equal.
+Meter-Mile : Meter = Mile := refl
+
+%Fail // Error: expected `Mile`, got `Meter`.
+mileMarathon : Mile := marathon
+
+%Fail // Error: expected `Meter`, got `Mile`.
+eightMeter : Meter := eightMile
+
+mile-to-meter (mi : Mile) : Meter :=
+  Meter.fromf64 (Mile.tof64 mi * 1609.344)
+
+eightMile-in-meters : Meter :=
+  mile-to-meter eightMile
+
+eightMile-in-meters-spec
+  : eightMile-in-meters = 12874.752
+  := refl
+```
+
+`Meter` and `Mile` are not computationally equal and we cannot get one from the other without implementing our own conversion function, as shown in the snippet above. Note that that expression `Meter.fromf64 (Mile.tof64 mi * 1609.344)` is computationally equal to `8 * 1609.344`, which is in turn computationally equal to `12874.752` - our conversion functions are really convenient!
+
+```
+twoMarathons : Meter := marathon + marathon
+twoMarathons-spec : twoMarathons = 84000 := refl
+
+ninthMile : Mile := eightMile + 1
+```
+
+When it comes to computing with the copied types, things are as convenient as with literals - we can simply use the same functions that are available for `f64`. In the snippet above, we see that we can add two `Meter`s and that we can increment a `Mile` by adding `1` to it, and we get the expected results.
+
+But exactly how do all these conveniences work?
+
+```
+// For our purposes, let's assume that we are only dealing with `f64`s.
+
+> :check 1
+1 : f64
+
+> :check (+)
+(+) : f64 -> f64 -> f64
+
+> :check Meter.1
+Meter.1 : Meter
+
+> :check Meter.(+)
+Meter.(+) : Meter -> Meter -> Meter
+
+> :check Mile.1
+Mile.1 : Mile
+
+> :check Mile.(+)
+Mile.(+) : Mile -> Mile -> Mile
+```
+
+For our purposes we might think that `1` (and other such literals) and `(+)` (and other such functions) deal purely with `f64`s and have nothing to do with `Meter`s or `Mile`s (we will keep quiet about other uses of `1` and `+`, like `f32`, `u16`, `i8`, `Nat`, `Z`, etc.).
+
+However, we might think that when we copied `f64`, we also copied all its functions, so that we have `Meter.(+) : Meter -> Meter -> Meter` and `Mile.(+) : Mile -> Mile -> Mile`. In the same vein, we may think that we "copied" the literal notation used for `f64` and made it available to `Meter` and `Mile`, so that we have `Meter.1 : Meter` and `Mile.1 : Mil`.
+
+Thus, when we say `eightMile + 1`, we don't mean `(+) : f64 -> f64 -> f64` and `1 : f64`, but rather `Mile.(+) : Mile -> Mile -> Mile` and `Mile.1 : Mile`. Of course we don't need to write these in full, so that `1` can refer to both an `f64` and a `Meter`/`Mile`, depending on context, and similarly `(+)` may mean either the `(+)` of `f64` or that of `Meter`/`Mile`.
+
+```
+%Fail
+mixed-up : f64 := marathon + eightMile
+// Error: type mismatch in arguments of `(+) : f64 -> f64 -> f64`.
+// In the first argument expected `f64`, but got `Meter`.
+// In the second argument expected `f64`, but got `Mile`.
+```
+
+In practice, rather than copying all `f64` functions, we would just allow reusing them for `Meter` and `Mile` and only make sure that everything typechecks. Despite this reuse, mixing up `f64`, `Meter` and `Mile` still wouldn't be possible, as shown in the snippet above.
+
+```
+convenient-meter
+  : Meter.1 = Meter.fromf64 (1 : f64)
+  := refl
+
+convenient-mile
+  : Mile.(+) = fun m1 m2 => Mile.fromf64 (Mile.tof64 m1 + Mile.tof64 m2)
+  := refl
+```
+
+The copied literals and functions satisfy the expected specification computationally: `Meter.1` is just the normal `1 : f64` wrapped in the conversion function, and similarly `Mile.(+)` is just the `(+)` for `f64` with conversions inserted where appropriate.
+
+```
+%DontCopyLiterals
+type copy Kilogram := f64
+
+%Fail // Error: expected `Kilogram`, but got `f64`.
+two-kg : Kilogram := 2
+
+two-kg : Kilogram := Kilogram.fromf64 2
+
+%DontCopyFunctions
+type copy Second := f64
+
+five-sec : Second := 5
+minute : Second := 60
+
+%Fail // Error: expected `f64`, but got `Second` in the arguments of `(+)`.
+over-a-minute : Second := five-sec + minute
+
+over-a-minute : Second :=
+  Second.fromf64 (Second.tof64 five-sec + Secod.tof64 minute)
+```
+
+If we don't want the copied type to support literals of the old type, we can disable that using the pragma `%DontCopyLiterals`, as shown in the snippet above. Similarly, if we don't want to copy the functions, we can turn it off using the pragma `%DontCopyFunctions`.
+
+Papers:
+- TODO
+
+**Status: Many functional languages, like Haskell and Rust, allow creating so called newtypes, which is a more basic version of our type copying. Using literals and functions from the original type for the new types poses some problems, especially of typing and type inference, but I believe that they can be overcome.**
+
+TODO:
+- Rething this at some point in the future.
+- Find some papers.
+- What about copying records/inductives/coinductives with constructor/destructor/parameter/index/argument renames?
+- What about general management of what computes and what does not? Could we "copy" the value `5` in type `Nat` so that it is path-equal to the old `5`, but not computationally equal?
+
 # TODO: Missing features <a id="TODO"></a> [↩](#toc)
 
 This wishlist is not comprehensive. We could probably do better (i.e. have more nice things), but we have to stop somewhere, not to mention that all the interactions between all the different features blow up the complexity of the language dramatically.
@@ -6630,7 +6811,7 @@ TODO:
 
 TODO
 
-## Other wildly speculative ideas <a id="ideas"></a> [↩](#toc)
+## Ideas <a id="ideas"></a> [↩](#toc)
 
 A nice idea regarding tooling are [Query-Based Compilers](https://ollef.github.io/blog/posts/query-based-compilers.html). Basically, the language should not be just a compiler that reads text from files and outputs assembly code, but a thing that can answer queries, like "What's the type of this term?" or "What terms does this type have?", or "What assembly code would this term be translated to?".
 
