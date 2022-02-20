@@ -2470,7 +2470,7 @@ leftmost : (t : NETree A) -> A
   | Cons => leftmost t.ts.hd
 ```
 
-Eliminating inductive records is a bit less nice than defining them. As an example, we define the function `leftmost`, which retrieves the leftmost element from `t : NETree`. The default way to define it is to match on `t`. This isn't very informative, because `t` must have been introduced using the constructor `N`, but having matched `t` we can quickly match on `t.ts` using a `with`-clause. The rest of the definition is trivial: if there's no subtrees, we return the `root`, and if there are, we recursively descend to the left subtree, which is the head of hte list of subtrees.
+Eliminating inductive records is a bit less nice than defining them. As an example, we define the function `leftmost`, which retrieves the leftmost element from `t : NETree`. The default way to define it is to match on `t`. This isn't very informative, because `t` must have been introduced using the constructor `N`, but having matched `t` we can quickly match on `t.ts` using a `with`-clause. The rest of the definition is trivial: if there's no subtrees, we return the `root`, and if there are, we recursively descend to the left subtree, which is the head of the list of subtrees.
 
 ```
 leftmost : (t : NETree A) -> A with t.ts
@@ -3004,7 +3004,7 @@ Papers:
 - [Deep Induction: Induction Rules for (Truly) Nested Types](https://cs.appstate.edu/~johannp/20-fossacs.pdf)
 - [An induction principle for nested datatypes in intensional type theory](https://www.irit.fr/~Ralph.Matthes/papers/MatthesInductionNestedJFPCUP.pdf)
 
-**Status: Nested Inductive Families like `Complete` or `Lam` are supported by Coq and Agda (and probably other languages too). Problems only start with the truly nested types - they are not legal in Coq or Agda, and I would also guess nowhere else. Usually one has to turn off the positivity checker for the definition to be accepted. Even then, support for termination checking, autogeneration of elimination principles and proofs is lacking. To sum up: support for Nested Inductive Families is easy, but support for Truly Nested Inductive Families is very speculative.**
+**Status: Nested Inductive Families like `Complete` or `Lam` are supported by Coq and Agda (and probably other languages too). Problems only start with the truly nested types - they are not legal in Coq or Agda, and I would also guess nowhere else. Usually one has to turn off the positivity checker for the definition to be accepted. Even then support for termination checking, autogeneration of elimination principles and proofs is lacking. To sum up: support for Nested Inductive Families is easy, but support for Truly Nested Inductive Families is very speculative.**
 
 TODO:
 - Figure out how the deep induction principles can be implemented in Coq.
@@ -3053,7 +3053,7 @@ data List
   parameters
   & A : Type
   sort Type
-  eliminator foldl
+  eliminator foldr
   constructors
   | []
   | _::_ of (hd : A, tl : List)
@@ -3106,7 +3106,7 @@ data Vec
     & #n of Nat
     & tl of Vec n
     -> Vec (s n)
-  eliminator foldl
+  eliminator foldr
 ```
 
 Of course we can also use this verbose syntax to define inductive families (indices are declared using copattern syntax below the keyword `indices`), possibly together with copattern syntax for constructor arguments, or any other piece of syntax that we have seen. Above we show how to define the familiar type of `Vec`tors in this syntax. As a bonus, we see how copattern syntax for constructor arguments works for inductive families.
@@ -3440,7 +3440,7 @@ TODO:
 
 The syntax of coinductive type definitions is supposed to be dual to that of inductive types - as dual as possible, but not more. The closest to what we have is probably Agda. Just as for inductives, we reduce the amount of bookkeeping and boilerplate by allowing the same field names in multiple types and by giving each coinductive type its own namespace. All the usual restrictions apply, i.e. only strictly positive types are allowed.
 
-The basic coinductive types are negative, i.e. they are possibly self-referencing records. Corecursive functions (and also just values of coinductive types) are defined by copattern matching. They must be productive and the copattern matching needs to cover all possible cases. The semantics of copattern matching are more akin to the semantics of traditional pattern matching than to the Overlapping and Order-Independent Patterns semantics that we use as our main semantics of pattern matching. A definition by copattern matching can optionally begin by giving a prototype of the result (which must be a value of the same coinductive type) and then further fields of the result are given or fields coming from the prototype are modified.
+The basic coinductive types are negative, i.e. they are possibly self-referencing records. Corecursive functions (and also just values of coinductive types) are defined by copattern matching. They must be productive and the copattern matching needs to cover all possible fields. The semantics of copattern matching are more akin to the semantics of traditional pattern matching than to the Overlapping and Order-Independent Patterns semantics that we use as our main semantics of pattern matching. A definition by copattern matching can optionally begin by giving a prototype of the result (which must be a value of the same coinductive type) and then further fields of the result are given or fields coming from the prototype are modified.
 
 In addition to basic coinductive types, which can have parameters or be defined mutually with other coinductive types, we have special support for Nested Coinductive Types (the productivity checker can recognize productivity of higher-order corecursive calls). We also support true coinductive families, which are exactly dual to inductive families, nested coindcutive families, and other advanced forms of coinductive types.
 
@@ -3448,7 +3448,7 @@ Besides negative coinductive types, we also support positive coinductive types. 
 
 ### Negative Coinductive Types <a id="negative-coinductive-types"></a> [↩](#toc)
 
-Coinductive types are "negative", i.e. they are record-like types which are defined by specifying what fields they have. Definitions of coinductive types start with the keyword `codata`. Then, in separate lines starting with `&`, we list field names and their types. Below we define a coinductive product type whose left projection is `l` and right projection is `r`.
+Coinductive types are _negative_, i.e. they are record-like types which are defined by specifying what fields they have. Definitions of coinductive types start with the keyword `codata`. Then, in separate lines starting with `&`, we list field names and their types. Below we define a coinductive product type whose left projection is `l` and right projection is `r`.
 
 ```
 codata _*_ (A B : Type) : Type
@@ -3614,10 +3614,15 @@ findAndReplace (p : A -> Bool) (x : A) : (s : Stream A) -> Stream A
 ```
 
 Papers:
-- [Copatterns Programming Infinite Structures by Observations](https://www.researchgate.net/profile/Anton-Setzer/publication/262366004_Copatterns_Programming_Infinite_Structures_by_Observations/links/587fe0f208ae9275d4ee3ae2/Copatterns-Programming-Infinite-Structures-by-Observations.pdf)
+- [Copatterns: Programming Infinite Structures by Observations](https://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=EE2C849C001D8DDAF5BF369EE17D9978?doi=10.1.1.295.8056&rep=rep1&type=pdf)
+- [Programming Infinite Structures using Copatterns](https://www.cs.mcgill.ca/~dthibo1/papers/mastersthesis.pdf) (MSc Thesis)
 - [Unnesting of Copatterns](http://www2.tcs.ifi.lmu.de/~abel/rtatlca14.pdf) (also see the [slides](https://pdfs.semanticscholar.org/cc02/dfbc9f281ddfaea8065ca9c3ac5862979bab.pdf))
 - [Wellfounded Recursion with Copatterns and Sized Types](http://www2.tcs.ifi.lmu.de/~abel/jfp15.pdf)
+- [Wellfounded recursion with copatterns: a unified approach to termination and productivity](https://www.cs.mcgill.ca/~bpientka/papers/icfp13.pdf)
+
+Less important papers:
 - [Copattern matching and first-class observations in OCaml, with a macro](https://hal.inria.fr/hal-01653261/document)
+- You can find more papers by browsing the citations [here](https://www.semanticscholar.org/paper/Copatterns%3A-programming-infinite-structures-by-Abel-Pientka/94e1bb5ad5d12f51165482f928816ea7a2c12761#citing-papers)
 
 Not papers:
 - [Pattern and Copattern matching](http://www1.maths.leeds.ac.uk/pure/logic/images/slidesLeedsLogicSeminarMay2015.pdf)
@@ -4255,6 +4260,9 @@ Finally, the constructors of `CoVec` are just wrappers around the constructors o
 
 Papers:
 - [Elaborating dependent (co)pattern matching](https://jesper.sikanda.be/files/elaborating-dependent-copattern-matching.pdf)
+- [Indexed Codata Types](https://www.cs.mcgill.ca/~bpientka/papers/indexed-codata.pdf)
+- Indexed copatterns: reasoning about infinite structures by
+observations ([extended abstract](https://www.seas.upenn.edu/~sweirich/dtp13/talks/thibodeau.pdf), [slides](https://www.cs.mcgill.ca/~dthibo1/slides/dtp13.pdf))
 
 **Status: coinductive families need to be encoded using equality fields written by hand in Coq. I'm not sure about Agda, though. Implementing coinductive families as presented here probably wouldn't pose much of a problem.**
 
