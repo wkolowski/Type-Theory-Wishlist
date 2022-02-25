@@ -1,0 +1,20 @@
+ sums : stream(list(nat)) -> stream(nat)
+| sums { Head = [] ; Tail = s } = { Head = 0 ; Tail = sums s }
+| sums { Head = [n] ; Tail = s } = { Head = n ; Tail = sums s }
+| sums { Head = n::m::l ; Tail = s }
+= sums { Head = (add n m)::l ; Tail = s }
+
+ sums : stream(list(nat)) -> stream(nat)
+| sums { Head = [] ; Tail = s } = { Head = 0 ; Tail = sums s }
+| sums { Head = n::l ; Tail = s } = { Head = n ; Tail = sums s }
+= sums { Head = (add n m)::l ; Tail = s }
+
+sums : (s : Stream (List Nat)) -> Stream Nat
+& hd with s.hd
+  | Nil  => 0
+  | Cons =>
+
+
+app : (l1 l2 : CoList A) -> CoList A
+| l1 is CoNil  => l2
+| l1 is CoCons => CoCons l1.h (app l1.t l2)

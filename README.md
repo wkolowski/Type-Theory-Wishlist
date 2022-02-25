@@ -2207,7 +2207,7 @@ weird-test : (t : BT A) -> Type
 | x@(t.l.l.l).(l is N, r is N) => x.l.v = x.r.v
 ```
 
-Chained-dot-patterns are really nice, but they can get a bit heavy syntactically. In the snippet above we define the functions `f`and `weird-test` once more, but this time we combine the chained-dot-patterns with as-patterns, using the `name@pattern` syntax, to avoid having to repeat a long chain of accessors.
+Chained-dot-patterns are really nice, but they can get a bit heavy syntactically. In the snippet above we define the functions `f` and `weird-test` once more, but this time we combine the chained-dot-patterns with as-patterns, using the `name@pattern` syntax, to avoid having to repeat a long chain of accessors.
 
 ```
 zipWith (f : A -> B -> C) : (la : List A, lb : List B) -> List C
@@ -2252,7 +2252,7 @@ data NonEmptyList (A : Type) : Type
 | Cons of (hd : A, tl : List')
 ```
 
-The above code defines by mutual induction two types - the first represents lists, the other non-empty lists (components of a mutual definition are separated by the `and `keyword). Values of type `List'` are either `Empty` or they are a `NonEmptyList` wrapped in the constructor `NonEmpty`, whereas `NonEmptyList`s are just a head and a tail (which is a `List'`), wrapped in the constructor `Cons`.
+The above code defines by mutual induction two types - the first represents lists, the other non-empty lists (components of a mutual definition are separated by the `and` keyword). Values of type `List'` are either `Empty` or they are a `NonEmptyList` wrapped in the constructor `NonEmpty`, whereas `NonEmptyList`s are just a head and a tail (which is a `List'`), wrapped in the constructor `Cons`.
 
 Note that our convention regarding parameters is upheld - we don't need to write the type parameter `A`, neither when referring to `List'` in the `Cons` constructor, nor when referring to `NonEmptyList` in the `NonEmpty` constructor. However, this is the case only because both types have the same parameters - as soon as they differ, we need to explicitly write them in all occurrences of a given type, except in its own definition.
 
@@ -3209,9 +3209,9 @@ Induction-Recursion is an enhancement of inductive types which allows us to mutu
 data U : Type
 | 0
 | 1
-| +  of (u1 u2 : U)
-| *  of (u1 u2 : U)
-| →  of (u1 u2 : U)
+| +  of (u v : U)
+| *  of (u v : U)
+| →  of (u v : U)
 | pi of (dom : U, cod : El dom -> U)
 | eq of (u : U, x y : El u)
 
@@ -3233,30 +3233,30 @@ This is a definition of a universe of codes `U`, which contains codes for the `E
 data U : Type
 | 0
 | 1
-| + with (u1 u2 : U)
-  | 0, u => u
+| + with (u v : U)
+  | 0, v => v
   | u, 0 => u
-  | u1 + u2, u3 => u1 + (u2 + u3)
-| * with (u1 u2 : U)
+  | u1 + u2, v => u1 + (u2 + v)
+| * with (u v : U)
   | 0, _ => 0
   | _, 0 => 0
-  | 1, u => u
+  | 1, v => v
   | u, 1 => u
-  | u1 * u2, u3 => u1 * (u2 * u3)
-  | u1, u2 + u3 => (u1 * u2) + (u1 * u3)
-  | u1 + u2, u3 => (u1 * u3) + (u2 * u3)
-| → with (u1 u2 : U)
+  | u1 * u2, v => u1 * (u2 * v)
+  | u, v1 + v2 => (u * v1) + (u * v2)
+  | u1 + u2, v => (u1 * v) + (u2 * v)
+| → with (u v : U)
   | _, 1 => 1
   | 0, _ => 1
-  | 1, u => u
-  | u1 * u2, u3 => u1 → (u2 → u3)
-  | u1 + u2, u3 => (u1 → u3) * (u2 → u3)
-  | u1, u2 * u3 => (u1 → u2) * (u1 → u3)
+  | 1, v => v
+  | u1 * u2, v => u1 → (u2 → v)
+  | u1 + u2, v => (u1 → v) * (u2 → v)
+  | u, v1 * v2 => (u → v1) * (u → v2)
 | pi with (dom : U, cod : El dom -> U)
   | 0, _ => 1
   | 1, _ => cod unit
-  | u1 * u2, _ => pi u1 (fun x => pi u2 (fun y => cod (x, y)))
-  | u1 + u2, _ => pi u1 (fun x => dom (inl x)) * pi u2 (fun y => dom (inr y))
+  | u * v, _ => pi u (fun x => pi v (fun y => cod (x, y)))
+  | u + v, _ => pi u (fun x => dom (inl x)) * pi v (fun y => dom (inr y))
 | eq with (u : U, x y : El u)
   | 0     , _       , _        => Unit
   | 1     , _       , _        => Unit
@@ -3264,7 +3264,7 @@ data U : Type
   | u + v , inr x'  , inr y'   => eq v x' y'
   | u + v , _       , _        => Empty
   | u * v , (x1, y1), (x2, y2) => eq u x1 x2 * eq v y1 y2
-  | u → v , f       , g        => pi u1 (fun x : El u1 => eq u2 (f x) (g x))
+  | u → v , f       , g        => pi u (fun x : El u => eq v (f x) (g x))
   | pi u v, f       , g        => pi u (fun x : El u => eq v (f x) (g x))
 
 and
@@ -3276,7 +3276,7 @@ El : (u : U) -> Type
 | u * v    => El u * El v
 | u → v    => El u -> El v
 | pi u v   => (x : El u) -> El (v x)
-| eq u x y => x = y
+| eq u x y => x ={El u} y
 ```
 
 We can combine induction-recursion with Computational Inductive Types to get a more interesting kind of universe - one in which the various type isomorphisms hold by definition. For the boring isomorphisms like `Empty + A = A` this is not very useful (as it's helpful only rarely), but it's extremely useful for the equality type - thanks to Computational Inductive Types we can have `(f = g) = (x : A) -> f x = g x` and `((x1, y1) = (x2, y2)) = (x1 = x2) * (y1 = y2)` and so on.
@@ -3317,6 +3317,9 @@ Generic programming using (inductive-recursive) universes:
 - [Generic functional programming](https://gitlab.inria.fr/fpottier/mpri-2.4-public/blob/8485cc50346803d661e1ea4c5b8e485ccad18f66/agda/04-generic/Desc.lagda.rst)
 
 **Status: induction-recursion is implemented in Agda and in Idris 1 (or at least this is what Wiki claims), and there was an experimental branch of Coq that implemented it a long time ago. In general, however, it is not mainstream. Implementation should not be problematic.**
+
+TODO:
+- Is the `is` syntax sugar for single-constructor pattern matching of any use with inductive-recursive types?
 
 ## [Recursive Families](Induction/IndicesThatCompute) <a id="recursive-families"></a> [↩](#toc)
 
@@ -6859,3 +6862,15 @@ TODO:
 - First and foremost, learn about the stuff linked to.
 - Think more about how to integrate all this with the language.
 - Split paragraphs into their own sections.
+
+## Other TODOs
+
+1. Negative Inductive Types
+  1. Describe `Vec`, but defined as a negative inductive/recursive family.
+  1. In general: describe negative inductive families.
+1: Mixed Inductive-Coinductive Types, represented as a restriction of a coinductive type.
+1. Intersperse the section on subtyping into the main text.
+1. Change Coind-Coind to make sure it understands subtyping.
+1. Rethink once more the subtyping with parameters and indices.
+1. Boom Hierarchy vs Closure Operators for relations.
+1. Combine Overlapping and Order-Independent Patterns and the ordinary pattern matching.

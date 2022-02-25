@@ -1,0 +1,45 @@
+// Ordinary syntax.
+data Dense (R : A -> A -> Prop) : Type
+| in  of  (x   : A)
+| mid of #(x y : Dense) (H : Dense-R R x y)
+| eq  of #(x   : Dense) (H : Dense-R R x x) with (i : I)
+  | i0 => mid x x H
+  | i1 => in x
+
+and
+
+data Dense-R (R : A -> A -> Prop) : Dense R -> Dense R -> Prop
+| in   : #(x y : A) (H : R x y) -> Dense-R (in x) (in y)
+| midl : #(x y : Dense R) (H : Dense-R x y) -> Dense-R (mid x y H) y
+| midr : #(x y : Dense R) (H : Dense-R x y) -> Dense-R x (mid x y H)
+
+// Uniform indices.
+data Dense (R : A -> A -> Prop) : Type
+| in  of A
+| mid of #(l r : Dense) (H : Dense-R R l r)
+| eq  of #(x   : Dense) (H : Dense-R R x x) with (i : I)
+  | i0 => mid x x H
+  | i1 => in x
+
+and
+
+data Dense-R (R : A -> A -> Prop) : (x y : Dense R) -> Prop
+| in   of (x is in, y is in, H : R x.in y.in)
+| midl of (x is mid, p : x.r = y)
+| midr of (y is mid, p : x = y.l)
+
+// Using a mutual block.
+mutual
+  (R : A -> A -> Prop)
+
+  data Dense : Type
+  | in  of A
+  | mid of #(l r : Dense) (H : Dense-R l r)
+  | eq  of #(x   : Dense) (H : Dense-R x x) with (i : I)
+    | i0 => mid x x H
+    | i1 => in x
+
+  data Dense-R : (x y : Dense) -> Prop
+  | in   of (x is in, y is in, H : R x.in y.in)
+  | midl of (x is mid, p : x.r = y)
+  | midr of (y is mid, p : x = y.l)

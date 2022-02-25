@@ -1,0 +1,64 @@
+data Set (A : Type) : Type
+| in of (singl : A)
+| id
+| union with (l r : Set A)
+  | l is id    => r
+  | r is id    => l
+  | l is union => union l.l (union l.r r)
+| comm of (l r : Set A) with (i : I)
+  | i0 => union l r
+  | i1 => union r l
+| idem of (x : Set A) with (i : I)
+  | i0 => union x x
+  | i1 => x
+| isSet of (l r : Set A) (p q : l = r) (i j : I) with i
+  | i0 => p j
+  | i1 => q j
+
+map (f : A -> B) : (s : Set A) -> Set B
+| in    => in (f s.singl)
+| id    => id
+| union => union (map s.l) (map s.r)
+| comm  => comm  (map s.l) (map s.r) s.i
+| idem  => idem  (map s.l) s.i
+| isSet => isSet (map s.l) (map s.r) (path i => map (s.p i)) (path i => map (s.q i)) s.i s.j
+
+rev : (s : Set A) -> Set A
+| in    => in s.singl
+| id    => id
+| union => union (rev s.r) (rev s.l)
+| comm  => comm  (rev s.r) (rev s.l) s.i
+| idem  => idem  (rev s.l)           s.i
+| isSet => // TODO
+
+rev-rev : (s : Set A) -> rev s = s
+| in    => refl
+| id    => refl
+| union => path i => comm (rev-rev r i) (rev-rev l i) i
+| comm  => // this is hell `rev (comm l r i) => comm (rev r) (rev l) i = comm l r i`
+| idem  => // this too
+| isSet => // TODO
+
+filter (p : A -> Bool) : Set A -> Set A
+| in    => if p l then in l else id
+| id    => id
+| union => union (filter l) (filter r)
+| comm  => comm  (filter l) (filter r) i
+| idem  => idem  (filter l)            i
+| isSet => // TODO
+
+join : Set (Set A) -> Set A
+| in    => singl
+| id    => id
+| union => union (join l) (join r)
+| comm  => comm  (join l) (join r) i
+| idem  => idem  (join l)          i
+| isSet => // TODO
+
+bind (f : A -> Set B) : (s : Set A) -> Set B
+| in    => f s.in
+| id    => id
+| union => union (bind s.l) (bind s.r)
+| comm  => comm  (join s.l) (join s.r) i
+| idem  => idem  (join s.l)            i
+| isSet => // TODO
