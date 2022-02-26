@@ -2444,7 +2444,7 @@ data NETree (A : Type) : Type
 
 The above snippet defines the type `NETree`, whose name is an abbreviation of "non-empty tree". Values of this type are trees that have a `root` and a `List` of subtrees, which are `NETree`s themselves.
 
-The syntax of our definition is as follows. We start with the `data` keyword, which indicates that we are defining an inductive type. Then we provide the parameters (in our case `A : Type`) and the universe to which the defined type belongs (for us, `Type`). Then in each line, starting with the symbol `&`, we list fields that values of the type must have, just like for records.
+The syntax of our definition is as follows. We start with the `data` keyword, which indicates that we are defining an inductive type. Then we provide the parameters (in our case `A : Type`) and the universe to which the defined type belongs (for us, `Type`). Then in each line, starting with the symbol `&`, we give the fields that values of the type must have, just like for records.
 
 ```
 data NETree (A : Type) : Type
@@ -2483,7 +2483,7 @@ with t.ts
 | Cons => leftmost t.ts.hd
 ```
 
-Note that we have an experimental syntax sugar which allows us to use the `with`-clause without previously matching anything., but I'm not yet sure about its exact form.
+Note that we have an experimental syntax sugar which allows us to use the `with`-clause without previously matching anything, but I'm not yet sure about its exact form.
 
 ```
 leftmost : (t : NETree A) -> A :=
@@ -3321,7 +3321,63 @@ Generic programming using (inductive-recursive) universes:
 TODO:
 - Is the `is` syntax sugar for single-constructor pattern matching of any use with inductive-recursive types?
 
-## [Recursive Families](Induction/IndicesThatCompute) <a id="recursive-families"></a> [↩](#toc)
+### Advanced Negative Inductive Types <a id="advanced-negative-inductive-types"></a> [↩](#toc)
+
+We have already seen basic Negative Inductive Types, but now it's time to see Negative Inductive Families. Let's start with the venerable example of vectors, which here we call `NVec` (short for "Negative Vector") to distinguish them from the positive `Vec`.
+
+```
+data NVec (A : Type) : Nat -> Type
+& hd : (#n : Nat) -> NVec (s n) -> A
+& tl : (#n : Nat) -> NVec (s n) -> NVec n
+```
+
+A negative vector works like follows: if its index is a successor, we can project from it a value of type `A` (using `hd`) and the rest of the vector, whose index is `n`.
+
+```
+NNil : NVec A z
+& hd impossible
+& tl impossible
+
+NCons (h : A, #n : Nat, t : NVec A n) : NVec A (s n)
+& hd => h
+& tl => t
+```
+
+We can easily define `NNil` and `NCons` using copattern matching. For `NNil`, we don't need to provide either field because their indices don't match. For `NCons`, it suffices to provide the arguments `h` and `t` as definitions of `hd` and `tl`, respectively.
+
+```
+NNil : Vec A z
+& _ impossible
+```
+
+We can also define `NNil` in a simpler way, by using the catch-all copattern `_` to state at once that no field needs to be defined due to an index mismatch.
+
+```
+f : (#A : Type, #n : Nat, v : Vec A n) -> NVec A n
+| Nil  => NNil
+| Cons => NCons v.hd (f v.tl)
+
+g : (#A : Type, #n : Nat, v : NVec A n) -> Vec A n :=
+match n with
+| z => Nil
+| s => Cons v.hd (g v.tl)
+```
+
+We can easily define functions to convert between positive and negative vectors. `f`, which converts from positive to negative, simply replaces `Nil` and `Cons` with `NNil` and `NCons`, respectively. However `g`, which works in the other direction, is much harder to define, as we can't match on `v : NVec A n`. To rescue the situation, we match on the index `n` and for `z`ero we return `Nil`, whereas for `s`uccessor we use `NCons` and a recursive call.
+
+```
+fg : (#A : Type, #n : Nat, v : Vec A n) -> g (f v) = v
+| Nil  => refl
+| Cons => path i => Cons v.hd (fg v.tl i)
+
+// g (NCons v.hd (f v.tl)) = Cons v.hd (g (f v.tl))
+
+gf : 
+```
+
+
+
+## [Recursive Families](RecursiveFamilies) <a id="recursive-families"></a> [↩](#toc)
 
 We have previously seen how to define `Vec` as an inductive family, but this is not the only way. Consider an alternative representation of vectors, defined by recursion on the index `n`.
 
@@ -4082,10 +4138,10 @@ Next up, one is `Odd`. To prove this, we need to provide definitions for the two
 
 ```
 Odd-one' : Odd (s z)
-& impossible
+& _ impossible
 ```
 
-Of course writing `impossible` for every field gets boring pretty fast, so we can use the special copattern `& impossible` to mark the fact that none of fields needs to be defined.
+Of course writing `impossible` for every field gets boring pretty fast, so we can combine it with the the catch-all copattern `_` to mark the fact that none of fields needs to be defined.
 
 ```
 Odd-one'' : Odd (s z)
@@ -5642,13 +5698,13 @@ Papers:
 We shall reify the subtyping judgement into a type. The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
 
 ```
-translateX (n : Nat) (r : Sub (x : Nat)) : R :=
+translateX (n : Nat) (r : Sub (x : Nat)) : Sub (x : Nat) :=
   (x $=> (+ n), _ => r)
 ```
 
 Here we translate the `x`-coordinate by `n` in any record that has a field named `x`, while making sure to return a record of the same type without truncating it.
 
-Subtyping for subtype universes is very simple - if `A` is a subtype of `B`, then the universe of subtypes of `A` is a subtype of the universe of subtypes of `B`.
+Subtyping for subtype universes is very simple - if `A` is a subtype of `B`, then the universe of subtypes of `A` is a subtype of the universe of subtypes of `B`, i.e. `A <: B` implies `Sub A <: Sub B`.
 
 Papers:
 - [Subtype Universes](http://www.cs.rhul.ac.uk/home/zhaohui/Subtype%20Universes.pdf)
@@ -6872,5 +6928,5 @@ TODO:
 1. Intersperse the section on subtyping into the main text.
 1. Change Coind-Coind to make sure it understands subtyping.
 1. Rethink once more the subtyping with parameters and indices.
-1. Boom Hierarchy vs Closure Operators for relations.
+1. Boom Hierarchy vs Closure Operators for relations (Reflexive Closure is like identity element, Transitive Closure is like `List`, symmetric closure is like a commutative monoid, but there also are some closures, like dense closure, which do not really correspond to anything from the Boom hierarchy).
 1. Combine Overlapping and Order-Independent Patterns and the ordinary pattern matching.
