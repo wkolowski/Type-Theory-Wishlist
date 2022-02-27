@@ -28,9 +28,10 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
         1. [Single-argument constructors](#single-argument-constructors)
         1. [Unnamed constructor arguments](#unnamed-constructor-arguments)
         1. [Syntax sugar for bundled parameters](#bundled-parameters)
-    1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
-    1. [Decidable Equality Patterns](#decidable-equality-patterns)
-    1. [A more flexible syntax for pattern matching](#flexible-pattern-matching)
+    1. [Extensions of pattern matching](#extensions-of-pattern-matching)
+        1. [Overlapping and Order-Independent Patterns](#overlapping-patterns)
+        1. [Decidable Equality Patterns](#decidable-equality-patterns)
+        1. [A more flexible syntax for pattern matching](#flexible-pattern-matching)
     1. [Mutual Inductive Types](#mutual-inductive-types)
     1. [Nested Inductive Types](#nested-inductive-types)
     1. [Negative Inductive Types](#negative-inductive-types)
@@ -48,6 +49,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Negative Coinductive Types](#negative-coinductive-types)
     1. [Positive Coinductive Types](#positive-coinductive-types)
     1. [Various syntactic conveniences for coinductive types](#syntactic-conveniences-for-coinductives)
+    1. [Extensions of copattern matching (TODO)](#extensions-of-copattern-matching)
     1. [Nested Coinductive Types](#nested-coinductive-types)
     1. [Mutual Coinductive Types](#mutual-coinductive-types)
     1. [Coinductive Families](#coinductive-families)
@@ -1922,7 +1924,7 @@ data PositiveNat' : Type
 
 In the snippet above, we have defined the type of positive natural numbers `PositiveNat`. It has one constructor with an argument `n`, which is a `Nat`, and another argument, left unnamed, which is a proof of `n is s`, i.e. that `n` is not zero. `PositiveNat'` is a version of the same type, but defined using tuple syntax instead of copattern syntax.
 
-**Status: Coq allows naming record fields `_`, but I'm not sure about Agda, Lean or Idris. In any case, I think supporting this at the syntactic level should be easy. Inferring the proofs of `is` should also be fairly trivial.**
+**Status: Coq allows the underscore `_` as a record field name, but I'm not sure about Agda, Lean or Idris. In any case, I think supporting this at the syntactic level should be easy. Inferring the proofs of `is` should also be fairly trivial.**
 
 TODO:
 - Write a section on unnamed record fields.
@@ -1986,7 +1988,17 @@ Papers:
 TODO:
 - Describe bundled syntax for inductive families. Review section on bundled syntax for ordinary inductive types.
 
-### [Overlapping and Order-Independent Patterns](Induction/OverlappingPatterns) <a id="overlapping-patterns"></a> [↩](#toc)
+### Extensions of pattern matching <a id="extensions-of-pattern-matching"></a> [↩](#toc)
+
+In this section we describe extensions and alternative syntaxes and semantics for pattern matching. We have already seen one nonstandard - the `is` for single-case pattern matching.
+
+[Overlapping and Order-Independent Patterns](#overlapping-patterns) are an alternative semantics of pattern matching, in which all clauses are computational equalities. Because of this, catch-all patterns are forbidden, pattern ordering doesn't matter anymore, and the patterns may overlap.
+
+[Decidable Equality Patterns](#decidable-equality-patterns) are non-linear patterns, i.e. patterns in which a variable `x` may appear more than once. This is equivalent to using `x` and `x'` instead and then checking their equality, and so use of this kind of patterns requires (and is desugared using) decidable equality.
+
+[Flexible Patterns](#flexible-pattern-matching) are an alternative syntax for pattern matching which depends much less on the positional ordering of constructor arguments and scrutinees (i.e. the things that are being matched on), and more on their names.
+
+#### [Overlapping and Order-Independent Patterns](Induction/OverlappingPatterns) <a id="overlapping-patterns"></a> [↩](#toc)
 
 Consider a different definition of addition of natural numbers, one that matches both of its arguments.
 
@@ -2046,7 +2058,7 @@ Papers:
 TODO:
 - Invent a blend of first-match patterns and overlapping patterns which subsumes both of them.
 
-### Decidable Equality Patterns <a id="decidable-equality-patterns"></a> [↩](#toc)
+#### Decidable Equality Patterns <a id="decidable-equality-patterns"></a> [↩](#toc)
 
 For types which have decidable equality, while pattern matching we can use non-linear patterns and get them desugared into uses of the corresponding decision procedure for equality.
 
@@ -2074,7 +2086,7 @@ Not papers:
 
 **Status: no papers and nowhere implemented, but looks very easy to get right.**
 
-### A more flexible syntax for pattern matching <a id="flexible-pattern-matching"></a> [↩](#toc)
+#### A more flexible syntax for pattern matching <a id="flexible-pattern-matching"></a> [↩](#toc)
 
 So far we have seen the usual syntax and semantics for pattern matching, i.e. patterns written positionally that then get interpreted using the first-match semantics. We have also seen an alternative syntax for pattern matching in which we don't need to name pattern variables, but instead we refer to constructor arguments with dot syntax, and an alternative semantics, which we call Overlapping and Order-Independent Patterns.
 
@@ -2876,10 +2888,10 @@ Another new phenomenon that can occur when we're dealing with dependent pattern 
 
 ```
 One-not-Even' : Even (s z) -> Empty
-| impossible
+| _ impossible
 ```
 
-If we had more impossible cases, writing `impossible` every single time could get boring pretty quickly. If all cases are impossible, we can use the special pattern `| impossible`.
+If we had more impossible cases, writing `impossible` every single time could get boring pretty quickly. If all cases are impossible, we can combine the `impossible` keyword with the catch-all pattern `_`.
 
 ```
 Three-not-Even : Even (s (s (s z))) -> Empty
@@ -3037,7 +3049,7 @@ data Bush : (A : Type) -> Type
 As you can see, we now need to name the index to be able to refer to it, because it is not quantified. Constructor arguments are given after `of` and we omit the codomain, but contrary to ordinary inductive types, we need to explicitly state what the index is for inductive arguments. In the end, the new syntax sugar saves us from quite some typing, especially for longer definitions.
 
 Not papers:
-- [Non-regular Parameters are OK](https://gallais.github.io/blog/non-regular-parameters.html) (a blogpost which explains how a translation from uniform indices (i.e. non-uniform parameters) to ordinary inductive families works)
+- [Non-regular Parameters are OK](https://gallais.github.io/blog/non-regular-parameters.html) (a blogpost which explains how a translation from "non-regular parameters" (i.e. uniform indices) to ordinary inductive families works)
 
 Papers:
 - [Semantical Investigations in Intuitionistic Set Theory and Type Theories with Inductive Families](http://www.lsv.fr/~barras/habilitation/barras-habilitation.pdf) (see section 8.6.1)
@@ -3321,7 +3333,7 @@ Generic programming using (inductive-recursive) universes:
 TODO:
 - Is the `is` syntax sugar for single-constructor pattern matching of any use with inductive-recursive types?
 
-### Advanced Negative Inductive Types <a id="advanced-negative-inductive-types"></a> [↩](#toc)
+### Negative Inductive Families <a id="negative-inductive-families"></a> [↩](#toc)
 
 We have already seen basic Negative Inductive Types, but now it's time to see Negative Inductive Families. Let's start with the venerable example of vectors, which here we call `NVec` (short for "Negative Vector") to distinguish them from the positive `Vec`.
 
@@ -3331,7 +3343,7 @@ data NVec (A : Type) : Nat -> Type
 & tl : (#n : Nat) -> NVec (s n) -> NVec n
 ```
 
-A negative vector works like follows: if its index is a successor, we can project from it a value of type `A` (using `hd`) and the rest of the vector, whose index is `n`.
+A negative vector works like follows: if its index is a successor, we can project from it a value of type `A` and the rest of the vector, whose index is `n`.
 
 ```
 NNil : NVec A z
@@ -3363,19 +3375,39 @@ match n with
 | s => Cons v.hd (g v.tl)
 ```
 
-We can easily define functions to convert between positive and negative vectors. `f`, which converts from positive to negative, simply replaces `Nil` and `Cons` with `NNil` and `NCons`, respectively. However `g`, which works in the other direction, is much harder to define, as we can't match on `v : NVec A n`. To rescue the situation, we match on the index `n` and for `z`ero we return `Nil`, whereas for `s`uccessor we use `NCons` and a recursive call.
+We can easily define functions to convert between positive and negative vectors. `f`, which converts from positive to negative, simply replaces `Nil` and `Cons` with `NNil` and `NCons`, respectively. However `g`, which works in the other direction, is much harder to define, as we can't match on `v : NVec A n`. To rescue the situation, we match on the index `n` and for `z`ero we return `Nil`, whereas for `s`uccessor we use `Cons` and a recursive call.
 
 ```
 fg : (#A : Type, #n : Nat, v : Vec A n) -> g (f v) = v
 | Nil  => refl
-| Cons => path i => Cons v.hd (fg v.tl i)
+| Cons => ap (Cons v.hd) (fg v.tl)
 
-// g (NCons v.hd (f v.tl)) = Cons v.hd (g (f v.tl))
-
-gf : 
+gf : (#A : Type, #n : Nat, v : NVec A n) -> f (g v) = v :=
+match n with
+| z => refl
+| s => ap (NCons v.hd) (gf v.tl)
 ```
 
+We can also, without much hassle, prove that the two conversions functions are inverses of each other. In one direction (first `f` then `g`), we match on the vector. In the `Nil` case, we have `g (f (Nil)) => g NNil => Nil`, so `refl` suffices. In the `Cons` case, we have `g (f (Cons v.hd v.tl)) => g (NCons v.hd (f v.tl)) => Cons v.hd (g (f v.tl))`, so it suffices to use `ap` on the induction hypothesis.
 
+In the other direction (first `g` then `f`), things are also simple. When the index is `z`, we have `f (g v) => f Nil => NNil`. Quite surprisingly, `refl` works here too. This is because Negative Inductive Types enjoy a uniqueness principle inherited from records. For an indexed family in which all fields are impossible, this basically means that `v ≡ (hd impossible, tl impossible)`, which is nothing else than `NNil`.
+
+For the `s` case, we have `f (g v) => f (Cons v.hd (g v.tl)) = NCons v.hd (f (g v.tl))`. From the uniqueness principle we have `v ≡ (hd => v.hd, tl => v.tl) ≡ NCons v.hd v.tl`, so it suffices to use `ap (NCons v.hd)` on the induction hypothesis.
+
+I don't yet know if Negative Inductive Families are useful for anything - we will have to wait and see.
+
+Papers:
+- None
+
+**Status: this is a pretty novel idea, not supported by any proof assistant, but I think it's pretty manageable.**
+
+TODO:
+- Find a more convenient syntax for defining functions (or else we have to match on the indices).
+- Devise an "equation rewriting" syntax for doing equational proofs.
+
+### Advanced Negative Inductive Types <a id="advanced-negative-inductive-types"></a> [↩](#toc)
+
+TODO
 
 ## [Recursive Families](RecursiveFamilies) <a id="recursive-families"></a> [↩](#toc)
 
@@ -3887,6 +3919,10 @@ Papers:
 
 **Status: non-unique field names for coinductives are analogous to non-unique constructor names for inductives. Coinductive namespacing is analogous to inductive namespacing, which is implemented in Lean. The `is` syntax shouldn't pose problems, as it can be desugared to pattern matching, which is then desugared to copattern matching on negative coinductive types. Copattern syntax for constructor arguments and the syntax sugar for single-argument constructors should work fine provided they work for inductive types. Bundled parameter syntax is very speculative.**
 
+### Extensions of copattern matching (TODO) <a id="extensions-of-copattern-matching"></a> [↩](#toc)
+
+TODO
+
 ### Nested Coinductive Types <a id="nested-coinductive-types"></a> [↩](#toc)
 
 Just as inductive types can be nested, leading to higher-order recursion, so can be coinductive types, leading to higher-order corecursion. This applies to both negative and positive coinductive types.
@@ -4210,10 +4246,10 @@ Zero is not `Odd`, because when matching on a supposed proof of `Odd z`, neither
 
 ```
 zero-not-Odd' : Odd z -> Empty
-| impossible
+| _ impossible
 ```
 
-We can make this proof shorter by saying that no cases are possible, using the pattern `| impossible` that we have already met when discussing Inductive Families.
+We can make this proof shorter by saying that no cases are possible, using the catch-all impossible pattern `_ impossible` that we have already met when discussing Inductive Families.
 
 ```
 zero-not-Odd'' : Odd z -> Empty
@@ -6886,7 +6922,7 @@ The idea behind query-based compilers is to some extent implemented in the [Unis
 - Codebases: Unison code is literally stored as an AST in a nice database managed with a dedicated tool.
 - Everything can be referred to by its hash. Names are just metadata, so it is easy to rename stuff and perform other similar magic like caching tests.
 
-Since we want to have a query-based compiler whcih is basically the same thing as Unison's codebase manager, adding support for a custom version control system shouldn't be that hard at this point. One very principled VCS is [Pijul](https://pijul.org/). It is based on category theory and allows things like applying independent changes in any order. Note that we don't want to create our own VCS, but rather just make a tool that would generate nice git diffs.
+Since we want to have a query-based compiler which is basically the same thing as Unison's codebase manager, adding support for a custom version control system shouldn't be that hard at this point. One very principled VCS is [Pijul](https://pijul.org/). It is based on category theory and allows things like applying independent changes in any order. Note that we don't want to create our own VCS, but rather just make a tool that would generate nice git diffs.
 
 Yet another can of worms is how to interface with real world databases. I think that our language should have a built-in database system that is well-suited to dependently type functional languages based on type theory. There is a kind of database called [Categorical Databases](https://www.categoricaldata.net/) which cold possibly achieve this.
 
