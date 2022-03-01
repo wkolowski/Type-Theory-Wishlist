@@ -34,7 +34,6 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
         1. [A more flexible syntax for pattern matching](#flexible-pattern-matching)
     1. [Mutual Inductive Types](#mutual-inductive-types)
     1. [Nested Inductive Types](#nested-inductive-types)
-    1. [Negative Inductive Types](#negative-inductive-types)
     1. [Computational Inductive Types](#computational-inductive-types)
     1. [Higher Inductive Types](#higher-inductive-types)
     1. [Nominal Inductive Types](#nominal-inductive-types)
@@ -44,6 +43,12 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [A more verbose (and readable) syntax for inductive types](#verbose-syntax-for-inductives)
     1. [Inductive-Inductive Types](#induction-induction)
     1. [Inductive-Recursive Types](#induction-recursion)
+    1. [Combining the Various Kinds of Inductive Types](#combining-inductives)
+1. [Negative Inductive Types](#negative-inductive-types)
+    1. [Basic Negative Inductive Types](#basic-negative-inductive-types)
+    1. [Negative Inductive Families](#negative-inductive-families)
+    1. [Syntax sugars for Negative Inductive Types](#syntax-sugars-for-negative-inductives)
+    1. [Advanced Negative Inductive Types](#advanced-negative-inductive-types)
 1. [Recursive Families](#recursive-families)
 1. [Coinductive Types](#coinductive-types)
     1. [Negative Coinductive Types](#negative-coinductive-types)
@@ -2440,152 +2445,6 @@ Not papers:
 TODO:
 - Write some example code.
 
-### Negative Inductive Types <a id="negative-inductive-types"></a> [↩](#toc)
-
-So far we have only seen _Positive_ Inductive Types. By positive, I mean that these types are like (extensible) sums, i.e. they can be made using one of possibly many different constructors, which then take a record of arguments.
-
-In our language, we can have not only Positive Inductive Types, but also _Negative_ Inductive Types. By negative I mean that these types are like records, i.e. they can have many fields of different types, which we then need to provide to define a value of the type. But there's one thing that makes them different from records: we can have fields of the same type that is being defined, and in general the field types can mention the type being defined.
-
-Let's see an example which will make everything clearer.
-
-```
-data NETree (A : Type) : Type
-& root of A
-& ts   of List NETree
-```
-
-The above snippet defines the type `NETree`, whose name is an abbreviation of "non-empty tree". Values of this type are trees that have a `root` and a `List` of subtrees, which are `NETree`s themselves.
-
-The syntax of our definition is as follows. We start with the `data` keyword, which indicates that we are defining an inductive type. Then we provide the parameters (in our case `A : Type`) and the universe to which the defined type belongs (for us, `Type`). Then in each line, starting with the symbol `&`, we give the fields that values of the type must have, just like for records.
-
-```
-data NETree (A : Type) : Type
-constructor N
-& root of A
-& ts   of List NETree
-```
-
-Note that we can optionally provide a name for the type's only constructor. For `NETree`, we chose `N`, our standard name for `N`odes of trees.
-
-```
-t : NETree Nat
-& root => 42
-& ts   => []
-```
-
-Values of the type `NETree` can be introduced using copattern syntax, the same one that we have used for defining records.
-
-```
-leftmost : (t : NETree A) -> A
-| N with t.ts
-  | Nil  => t.root
-  | Cons => leftmost t.ts.hd
-```
-
-Eliminating inductive records is a bit less nice than defining them. As an example, we define the function `leftmost`, which retrieves the leftmost element from `t : NETree`. The default way to define it is to match on `t`. This isn't very informative, because `t` must have been introduced using the constructor `N`, but having matched `t` we can quickly match on `t.ts` using a `with`-clause. The rest of the definition is trivial: if there's no subtrees, we return the `root`, and if there are, we recursively descend to the left subtree, which is the head of the list of subtrees.
-
-```
-leftmost : (t : NETree A) -> A with t.ts
-| Nil  => t.root
-| Cons => leftmost t.ts.hd
-
-leftmost : (t : NETree A) -> A
-with t.ts
-| Nil  => t.root
-| Cons => leftmost t.ts.hd
-```
-
-Note that we have an experimental syntax sugar which allows us to use the `with`-clause without previously matching anything, but I'm not yet sure about its exact form.
-
-```
-leftmost : (t : NETree A) -> A :=
-  if t.ts is Cons then leftmost t.ts.hd else t.root
-```
-
-A much shorter way of defining `leftmost` is to use the `is` syntax for single-case pattern matching. For `leftmost` it works perfectly, resulting in a one-liner, but in general it is not the ultimate solution.
-
-```
-leftmost : (t : NETree A) -> A
-| N r []        => r
-| N _ (t' :: _) => leftmost t'
-```
-
-Another possibility to define `leftmost` is to use a more traditional, nested pattern matching on `t` together with its arguments. In case `t.ts` is `[]`, we return the `r`oot. Otherwise, we recursively look for the `leftmost` element of `t'`, the left subtree of `t`.
-
-```
-map-net (f : A -> B) : (t : NETree A) -> NETree B
-& root => f t.root
-& ts   => map map-net t.ts
-```
-
-Defining functions into `NETree`s is much easier, as shown in the above example of `map`. We define the fields of the result `NETree` using copattern syntax, while at the same time taking apart the input `NETree` by accessing its fields using dot syntax. Note that the recursive call is `map map-net t.ts`, i.e. we are dealing with higher-order recursion. This is caused by the fact that `t.ts` is a `List` of `NETree`s, so `NETree` itself is a [Nested Inductive Type](#nested-inductive-types).
-
-```
-data NEBTree (A : Type) : Type
-& root of A
-& l r  of Option NEBTree
-
-map (f : A -> B) : (t : NEBTree A) -> NEBTree B
-& root => f t.root
-& l with t.l
-  | None => None
-  | Some l' => Some (map l')
-& r with t.r
-  | None => None
-  | Some r' => Some (map r')
-```
-
-It is very common for Negative Inductive Types to be Nested Inductive Types. The snippet above defines `NEBTree`, a binary variant of `NETree` in which the two subtrees are wrapped in an `Option`. To define the corresponding `map` function, we need to match on the subtrees using a `with`-clause. As you can see, `NEBTree` is also a Nested Inductive Types, although a simpler one than `NETree`.
-
-```
-data BadTree (A : Type) : Type
-& root of A
-& l r  of BadTree
-
-BadTree-Empty (#A : Type) : (t : BadTree A) -> Empty :=
-  BadTree-Empty t.l
-```
-
-The reason that Negative Inductive Types are usually nested is that non-nested negative inductives are usually uninhabited. The above snippet defines `BadTree`, a type of non-empty (in the sense of necessarily having an element) binary trees, in which the subtrees are not wrapped in an `Option`. This type, however, turns out to be empty. The reason is that `BadTree` lacks a "base case", so all such trees would have to be of infinite height, but inductive types must be of finite height. Thus, `BadTree` is uninhabited.
-
-```
-data NETree (A : Type) : Type
-constructor N
-& root of A
-& subs of ListNETree A
-
-and
-
-data ListNETree (A : Type) : Type
-| Nil
-| Cons of (hd : NETree A, tl : ListNETree)
-```
-
-Besides nesting, another way to make inhabited Negative Inductive Types is to define them mutually with some other types. The above example shows an alternative way of defining `NETree`, mutually inductively with the type `ListNETree`, which is equivalent to `List (NETree A)`. Note that `ListNETree` is an ordinary (i.e. positive) inductive type - mixing positive and negative inductive types in mutual definitions poses no problem.
-
-```
-data NETree' (A : Type) : Type
-| N of (root : A, ts : List NETree')
-
-root : (t : NETree' A) -> A
-| N => t.root
-
-ts : (t : NETree' A) -> List (NETree' A)
-| N => t.ts
-```
-
-Last but not least, we should note that Negative Inductive Types are not a primitive, built-in feature of our language - they are just syntax sugar for Positive Inductive Types with one constructor. The desugaring of `NETree`, called `NETree'`, is shown in the snippet above. The field accessors are generated automatically.
-
-Not papers:
-- [Records in Coq](https://coq.inria.fr/refman/language/core/records.html)
-- [Records in Agda](https://agda.readthedocs.io/en/latest/language/record-types.html)
-
-**Status: Coq allows inductive records in addition to native records (i.e. primitive projections) and also allows mutual inductive records (but they must be defined using the `Inductive` keyword). Agda similarly allows defining mutually inductive record types. Mutually defined positive and negative inductives are more suspicious, but since negative inductive can be translated to positive ones, I think this shouldn't pose a problem.**
-
-TODO:
-- Finish this section.
-- Reconsider the syntax sugar for `with`.
-
 ### [Computational Inductive Types](Induction/ComputationalInductiveTypes) <a id="computational-inductive-types"></a> [↩](#toc)
 
 Take a look at the inductive definition below.
@@ -3111,6 +2970,7 @@ data Vec
   indices
   & n : Nat
   sort Type
+  eliminator foldr
   constructors
   | Nil  : Vec 0
   | Cons :
@@ -3118,7 +2978,6 @@ data Vec
     & #n of Nat
     & tl of Vec n
     -> Vec (s n)
-  eliminator foldr
 ```
 
 Of course we can also use this verbose syntax to define inductive families (indices are declared using copattern syntax below the keyword `indices`), possibly together with copattern syntax for constructor arguments, or any other piece of syntax that we have seen. Above we show how to define the familiar type of `Vec`tors in this syntax. As a bonus, we see how copattern syntax for constructor arguments works for inductive families.
@@ -3333,6 +3192,160 @@ Generic programming using (inductive-recursive) universes:
 TODO:
 - Is the `is` syntax sugar for single-constructor pattern matching of any use with inductive-recursive types?
 
+### Combining the Various Kinds of Inductive Types <a id="combining-inductives"></a> [↩](#toc)
+
+TODO
+
+## Negative Inductive Types <a id="negative-inductive-types"></a> [↩](#toc)
+
+So far we have only seen _Positive_ Inductive Types. By positive, I mean that these types are like (extensible) sums, i.e. they can be made using one of possibly many different constructors, which then take a record of arguments.
+
+In our language, we can have not only Positive Inductive Types, but also _Negative_ Inductive Types. By negative I mean that these types are like records, i.e. they can have many fields of different types, which we then need to provide to define a value of the type. But there's one thing that makes them different from records: negative inductive types may be recursive, whereas records may not.
+
+In the section below, we first explore [Basic Inductive Types](#basic-inductive-types) (i.e. those that are not indexed), then [Negative Inductive Families](#negative-inductive-families), and finally we move on to see [how the negativity interacts with other kinds of inductives](#advanced-negative-inductive-types) we previously met, like Computational Inductive Types, Nominal Inductive Types or Higher Inductive Types.
+
+### Basic Negative Inductive Types <a id="basic-negative-inductive-types"></a> [↩](#toc)
+
+Let's start with an example that will make everything clearer.
+
+```
+data NETree (A : Type) : Type
+& root of A
+& ts   of List NETree
+```
+
+The above snippet defines the type `NETree`, whose name is an abbreviation of "non-empty tree". Values of this type are trees that have a `root` and a `List` of subtrees, which are `NETree`s themselves.
+
+The syntax of our definition is as follows. We start with the `data` keyword, which indicates that we are defining an inductive type. Then we provide the parameters (in our case `A : Type`) and the universe to which the defined type belongs (for us, `Type`). Then in each line, starting with the symbol `&`, we give the fields that values of the type must have, just like for records.
+
+```
+data NETree (A : Type) : Type
+constructor N
+& root of A
+& ts   of List NETree
+```
+
+Note that we can optionally provide a name for the type's only constructor. For `NETree`, we chose `N`, our standard name for `N`odes of trees.
+
+```
+t : NETree Nat
+& root => 42
+& ts   => []
+```
+
+Values of the type `NETree` can be introduced using copattern syntax, the same one that we have used for defining records.
+
+```
+leftmost : (t : NETree A) -> A
+| N with t.ts
+  | Nil  => t.root
+  | Cons => leftmost t.ts.hd
+```
+
+Eliminating inductive records is a bit less nice than defining them. As an example, we define the function `leftmost`, which retrieves the leftmost element from `t : NETree`. The default way to define it is to match on `t`. This isn't very informative, because `t` must have been introduced using the constructor `N`, but having matched `t` we can quickly match on `t.ts` using a `with`-clause. The rest of the definition is trivial: if there's no subtrees, we return the `root`, and if there are, we recursively descend to the left subtree, which is the head of the list of subtrees.
+
+```
+leftmost : (t : NETree A) -> A with t.ts
+| Nil  => t.root
+| Cons => leftmost t.ts.hd
+
+leftmost : (t : NETree A) -> A
+with t.ts
+| Nil  => t.root
+| Cons => leftmost t.ts.hd
+```
+
+Note that we have an experimental syntax sugar which allows us to use the `with`-clause without previously matching anything, but I'm not yet sure about its exact form.
+
+```
+leftmost : (t : NETree A) -> A :=
+  if t.ts is Cons then leftmost t.ts.hd else t.root
+```
+
+A much shorter way of defining `leftmost` is to use the `is` syntax for single-case pattern matching. For `leftmost` it works perfectly, resulting in a one-liner, but in general it is not the ultimate solution.
+
+```
+leftmost : (t : NETree A) -> A
+| N r []        => r
+| N _ (t' :: _) => leftmost t'
+```
+
+Another possibility to define `leftmost` is to use a more traditional, nested pattern matching on `t` together with its arguments. In case `t.ts` is `[]`, we return the `r`oot. Otherwise, we recursively look for the `leftmost` element of `t'`, the left subtree of `t`.
+
+```
+map-net (f : A -> B) : (t : NETree A) -> NETree B
+& root => f t.root
+& ts   => map map-net t.ts
+```
+
+Defining functions into `NETree`s is much easier, as shown in the above example of `map`. We define the fields of the result `NETree` using copattern syntax, while at the same time taking apart the input `NETree` by accessing its fields using dot syntax. Note that the recursive call is `map map-net t.ts`, i.e. we are dealing with higher-order recursion. This is caused by the fact that `t.ts` is a `List` of `NETree`s, so `NETree` itself is a [Nested Inductive Type](#nested-inductive-types).
+
+```
+data NEBTree (A : Type) : Type
+& root of A
+& l r  of Option NEBTree
+
+map (f : A -> B) : (t : NEBTree A) -> NEBTree B
+& root => f t.root
+& l with t.l
+  | None => None
+  | Some l' => Some (map l')
+& r with t.r
+  | None => None
+  | Some r' => Some (map r')
+```
+
+It is very common for Negative Inductive Types to be Nested Inductive Types. The snippet above defines `NEBTree`, a binary variant of `NETree` in which the two subtrees are wrapped in an `Option`. To define the corresponding `map` function, we need to match on the subtrees using a `with`-clause. As you can see, `NEBTree` is also a Nested Inductive Types, although a simpler one than `NETree`.
+
+```
+data BadTree (A : Type) : Type
+& root of A
+& l r  of BadTree
+
+BadTree-Empty (#A : Type) : (t : BadTree A) -> Empty :=
+  BadTree-Empty t.l
+```
+
+The reason that Negative Inductive Types are usually nested is that non-nested negative inductives are usually uninhabited. The above snippet defines `BadTree`, a type of non-empty (in the sense of necessarily having an element) binary trees, in which the subtrees are not wrapped in an `Option`. This type, however, turns out to be empty. The reason is that `BadTree` lacks a "base case", so all such trees would have to be of infinite height, but inductive types must be of finite height. Thus, `BadTree` is uninhabited.
+
+```
+data NETree (A : Type) : Type
+constructor N
+& root of A
+& subs of ListNETree A
+
+and
+
+data ListNETree (A : Type) : Type
+| Nil
+| Cons of (hd : NETree A, tl : ListNETree)
+```
+
+Besides nesting, another way to make inhabited Negative Inductive Types is to define them mutually with some other types. The above example shows an alternative way of defining `NETree`, mutually inductively with the type `ListNETree`, which is equivalent to `List (NETree A)`. Note that `ListNETree` is an ordinary (i.e. positive) inductive type - mixing positive and negative inductive types in mutual definitions poses no problem.
+
+```
+data NETree' (A : Type) : Type
+| N of (root : A, ts : List NETree')
+
+root : (t : NETree' A) -> A
+| N => t.root
+
+ts : (t : NETree' A) -> List (NETree' A)
+| N => t.ts
+```
+
+Last but not least, we should note that Negative Inductive Types are not a primitive, built-in feature of our language - they are just syntax sugar for Positive Inductive Types with one constructor. The desugaring of `NETree`, called `NETree'`, is shown in the snippet above. The field accessors are generated automatically.
+
+Not papers:
+- [Records in Coq](https://coq.inria.fr/refman/language/core/records.html)
+- [Records in Agda](https://agda.readthedocs.io/en/latest/language/record-types.html)
+
+**Status: Coq allows inductive records in addition to native records (i.e. primitive projections) and also allows mutual inductive records (but they must be defined using the `Inductive` keyword). Agda similarly allows defining mutually inductive record types. Mutually defined positive and negative inductives are more suspicious, but since negative inductive can be translated to positive ones, I think this shouldn't pose a problem.**
+
+TODO:
+- Finish this section.
+- Reconsider the syntax sugar for `with`.
+
 ### Negative Inductive Families <a id="negative-inductive-families"></a> [↩](#toc)
 
 We have already seen basic Negative Inductive Types, but now it's time to see Negative Inductive Families. Let's start with the venerable example of vectors, which here we call `NVec` (short for "Negative Vector") to distinguish them from the positive `Vec`.
@@ -3404,6 +3417,27 @@ Papers:
 TODO:
 - Find a more convenient syntax for defining functions (or else we have to match on the indices).
 - Devise an "equation rewriting" syntax for doing equational proofs.
+
+### Syntax sugars for Negative Inductive Types <a id="syntax-sugars-for-negative-inductives"></a> [↩](#toc)
+
+
+
+```
+data NVec
+  parameters
+  & A : Type
+
+  indices
+  & n : Nat
+
+  sort Type
+
+  constructor Cons
+
+  fields
+  & hd : (#n : Nat) -> NVec (s n) -> A
+  & tl : (#n : Nat) -> NVec (s n) -> NVec n
+```
 
 ### Advanced Negative Inductive Types <a id="advanced-negative-inductive-types"></a> [↩](#toc)
 
@@ -6957,10 +6991,7 @@ TODO:
 
 ## Other TODOs
 
-1. Negative Inductive Types
-  1. Describe `Vec`, but defined as a negative inductive/recursive family.
-  1. In general: describe negative inductive families.
-1: Mixed Inductive-Coinductive Types, represented as a restriction of a coinductive type.
+1. Mixed Inductive-Coinductive Types, represented as a restriction of a coinductive type.
 1. Intersperse the section on subtyping into the main text.
 1. Change Coind-Coind to make sure it understands subtyping.
 1. Rethink once more the subtyping with parameters and indices.
