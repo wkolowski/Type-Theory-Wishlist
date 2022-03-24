@@ -48,7 +48,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Basic Negative Inductive Types](#basic-negative-inductive-types)
     1. [Negative Inductive Families](#negative-inductive-families)
     1. [Syntax sugars for Negative Inductive Types](#syntax-sugars-for-negative-inductives)
-    1. [Advanced Negative Inductive Types](#advanced-negative-inductive-types)
+    1. [Advanced Negative Inductive Types (TODO)](#advanced-negative-inductive-types)
 1. [Recursive Families](#recursive-families)
 1. [Coinductive Types](#coinductive-types)
     1. [Negative Coinductive Types](#negative-coinductive-types)
@@ -67,9 +67,10 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [Mixing records and sums: A * (B + C) = (A * B) + (A * C)](#mixing-records-and-sums)
     1. [Coinduction-Induction (TODO)](#coinduction-induction)
     1. [Types with inductive and coinductive components (TODO)](#inductive-coinductive-components)
-1. [Shared blocks, sections and automatic abstraction over parameters ](#sections)
+1. [Shared blocks, sections and automatic abstraction over parameters](#sections)
 1. [Refinement types](#refinements)
 1. [Universes](#universes)
+1. [Classical Logic for Propositions](#classical-logic-Prop)
 1. [Subtyping, coercions and subtype universes](#subtyping)
 1. [Type-level rewriting](#type-level-rewriting)
 1. [Type copying](#type-copying)
@@ -3439,7 +3440,7 @@ data NVec
   & tl : (#n : Nat) -> NVec (s n) -> NVec n
 ```
 
-### Advanced Negative Inductive Types <a id="advanced-negative-inductive-types"></a> [↩](#toc)
+### Advanced Negative Inductive Types (TODO) <a id="advanced-negative-inductive-types"></a> [↩](#toc)
 
 TODO
 
@@ -5677,7 +5678,7 @@ The price we must pay for non-strict truncation is that we can eliminate truncat
 
 ### Restrictions on elimination of strict propositions
 
-In Coq and Agda there's a restriction on elimination of strict propositions so as to avoid "spilling" the strictness into the outside world, which could result in nontermination, undecidability of type checking and falling into extensional type theory.
+In Coq and Agda there's a restriction on elimination of strict propositions in order to avoid "spilling" the strictness into the outside world, which could result in nontermination, undecidability of type checking and falling into extensional type theory.
 
 This restrction says that inductive strict propositions can be eliminated into ordinary `Type`s if they satisfy some simple critera, which in practice amount to saying that all strict propositions which can be eliminated are built from `Empty`, `Unit` and recursive functions which return either `Empty` or `Unit`. For us, this means that `Empty` and `Unit` can be eliminated into anything at all and that other strict propositions can be eliminated only into other strict propositions.
 
@@ -5749,6 +5750,18 @@ TODO:
 - Maybe merge strict and non-strict universes into one, i.e. `Type s h p`, with `s` being the strict (homotopy) level, `h` the (non-strict) homotopy level and `p` the predicative level? Of course we will then have `h <= s`.
 - Rethink the formation rules for universes. I think the universe `Contr` shouldn't live in `Contr`, but rather in `hContr` - all singletons are equivalent, but we can't just computationally equate `Unit` with the type of sorting functions...
 - Rethink when can strict inductive types be eliminated.
+
+## Classical Logic for Propositions  <a id="classical-logic-Prop"></a> [↩](#toc)
+
+As we have seen in the section on [Universes](#universes), the universe of strict proposition `Prop` is proof irrelevant, i.e. for all `P : Prop` and `p1 p2 : P` we have `p1 ≡ p2`. This is very important in practice, because it means that proofs of propositions do not have any computational content, so that we cannot eliminate them when constructing proof relevant values.
+
+On a more philosophical level, however, there is another interesting observation to be made: since proofs have no computational content, the logic of (strict) propositions does not really need to be constructive/intuitionistic - there aren't any obstacles to making it classical. And so we do...
+
+```
+// `\/` is the `Prop` variant of `+`.
+%Axiom
+LEM : (P : Prop) -> P \/ ~ P
+```
 
 ## Subtyping, coercions and subtype universes <a id="subtyping"></a> [↩](#toc)
 
@@ -5909,6 +5922,7 @@ Less relevant papers:
 - [Structural subtyping for inductive types with functorial equality rules](https://www.cs.rhul.ac.uk/home/zhaohui/Trans2.pdf)
 - [Induction, Coinduction, and Fixed Points in Programming Languages (PL) Type Theory](https://arxiv.org/pdf/1903.05126.pdf)
 - [Revisiting Iso-Recursive Subtyping](https://dl.acm.org/doi/pdf/10.1145/3428291)
+- [A Calculus of Constructions with Explicit Subtyping](https://drops.dagstuhl.de/opus/volltexte/2015/5490/pdf/4.pdf)
 
 **Status: very speculative.**
 
@@ -6958,7 +6972,7 @@ The idea behind query-based compilers is to some extent implemented in the [Unis
 
 Since we want to have a query-based compiler which is basically the same thing as Unison's codebase manager, adding support for a custom version control system shouldn't be that hard at this point. One very principled VCS is [Pijul](https://pijul.org/). It is based on category theory and allows things like applying independent changes in any order. Note that we don't want to create our own VCS, but rather just make a tool that would generate nice git diffs.
 
-Yet another can of worms is how to interface with real world databases. I think that our language should have a built-in database system that is well-suited to dependently type functional languages based on type theory. There is a kind of database called [Categorical Databases](https://www.categoricaldata.net/) which cold possibly achieve this.
+Yet another can of worms is how to interface with real world databases. I think that our language should have a built-in database system that is well-suited to dependently type functional languages based on type theory. There is a kind of database called [Categorical Databases](https://www.categoricaldata.net/) which could possibly achieve this.
 
 Our language should also be literate. That is, it should support a mode in which writing comments is the default, with the code being secondary. The litreate mode should support ordinary text, markup (like Markdown or HTML), displaying data, graphs, animations etc. and embedding pictures, movies and in general, any value that we can define in our language. Two interesting things in this respect are [Idyll](https://idyll-lang.org/docs) and [Pollen](https://docs.racket-lang.org/pollen/). As for the practicality of this, Haskell and Agda do have literate modes, but I have no idea how they work. Unison supports extensive documentation comments which is somewhat literate, but somewhat different from what we want.
 
