@@ -178,11 +178,15 @@ There are implicit coercions between integer types provided that they do not los
 // Ok, `u16` values range from `0` to `65535`, which certainly fits in an `i64`.
 x : i64 := 123 : u16
 
-// Failure - there are values of type `u8`, like `255`, that don't fit into an `i8`, which ranges from `-128` to `127`. It doesn't matter that the particular value we use, i.e. `5`, is a valid value of type `i8`.
+// Failure - there are values of type `u8`, like `255`, that don't fit into an
+// `i8`, which ranges from `-128` to `127`. It doesn't matter that the particular
+// value we use, i.e. `5`, is a valid value of type `i8`.
 %Fail
 y : i8 := 5 : u8
 
-// To transform a value of type `u8` into a value of type `i8`, we have to use an explicit coercion. `coerce-rounding-down` casts `u8`s into `i8`s, rounding values out of range like `255` down to `127`.
+// To transform a value of type `u8` into a value of type `i8`, we have to use
+// an explicit coercion. `coerce-rounding-down` casts `u8`s into `i8`s, rounding
+// values out of range like `255` down to `127`.
 z : i8 := coerce-rounding-down (5 : u8)
 ```
 
@@ -301,7 +305,7 @@ f : (x : A, y : B) -> C x y :=
   fun (x : A, y : B) => ...
 ```
 
-There's also an alternative notation which uses more parentheses, but it's discouraged (we will see one way in which its useful very soon).
+There's also an alternative notation which uses more parentheses, but it's discouraged (we will see one way in which it's useful very soon).
 
 ```
 f : (x : A) (y : B) -> C x y :=
@@ -362,7 +366,7 @@ comp (f : A -> B) (g : B -> C) (x : A) : C := g (f x)
 
 There are also other kinds of implicitness, like looking up typeclass instances, but these are dealt with by [records](#records).
 
-Names of functions are allowed to consist entirely of symbols, although this style is discouraged except for the most common functions, like the operators below, which are borrowed from F#: forward function application `|>` (also called "pipe forward"), backward function application `<|` (also called pipe backward), forward function composition `>>` and backward function composition `<<`.
+Names of functions are allowed to consist entirely of symbols, although this style is discouraged except for the most common functions, like the operators below, which are borrowed from F#: forward function application `|>` (also called "pipe forward"), backward function application `<|` (also called "pipe backward"), forward function composition `>>` and backward function composition `<<`.
 
 ```
 (|>) (x : A) (f : A -> B) : B := f x
@@ -374,7 +378,7 @@ Names of functions are allowed to consist entirely of symbols, although this sty
 (<<) (g : B -> C) (f : A -> B) (x : A) : C := g (f x)
 ```
 
-There are two syntaxes for operator sections. The first one (`(* 3)` below) is borrowed from Haskell and works only for already-defined functions whose names are symbols. The second one (`(_ `mod` 2 =? 0)` below) works for any expression that represents a single-argument function, with the underscore `_` used to mark the argument. We can turn any function into an infix operator by enclosing the function's name in backticks, like for `mod` below.
+There are two syntaxes for operator sections. The first one (`(* 3)` below) is borrowed from Haskell and works only for already-defined functions whose names are symbols. The second one (``(_ `mod` 2 =? 0)`` below) works for any expression that represents a single-argument function, with the underscore `_` used to mark the argument. We can turn any function into an infix operator by enclosing the function's name in backticks, like for `mod` below.
 
 Together with the pipe operators and function composition operators, this makes data processing easy and readable.
 
@@ -399,7 +403,7 @@ self-comp (h : Nat -> Nat) : Nat -> Nat :=
   comp {A => Nat, B => Nat, C => Nat} {g => h} {f => h}
 ```
 
-To reiterate: the order of arguments doesn't matter. As a bonus, we can set many arguments to the same value easily - this should be very useful easpecially for type arguments.
+To reiterate: the order of arguments doesn't matter. As a bonus, we can set many arguments to the same value easily - this should be very useful especially for type arguments.
 
 ```
 self-comp' (h : Nat -> Nat) : Nat -> Nat :=
@@ -424,7 +428,7 @@ Hello-World : Text := greet ()
 Hello-World-spec : Hello-World = "Hello World!" := refl
 ```
 
-Of course anonymous function also can have default arguments.
+Of course anonymous functions can have default arguments too.
 
 ```
 greet' : (name : Text => "World") -> Text :=
@@ -547,7 +551,7 @@ Prototypes:
 - [anders](https://github.com/groupoid/anders)
 - [yactt](https://github.com/mortberg/yacctt)
 - [mlang](https://github.com/molikto/mlang)
-- [smalltt](https://github.com/AndrasKovacs/smalltt) - not actually cubical, but only ordinary MLTT, but worth taking a look because it's fast
+- [smalltt](https://github.com/AndrasKovacs/smalltt) - it's just ordinary MLTT (so not cubical), but worth taking a look because it's fast
 
 **Status: there are some papers which describe Cubical Type Theory in great detail and there are prototype implementations based on these papers.**
 
@@ -563,17 +567,17 @@ Anyway, terms of the nominal function type `∇ α : A. B` are introduced with a
 
 What is the intuitive meaning of nominal abstraction? It captures all the key properties of name-binding, namely (these are taken from the CNIC paper):
 - Freshness: The name introduced by nominal abstraction is distinct from any names bound outside the given binding. For example, given the term `ν α. ν β. t` inside the term `t` the names `α` and `β` are distinct.
-- α-equivalence: Terms with name-bindings are equal up to renaming of bound names. For example, `ν α. α` is equal to `ν β. β`.
+- α-equivalence: Terms with name-bindings are equal up to renaming of bound names. For example, `ν α. α` is computationally equal to `ν β. β`.
 - Scoping: A name cannot occur outside a binding for it. For example, `α` is a valid term only under a binding `ν α. ...`. Note that this doesn't mean that we rule out "open terms" - we may consider open terms in some scope when their free variables are bound in an enclosing scope.
 - Typing: Different types of names can be bound. For example, when formalizing System F, names for term and type variables are of distinct type.
 
-Nominal functions can be eliminated using concretion operation: given `t : ∇ α : A. B` and `β : A` which is fresh for `t`, we have `t @ β : B[α := β]` with the computation rule `(ν α. b) @ β ≡ b[α := β]`. We also have the uniqueness rule: given `t : ∇ α : A. B`, we have `t ≡ ν α. t @ α`.
+Nominal functions can be eliminated using concretion, which is analogous to function application: given `t : ∇ α : A. B` and `β : A` which is fresh for `t`, we have `t @ β : B[α => β]` with the computation rule `(ν α. b) @ β ≡ b[α => β]`. We also have the uniqueness rule: given `t : ∇ α : A. B`, we have `t ≡ ν α. t @ α`.
 
-The main use of names and the nominal function type is together with inductive types, to represent name binding in the syntax of programming languages, logics, calculi and so on, where they effectively implement the "Barendregt convention". See the section on [Nominal Inductive Types](#nominal-inductive-types) for more. However, they can also be used with coinductive types and with whatever other feature our language has - I guess that interactions between many of them and nominal features are not yet discovered!
+The main use of names and the nominal function type is together with inductive types, to represent name binding in the syntax of programming languages, logics, calculi and so on, where they effectively implement the "Barendregt convention". See the section on [Nominal Inductive Types](#nominal-inductive-types) for more. However, they can also be used with coinductive types and with whatever other features our language has - I guess that interactions between many of them and the nominal features are not yet discovered!
 
 Papers:
-- [The Calculus of Nominal Inductive Constructions](https://homepage.divms.uiowa.edu/~astump/papers/cinic-lfmtp09.pdf)
-- [A Dependent Type Theory with Abstractable Names](https://www.sciencedirect.com/science/article/pii/S1571066115000079)
+- [The Calculus of Nominal Inductive Constructions (CNIC)](https://homepage.divms.uiowa.edu/~astump/papers/cinic-lfmtp09.pdf)
+- [A Dependent Type Theory with Abstractable Names (FreshMLTT)](https://www.sciencedirect.com/science/article/pii/S1571066115000079)
 
 Note: so far, our nominal features are based on the first of these papers, i.e. the Calculus of Nominal Inductive Constructions. There are some reasons to think that the second paper may present a better system, but so far I haven't been able to decipher it on an intuitive level.
 
@@ -608,9 +612,9 @@ TODO:
 
 ## Documentation comments <a id ="doc-comments"></a> [↩](#toc)
 
-Our language has very powerful documentation comments, a feature borrowed from [the Union language](https://www.unisonweb.org/docs/documentation/).
+Our language has very powerful documentation comments, a feature borrowed from [the Unison language](https://www.unisonweb.org/docs/documentation/).
 
-Doc comments are first class, which means that there's a type `Doc` whose values are doc comments. This type is recursive, so we can embed docs in other docs. We can also include typechecked code snippets in docs and have them evaluated inline.
+Doc comments are first class, which means that there's a type `Doc` whose values are doc comments. This type is recursive, so we can embed docs into other docs. We can also include typechecked code snippets in docs and have them evaluated inline.
 
 Docs comment blocks are enclosed between `{{` and `}}`. This syntax creates an expression of type `Doc` - remember, doc comments are first-class. The basic syntax of doc comments is Markdown-like.
 
@@ -642,7 +646,7 @@ doc-comment : Doc :=
 }}
 ```
 
-We don't need to bind doc comments to variables. We can create them anonymously by placing them just before the definition to which theey pertain. The code below results in two new definitions, `five : Nat` and `five.doc : Doc`.
+We don't need to bind doc comments to variables. We can create them anonymously by placing them just before the definition to which they belong. The code below results in two new definitions, `five : Nat` and `five.doc : Doc`.
 
 ```
 {{Five is a very important number. Trust me, I'm a mathematician.}}
@@ -663,7 +667,7 @@ five : Nat := 5
 Five is a very important number. Trust me, I'm a mathematician.
 ```
 
-We can use double backticks ` `` ` to refer to a previously defined value. If there's nothing with this name or there is more than one definition with this name, we will get an error. We can use triple backticks ` ``` ` to evaluate a term. In the resulting `Doc`, this term will be replaced with its value.
+We can use double backticks ` `` ` to refer to a previously defined value. If there is no definition with this name or there is more than one definition with this name, we will get an error. We can use triple backticks ` ``` ` to evaluate a term. In the resulting `Doc`, this term will be replaced with its value.
 
 Moreover, we can write `@def{term}` to inline the definition of a term and `@type{term}` to inline the type of a term.
 
@@ -730,7 +734,7 @@ id.doc.ex : Doc :=
 }}
 ```
 
-In the REPL, this results in the same result as before.
+In the REPL, this gives the same result as before.
 
 ```
 > :docs id
@@ -786,7 +790,7 @@ StrictProp-Unit (u1 u2 : Unit) : u1 = u2 := refl
 Relevant papers:
 - [Definitional Proof-Irrelevance without K](https://hal.inria.fr/hal-01859964v2/document)
 
-**Status: `Empty` and `Unit` are standard everywhere, but barely anywhere are they strict propositions. Coq and Agda have implemented universes of strict propositions (impredicative and predicative) based on the above paper. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. Overall, this looks very doable.**
+**Status: `Empty` and `Unit` are standard everywhere, but barely anywhere are they strict propositions. Coq and Agda have implemented universes of strict propositions (impredicative and predicative, respectively) based on the above paper. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. Overall, this looks very doable.**
 
 ## [Records (and sums)](Records) <a id="records"></a> [↩](#toc)
 
