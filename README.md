@@ -1916,7 +1916,7 @@ data Sum' (A B : Type) : Type
 
 As an example, the code above shows how to use this syntax sugar to define `Sum`. `Sum'` is the desugaring of `Sum`.
 
-**Status: this is a very simple piece of syntax sugar, which should be easy to implement. The only complication occurs when the single argument is a record, but let's say that we can treat differently records defined inline (constructor arguments) and records defined somewhere else.**
+**Status: this is a very simple piece of syntax sugar, which should be easy to implement. The only complication occurs when the single argument is a record, but let's say that we can treat records defined inline (constructor arguments) and records defined somewhere else differently.**
 
 #### Unnamed constructor arguments <a id="unnamed-constructor-arguments"></a> [↩](#toc)
 
@@ -1966,7 +1966,7 @@ len (#A : Type) : List A -> Nat
 | _ :: t => s (len t)
 ```
 
-In general, whenever a type constructor (like `List : Type -> Type` or `_ * _ : Type -> Type -> Type`) is used where a type is expected, we should interpret this as referring to the type's constructor _record closure_ (i.e. `(A : Type, _ : List A)` or `(A B : Type, _ : A * B)`). This syntax sugar is called **bundled parameters**.
+In general, whenever a type constructor (like `List : Type -> Type` or `_ * _ : Type -> Type -> Type`) is used where a type is expected, we should interpret this as referring to the type constructor's _record closure_ (i.e. `(A : Type, _ : List A)` or `(A B : Type, _ : A * B)`). This syntax sugar is called **bundled parameters**.
 
 ```
 app : (l1 l2 : List) -> List
@@ -1974,7 +1974,7 @@ app : (l1 l2 : List) -> List
 | h :: t, _ => h :: app t l2
 ```
 
-The above piece fo code defines the `app` function once more, this time using bundled parameters.
+The above piece of code defines the `app` function once more, this time using bundled parameters.
 
 In general, separate uses of `List` will be understood to mean `List` with different element types, unless it is inferred that the element types should be the same.
 
@@ -2006,7 +2006,7 @@ In this section we describe extensions and alternative syntaxes and semantics fo
 
 [Decidable Equality Patterns](#decidable-equality-patterns) are non-linear patterns, i.e. patterns in which a variable `x` may appear more than once. This is equivalent to using `x` and `x'` instead and then checking their equality, and so use of this kind of patterns requires (and is desugared using) decidable equality.
 
-[Flexible Patterns](#flexible-pattern-matching) are an alternative syntax for pattern matching which depends much less on the positional ordering of constructor arguments and scrutinees (i.e. the things that are being matched on), and more on their names.
+[Flexible Patterns](#flexible-pattern-matching) are an alternative syntax for pattern matching which depends much less on the positional ordering of constructor arguments and scrutinees (i.e. the terms that are being matched on), and more on their names.
 
 #### [Overlapping and Order-Independent Patterns](Induction/OverlappingPatterns) <a id="overlapping-patterns"></a> [↩](#toc)
 
@@ -2030,9 +2030,9 @@ add : (n m : Nat) -> Nat
 
 Here besides the two clauses from the previous definitions, we have two more clauses which amount to saying that "additionally, `add n z` computes to `z` and `add n (s m')` computes to `s (add n m')`".
 
-For the definition to be accepted, all the clauses need to be confluent, i.e. they must return the same result when they overlap. In our example, the overlapping cases are `add z z` and `add (s n') (s m')`. But `add z z` computes to `z` both using clause 1 and 3, so it's ok. Similarly, `add (s n') (s m')` computes to `s (s (add n' m'))` using first clause 2 and then clause 4, and it computes to the same result using first clause 4 and then clause 2, so it's ok.
+For the definition to be accepted, all the clauses need to be confluent, i.e. they must return the same result when they overlap. In our example, the overlapping cases are `add z z` and `add (s n') (s m')`. But `add z z` computes to `z` both using clause 1 and 3, so it's ok. Similarly, `add (s n') (s m')` computes to `s (s (add n' m'))` by first using clause 2 and then clause 4, and it computes to the same result by first using clause 4 and then clause 2, so it's ok.
 
-These new computational equalities greatly reduce the number of rewrites needed in proofs, but it also and makes dependently-typed programming much easier in some cases. For example, for vectors the terms `v ++ []` used to have the problematic type `Vec A (add n z)`, whereas now it has the less problematic type `Vec A n`. Yay!
+These new computational equalities greatly reduce the number of rewrites needed in proofs, but they also make dependently-typed programming much easier in some cases. For example, for vectors the terms `v ++ []` used to have the problematic type `Vec A (add n z)`, whereas now it has the less problematic type `Vec A n`. Yay!
 
 Of course, there are some problems with this new kind of pattern matching. The foremost of them is that the catch-all pattern `_` starts being problematic. Consider the decision function for equality of naturals:
 
@@ -2168,7 +2168,7 @@ last : (l : List A) -> Option A
 | Cons => if l.tl is Nil then Some l.hd else last l.tl
 ```
 
-Note that neither the standard nor the flexible syntax from the previous example seems to be the best way of defining the function `last`. Instead, it seems that the most elegant way is to use a `with`-clause, like in the snippet above. Also note that using the `is` syntax turns out to also be quite an elegant choice for `last`.
+Note that neither the standard nor the flexible syntax from the previous example seems to be the best way of defining the function `last`. Instead, it seems that the most elegant way is to use a `with`-clause, like in the snippet above. Also note that using the `is` syntax turns out to be quite an elegant choice for `last`.
 
 ```
 third : (l : List A) -> Option A
@@ -2202,8 +2202,10 @@ To save ourselves from typing `(Cons (tl is ...))`, we allow to write this patte
 data Color
 & r g b a of u8
 
+%FlexiblePatterns
 f : (l : List (List Color)) -> Option u8
 | l.tl.hd.tl is Cons => Some l.tl.hd.tl.hd.a
+| _                  => None
 ```
 
 Of course, we can use this chained-dot-patterns also for non-recursive constructor arguments - i.e. we can use them to match nested records. In the above example, we show how to get the alpha channel from the `Color` with coordinate `(1, 1)` in a two-dimensional `List` of `List`s.
@@ -2213,8 +2215,10 @@ data BT (A : Type) : Type
 | E
 | N of (v : A, l r : BT)
 
+%FlexiblePatterns
 weird-test : (t : BT A) -> Type
 | t.l.l.l.(l is N, r is N) => t.l.l.l.l.v = t.l.l.l.r.v
+| _                        => Empty
 ```
 
 Another nice convenience feature when using these chained-dot-patterns is that we can avoid repeating prefixes when we want to match two or more deeply nested values. In the example above, we want to compare the values that are four times to the left of the root and three times to the left and once to the right. We can do this with the pattern `t.l.l.l.(l is N, r is N)`, which should be interpreted as a conjunction of `t.l.l.l.l is N` and `t.l.l.l.r is N`. These kinds of _branching patterns_ can also be nested themselves.
@@ -2223,10 +2227,12 @@ Another nice convenience feature when using these chained-dot-patterns is that w
 @FlexiblePatterns
 f : (l : List (List Color)) -> Option u8
 | x@(l.tl.hd.tl) is Cons => Some x.hd.a
+| _                      => None
 
 @FlexiblePatterns
 weird-test : (t : BT A) -> Type
 | x@(t.l.l.l).(l is N, r is N) => x.l.v = x.r.v
+| _                            => Empty
 ```
 
 Chained-dot-patterns are really nice, but they can get a bit heavy syntactically. In the snippet above we define the functions `f` and `weird-test` once more, but this time we combine the chained-dot-patterns with as-patterns, using the `name@pattern` syntax, to avoid having to repeat a long chain of accessors.
