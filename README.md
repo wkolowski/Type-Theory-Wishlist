@@ -5791,7 +5791,7 @@ Papers:
 We shall reify the subtyping judgement into a type. The basic idea is that for every type `A` there is a type `Sub A` which represents the universe of subtypes of `A`. The only serious use for this feature presented in the relevant paper is simulating bounded polymorphism and extensible records.
 
 ```
-translateX (n : Nat) (r : Sub (x : Nat)) : Sub (x : Nat) :=
+translateX (n : Nat) (R : Sub (x : Nat)) (r : R) : R :=
   (x $=> (+ n), _ => r)
 ```
 
@@ -5814,10 +5814,11 @@ We summarize the rules that govern subtyping in the table below.
 
 | Name              | Rule             | Coercion         |
 | ----------------- | ---------------- | ---------------- |
-| Primitive signed integers | `i8 <: i16 <: i32 <: i64` | built-in: copy the bits and pad the result with zeros |
-| Primitive unsigned integers | `u8 <: u16 <: u32 <: u64` | built-in: copy the bits and pad the result with zeros |
+| Primitive signed integers | `i8 <: i16 <: i32 <: i64` | built-in |
+| Primitive unsigned integers | `u8 <: u16 <: u32 <: u64` | built-in |
 | Primitive floats  | `f32 <: f64` | built-in |
 | Coercions between signed and unsigned integers | `u8 <: i16` <br> `u16 <: i32` <br> `u32 <: i64` | built-in |
+| Coercions between integers and floats | `i16 <: f32` (and possibly others, like `i32 <: f64`, `u16 <: f32`, `u32 <: f64`) | built-in |
 | Char and Text     | `Char <: Text` | make single character text |
 | Arrays            | if `c : A <: A'` <br> and `n' <= n` <br> then `Array A n <: Array A' n'` | `map c` and clip the result to the correct length |
 | Function type     | if `f : A <: A'` <br> and `g : B <: B'` <br> then `A' -> B <: A -> B'` | `fun h => f >> h >> g` |
