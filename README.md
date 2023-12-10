@@ -43,7 +43,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [A more verbose (and readable) syntax for inductive types](#verbose-syntax-for-inductives)
     1. [Inductive-Inductive Types](#induction-induction)
     1. [Inductive-Recursive Types](#induction-recursion)
-    1. [Combining the Various Kinds of Inductive Types](#combining-inductives)
+    1. [Combining the Various Kinds of Inductive Types (TODO)](#combining-inductives)
 1. [Negative Inductive Types](#negative-inductive-types)
     1. [Basic Negative Inductive Types](#basic-negative-inductive-types)
     1. [Negative Inductive Families](#negative-inductive-families)
@@ -70,7 +70,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
 1. [Shared blocks, sections and automatic abstraction over parameters](#sections)
 1. [Refinement types](#refinements)
 1. [Universes](#universes)
-1. [Classical Logic for Propositions](#classical-logic-Prop)
+1. [Classical Logic for Propositions](#classical-logic)
 1. [Subtyping, coercions and subtype universes](#subtyping)
 1. [Type-level rewriting](#type-level-rewriting)
 1. [Type copying](#type-copying)
@@ -794,7 +794,7 @@ Relevant papers:
 
 **Status: `Empty` and `Unit` are standard everywhere, but barely anywhere are they strict propositions. Coq and Agda have implemented universes of strict propositions (impredicative and predicative, respectively) based on the above paper. The paper proves that the theory is consistent, compatible with univalence, and has decidable typechecking. Overall, this looks very doable.**
 
-## [Records (and sums)](Records) <a id="records"></a> [↩](#toc)
+## [Records](Records) <a id="records"></a> [↩](#toc)
 
 Record types are the central feature of the language and they subsume modules, typeclasses, sigma types, product types, and so on. This even extends to packaging constructs - our records are supposed to be "on the same level" as Java's packages or Rust's crates. Let's start our journey into the land of records with some motivation, by describing what we want to achieve.
 
@@ -5763,9 +5763,9 @@ TODO:
 - Rethink the formation rules for universes. I think the universe `Contr` shouldn't live in `Contr`, but rather in `hContr` - all singletons are equivalent, but we can't just computationally equate `Unit` with the type of sorting functions...
 - Rethink when can strict inductive types be eliminated.
 
-## Classical Logic for Propositions  <a id="classical-logic-Prop"></a> [↩](#toc)
+## Classical Logic for Propositions <a id="classical-logic"></a> [↩](#toc)
 
-As we have seen in the section on [Universes](#universes), the universe of strict proposition `Prop` is proof irrelevant, i.e. for all `P : Prop` and `p1 p2 : P` we have `p1 ≡ p2`. This is very important in practice, because it means that proofs of propositions do not have any computational content, so that we cannot eliminate them when constructing proof relevant values.
+As we have seen in the section on [Universes](#universes), the universe of strict propositions `Prop` is proof irrelevant, i.e. for all `P : Prop` and `p1 p2 : P` we have `p1 ≡ p2`. This is very important in practice, because it means that proofs of propositions do not have any computational content, so that we cannot eliminate them when constructing proof relevant values.
 
 On a more philosophical level, however, there is another interesting observation to be made: since proofs have no computational content, the logic of (strict) propositions does not really need to be constructive/intuitionistic - there aren't any obstacles to making it classical. And so we do...
 
