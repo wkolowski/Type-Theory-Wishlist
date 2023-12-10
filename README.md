@@ -230,6 +230,8 @@ multiline-text : Text := "This\ntext\nis\nmultiline."
 quote : Text := "\"To be or not to be, that is the question.\""
 ```
 
+Note: the `Char` and `Text` types are of course just wishes on our Type Theory Wishlist! Since processing characters and text is complicated, these types are not a priority in a (real world) implementation and may just as well be relegated into being standard library types, or even outside the scope of the standard library. You wouldn't be able to write Hello World as your first program, but that's not the priority...
+
 The type `Array A n` represents arrays whose entries are of type `A` and whose length is `n : Nat`. Array literals are enclosed between `[` and `]` and separated with commas. More complicated array initializers live in the `Array` module. Array indexing syntax is similar to most C-like languages, i.e. `A[i]`. Note that `i : Fin n`, i.e. the index must be statically known to not be out of bounds.
 
 ```
@@ -5801,6 +5803,7 @@ Subtyping for subtype universes is very simple - if `A` is a subtype of `B`, the
 
 Papers:
 - [Subtype Universes](http://www.cs.rhul.ac.uk/home/zhaohui/Subtype%20Universes.pdf)
+- [On the Metatheory of Subtype Universes](https://pure.royalholloway.ac.uk/ws/portalfiles/portal/52590550/Bradley_On_the_Metatheory_of_Subtype_Universes.pdf)
 
 **Status: the paper is well-written and easy to understand, but there is no prototype, so it's mostly somewhat substantiated speculations.**
 
