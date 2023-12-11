@@ -134,25 +134,29 @@ TODO:
 
 ## Types <a id="types"></a> [↩](#toc)
 
-| Name              | Formation        | Introduction     | Elimination      |
-| ----------------- | ---------------- | ---------------- | ---------------- |
-| Primitive types   | `i8`, `i16`, `i32`, `i64` <br> `u8`, `u16`, `u32`, `u64` <br> `f32`, `f64` <br> `Char` <br> `Text` | literals         | primitive ops    |
-| Arrays            | `Array A n`      | literals <br> library functions | `A[i]` |
-| Function type     | `(x : A) -> B x` | `fun x : A => e` | `f a`            |
-| Path type         | `x = y`          | `path i => e`    | `p i`            |
-| Nominal function type | `∇ α : A. B α`   | `ν α : A. e`     | `t @ α`      |
-| Name              | `Name A`         | with `∇` and `ν` | pattern matching |
-| Empty type        | `Empty`          | impossible       | `abort`          |
-| Unit type         | `Unit`           | `unit`           | not needed       |
-| Record types      | `(a : A, ...)`   | `(a => e, ...)`  | `p.x`            |
-| Sum types         | `[a : A, ...]`   | constructors     | pattern matching |
-| Inductive types   | see below        | constructors     | pattern matching |
-| Coinductive types | see below        | copattern matching | field access   |
-| Refinement types  | `{x : A \| P x}` | implicit (?)     | implicit (?)     |
-| Singleton types   | `Singleton A x`  | implicit (?)     | implicit (?)     |
-| Strict universes  | `Type h p`       | `Type h p`       | impossible       |
-| Non-strict universes | `hType h p`   | `hType h p`      | impossible       |
-| Subtype universes | `Sub A`          | implicit (?)     | implicit (?)     |
+| Name                        | Formation                 | Introduction                     | Elimination      |
+| --------------------------- | ------------------------- | -------------------------------- | ---------------- |
+| Primitive signed integers   | `i8`, `i16`, `i32`, `i64` | literals                         | primitive ops    |
+| Primitive unsigned integers | `u8`, `u16`, `u32`, `u64` | literals                         | primitive ops    |
+| Primitive floats            | `f32`, `f64`              | literals                         | primitive ops    |
+| Characters                  | `Char`                    | literals                         | primitive ops    |
+| Text                        | `Text`                    | literals                         | primitive ops    |
+| Arrays                      | `Array A n`               | literals <br> library functions  | `A[i]`           |
+| Function type               | `(x : A) -> B x`          | `fun x : A => e`                 | `f a`            |
+| Path type                   | `x = y`                   | `path i => e`                    | `p i`            |
+| Nominal function type       | `∇ α : A. B α`            | `ν α : A. e`                     | `t @ α`          |
+| Name                        | `Name A`                  | with `∇` and `ν`                 | pattern matching |
+| Empty type                  | `Empty`                   | impossible                       | `abort`          |
+| Unit type                   | `Unit`                    | `unit`                           | not needed       |
+| Record types                | `(a : A, ...)`            | `(a => e, ...)`                  | `p.x`            |
+| Sum types                   | `[a : A, ...]`            | constructors                     | pattern matching |
+| Inductive types             | see below                 | constructors                     | pattern matching |
+| Coinductive types           | see below                 | copattern matching               | field access     |
+| Refinement types            | `{x : A \| P x}`          | implicit (?)                     | implicit (?)     |
+| Singleton types             | `Singleton A x`           | implicit (?)                     | implicit (?)     |
+| Strict universes            | `Type h p`                | `Type h p`                       | impossible       |
+| Non-strict universes        | `hType h p`               | `hType h p`                      | impossible       |
+| Subtype universes           | `Sub A`                   | implicit (?)                     | implicit (?)     |
 
 ## Primitive types and arrays <a id="primitives"></a> [↩](#toc)
 
@@ -469,7 +473,7 @@ TODO:
 
 We take Cubical Type Theory and the homotopical style of doing mathematics for granted. The revolution has already occurred!
 
-In practice, this means that we have a type `I` which represents the interval. In fact `I` is only a pretype, i.e. it cannot be the codomain of a function, only the domain. There are two constants `i0 : I` and `i1 : I` which represent the beginning and the end of the inerval. There are also operations: unary `~` and binary `∧`, `∨` which together with `i0` and `i1` make `I` into a free de Morgan algebra. All the laws are computational equalities. Here's a list (taken from [Agda's documentation page](https://agda.readthedocs.io/en/v2.6.0/language/cubical.html)):
+In practice, this means that we have a type `I` which represents the interval. In fact `I` is only a pretype, i.e. it cannot be the codomain of a function, only the domain. There are two constants `i0 : I` and `i1 : I` which represent the beginning and the end of the interval. There are also operations: unary `~` and binary `∧`, `∨` which together with `i0` and `i1` make `I` into a free de Morgan algebra. All the laws are computational equalities. Here's a list (taken from [Agda's documentation page](https://agda.readthedocs.io/en/v2.6.0/language/cubical.html)):
 
 ```
 i0 ∨ i    ≡ i
@@ -5561,9 +5565,9 @@ Of course, besides homotopy levels, we want to also keep track of the usual leve
 
 We denote the strict universes by `Type h p`, where `h` is the homotopy level and `p` is the predicative level. We can be more explicit by writing `Type (h = h', p = p')`. We allow "typical ambiguity", i.e. when the level is not written, it will be inferred and solved by the universe checker. We can be more explicit and ambiguous at once, for example writing `Type (h = h')` - the homotopy level is explicit, but the predicative level will be inferred.
 
-In the strict hierarchy, `Type (h = 0)` (abbreviated `Contr`) is the universe of (strict) contractible types (whose only member is itself), `Type (h = 1)` (abbreviated `Prop`) is the universe of strict (i.e. definitionally irrelevant) propositions (like Coq's [Prop](https://coq.inria.fr/refman/addendum/sprop.html) or Agda's [Prop](https://agda.readthedocs.io/en/v2.6.0/language/prop.html)), `Type (h = 2)` (abbreviated `Set`) is the universe of strict sets (types for which the type of paths is a strict proposition) and so on, up to `Type (h = oo)`, the universe of strict untruncated types.
+In the strict hierarchy, `Type (h = 0)` (abbreviated `Contr`) is the universe of (strict) contractible types, `Type (h = 1)` (abbreviated `Prop`) is the universe of strict (i.e. definitionally irrelevant) propositions (like Coq's [SProp](https://coq.inria.fr/refman/addendum/sprop.html) or Agda's [Prop](https://agda.readthedocs.io/en/v2.6.0/language/prop.html)), `Type (h = 2)` (abbreviated `Set`) is the universe of strict sets (types for which the type of paths is a strict proposition) and so on, up to `Type (h = oo)`, the universe of strict untruncated types.
 
-The non-strict hierarchy (written `hType`) is similar. `hType (h = 0)` (abbreviated `hContr`) is the universe of homotopy contractible types (i.e. types which are contractible only up to a path), `hType (h = 1)` is the universe of (homotopy) propositions, `hType (h = 2)` is the universe of (homotopy) sets. The non-strict hierarchy is most similar to what we have in [Arend](https://arend-lang.github.io/about/arend-features#universe-levels) and also very similar to the hierarchy of `n`-Types from the HoTT Book.
+The non-strict hierarchy (written `hType`) is similar. `hType (h = 0)` (abbreviated `hContr`) is the universe of homotopy contractible types (i.e. types which are contractible only up to a path), `hType (h = 1)` (abbreviated `hProp`) is the universe of (homotopy) propositions, `hType (h = 2)` (abbreviated `hSet`) is the universe of (homotopy) sets and so on, up to `hType (h = oo)`, the universe of untruncated types. The non-strict hierarchy is most similar to what we have in [Arend](https://arend-lang.github.io/about/arend-features#universe-levels) and also very similar to the hierarchy of `n`-Types from the HoTT Book.
 
 We use Russell style universes because they are easier to read and write.
 
@@ -5614,7 +5618,7 @@ isGrpd-from-Grpd (#A : Grpd) #(x y : A) #(p q : x = y) (r s : p = q)
   : r = s := refl
 ```
 
-At last, we need to return back to the zeroth level of the hierarchy and set up the universe `Contr`. The formation rule is `Contr : Contr` and it becomes fully functional when we allow cumulativity between `Contr` and `Prop`, i.e. `A : Contr` implies `A : Prop`. We might also consider dropping this unvierse completely, especially if we're worried by the `Contr : Contr` rule.
+At last, we need to return back to the zeroth level of the hierarchy and set up the universe `Contr`. The formation rule is `Contr : Prop`. This universe becomes fully functional when we allow cumulativity between `Contr` and `Prop`, i.e. `A : Contr` implies `A : Prop`. We might also consider dropping this unvierse completely, since it's not very useful (but then, it probably should be there if we are seriously considering Singleton Types).
 
 ### Basic mechanics of non-strict universes
 
@@ -5626,24 +5630,28 @@ These benefits multiply enormously when matching two or more values. For example
 
 ### Formation rules
 
-| Name             | Rule             |
-| ---------------- | ---------------- |
-| Primitive types  | `i8, 16, i32, i64 : Type 2 0` <br> `u8, u16, u32, u64 : Type 2 0` <br> `f32, f64 : Type 2 0` <br> `Char : Type 2 0` <br> `Text : Type 2 0` |
-| Arrays           | if `A : Type h p` <br> then `Array A n : Type h p` |
-| Function type    | if `A : Type h1 p1` <br> and `B x : Type h2 p2` <br> then `(x : A) -> B x : Type h2 (max p1 p2)`  |
-| Path type        | if `A : Type h p` <br> and `x y : A` <br> then `x = y : Type (pred h) p` |
-| Name type        | if `A : Type h p` <br> then `Name A : Type 2 p` |
-| Nominal function type | if `A : Type h1 p1` <br> and `B α : Type h2 p2` <br> then `∇ α : A. B α : Type h2 (max p1 p2)` |
-| Empty type       | `Empty : Prop`  |
-| Unit type        | `Unit : Contr`  |
-| Record types     | if `A_i : Type h_i p_i` <br> then `(a_i : A_i) : Type (max h_i) (max p_i)` |
-| Inductives       | see below           |
-| Coinductives     | see below           |
-| Refinements      | if `A : Type h p` <br> and `P : A -> Prop` <br> then `{x : A \| P x} : Type h p` |
-| Singletons       | `Singleton A x : Contr` |
-| Strict universes | `Type h p : Type (h + 1) (p + 1)` |
-| Non-strict universes | `hType h p : hType (h + 1) (p + 1)` |
-| Subtypes         | if `A : Type h p` <br> then `Sub A : Type (max 2 (h + 1)) p` |
+| Name                        | Rule                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| Primitive signed integers   | `i8, 16, i32, i64 : Set 0`                                                                       |
+| Primitive unsigned integers | `u8, u16, u32, u64 : Set 0`                                                                      |
+| Primitive floats            | `f32, f64 : Set 0`                                                                               |
+| Characters                  | `Char : Set 0`                                                                                   |
+| Text                        | `Text : Set 0`                                                                                   |
+| Arrays                      | if `A : Type h p` <br> then `Array A n : Type h p`                                               |
+| Function type               | if `A : Type h1 p1` <br> and `B x : Type h2 p2` <br> then `(x : A) -> B x : Type h2 (max p1 p2)` |
+| Path type                   | if `A : Type h p` <br> and `x y : A` <br> then `x = y : Type (pred h) p`                         |
+| Name type                   | if `A : Type h p` <br> then `Name A : Set p`                                                     |
+| Nominal function type       | if `A : Type h1 p1` <br> and `B α : Type h2 p2` <br> then `∇ α : A. B α : Type h2 (max p1 p2)`   |
+| Empty type                  | `Empty : Prop`                                                                                   |
+| Unit type                   | `Unit : Contr`                                                                                   |
+| Record types                | if `A_i : Type h_i p_i` <br> then `(a_i : A_i) : Type (max h_i) (max p_i)`                       |
+| Inductives                  | see below                                                                                        |
+| Coinductives                | see below                                                                                        |
+| Refinements                 | if `A : Type h p` <br> and `P : A -> Prop` <br> then `{x : A \| P x} : Type h p`                 |
+| Singletons                  | `Singleton A x : Contr`                                                                          |
+| Strict universes            | `Type h p : Type (h + 1) (p + 1)`                                                                |
+| Non-strict universes        | `hType h p : hType (h + 1) (p + 1)`                                                              |
+| Subtypes                    | if `A : Type h p` <br> then `Sub A : Type (max 2 (h + 1)) p`                                     |
 
 Primitive types are strict sets at the `0`-th predicative level. Arrays inherit both the homotopy and the predicative level from the type of their elements.
 
@@ -5658,6 +5666,8 @@ For inductive types, tt is easy to determine the h-level of constructor argument
 Coinductive types can be handled similarly to records, but we need to ignore the h-level of coinductive fields when taking the `max`imum.
 
 The universes themselves live in a universe whose levels are greater by one. The universe of strict contractible types `Contr` is a strict proposition, the universe of strict propositions `Prop` is a strict set, the universe of strict sets `Set` is a strict groupoid and so on.
+
+BEWARE! Don't confuse the homotopy levels and the predicative levels. Even though in HoTT the first universe `Type_0` is not a set (because it contains sets like `Bool` or `Nat` that have nontrivial automorphisms) and it probably isn't of any finite homotopy level (because, given HITs, it contains the spheres, whose homotopy groups are wild), this doesn't bother us in our language, because we don't have `Type_0`! We have `Type 0 0`, `Type 1 0`, `Type 2 0` and so on, with `Bool`, `Nat`, etc., happily living in `Type 2 0` (i.e. `Set`), and the spheres living in `Type oo 0`. And each universe `Type h p` indeed lives in `Type (h + 1) (p + 1)`, because there can't be anything scary enough in it to prevent this. For example, we have `Prop : Set`, because `Prop` only contains strict propositions, whose proofs are all equal, so indeed the universe of all strict propositions is a strict set. Similarly, `Set : Grpd`, because `Set` only contains strict sets, whose elements are equal or not, so indeed the universe of all strict sets is a strict groupoid.
 
 A more interesting case is that of subuniverses. For `Empty` the type `Sub Empty` is contractible, but for non-empty types it always has at least two elements (`Empty` and the type itself), so it's always at least a set. This is why the first argument of `max` is `2` in the typing rule.
 
@@ -5851,11 +5861,11 @@ We have some subtyping for `Empty`, `Unit` and `Bool`. First, `Empty` is a subty
 
 For refinement types, we allow making the refinement less precise (depth subtyping) or dropping it altogether (width subtyping). The rules for singleton types are similar. We can make a singleton type less precise by going to a singleton in the supertype (depth subtyping) or we can drop the singleton altogether and go to the surrounding type (width subtyping).
 
-We cannot have cumulativity between strict propositions and larger universes in order to obey the restrictions on elimination. For now this means there's cumulativity between `Contr` and `Prop`, then a **GIANT WALL**, and then cumulativity starts again from strict sets upwards. So we have `Type 0 p <: Type h p'` for `h = 0` or `h = 1` and `p <= p'`, then a **GIANT WALL**, and then `Type (2 + h) p <: Type (2 + h') p'` for `h <= h'` and `p <= p'`.
+We cannot have cumulativity between strict propositions and larger universes in order to obey the restrictions on elimination. For now this means there's cumulativity between `Contr` and `Prop`, then a **GIANT WALL**, and then cumulativity starts again from strict sets upwards. So we have `Type 0 p <: Type h p'` for `h = 0` or `h = 1` and `p <= p'`, then a **GIANT WALL**, and then `Type h p <: Type h' p'` for `2 <= h <= h'` and `p <= p'`.
 
 For non-strict universes things are simpler, as we don't need a giant wall to avoid spilling strictness, so the rule is just `hType h p <: hType h' p'` provided that `h <= h'` and `p <= p'`.
 
-Additionally we have `Type (2 + h) p <: hType (2 + h) p`, i.e. we may go from a strict universe to a non-strict one if we are at or above the set level, but not the other way around.
+Additionally we have `Type h p <: hType h p` for `2 <= h`, i.e. we may go from a strict universe to a non-strict one if we are at or above the set level, but not the other way around.
 
 Not very relevant papers:
 - [Subtyping dependent types](https://www.sciencedirect.com/science/article/pii/S0304397500001754)
