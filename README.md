@@ -134,7 +134,7 @@ TODO:
 
 ## Types <a id="types"></a> [↩](#toc)
 
-| Name                        | Formation                 | Introduction                     | Elimination      |
+| Name                        | Syntax                    | Introduction                     | Elimination      |
 | --------------------------- | ------------------------- | -------------------------------- | ---------------- |
 | Primitive signed integers   | `i8`, `i16`, `i32`, `i64` | literals                         | primitive ops    |
 | Primitive unsigned integers | `u8`, `u16`, `u32`, `u64` | literals                         | primitive ops    |
@@ -152,11 +152,11 @@ TODO:
 | Sum types                   | `[a : A, ...]`            | constructors                     | pattern matching |
 | Inductive types             | see below                 | constructors                     | pattern matching |
 | Coinductive types           | see below                 | copattern matching               | field access     |
-| Refinement types            | `{x : A \| P x}`          | implicit (?)                     | implicit (?)     |
-| Singleton types             | `Singleton A x`           | implicit (?)                     | implicit (?)     |
-| Strict universes            | `Type h p`                | `Type h p`                       | impossible       |
-| Non-strict universes        | `hType h p`               | `hType h p`                      | impossible       |
-| Subtype universes           | `Sub A`                   | implicit (?)                     | implicit (?)     |
+| Refinement types            | `{x : A \| P x}`          | see below                        | see below        |
+| Singleton types             | `Singleton A x`           | see below                        | see below        |
+| Strict universes            | `Type h p`                | see below                        | impossible       |
+| Non-strict universes        | `hType h p`               | see below                        | impossible       |
+| Subtype universes           | `Sub A`                   | see below                        | see below        |
 
 ## Primitive types and arrays <a id="primitives"></a> [↩](#toc)
 
