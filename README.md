@@ -5796,6 +5796,9 @@ Papers:
 - [Coercive subtyping: Theory and implementation](https://hal.archives-ouvertes.fr/hal-01130574/document)
 - [Coherence and transitivity in coercive subtyping](https://core.ac.uk/download/pdf/6116522.pdf)
 
+Newest papers:
+- [Structural Subtyping as Parametric Polymorphism](https://dl.acm.org/doi/pdf/10.1145/3622836) - a comparison of subtyping and parametric polymorphism in a non-dependently-typed setting
+
 **Status: Coercions have been implemented in Coq for a long time. Implicit coercions between primitive types are standard in a lot of languages.**
 
 ### Subtype Universes
