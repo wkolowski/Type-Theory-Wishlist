@@ -5798,6 +5798,7 @@ Papers:
 
 Newest papers:
 - [Structural Subtyping as Parametric Polymorphism](https://dl.acm.org/doi/pdf/10.1145/3622836) - a comparison of subtyping and parametric polymorphism in a non-dependently-typed setting
+- [Parametric Subtyping for Structural Parametric Polymorphism](https://dl.acm.org/doi/pdf/10.1145/3632932) - describes parametric subtyping, which is a kind of subtyping for parameterized types that is a bit weaker than full subtyping, but is more manageable for implementation
 
 **Status: Coercions have been implemented in Coq for a long time. Implicit coercions between primitive types are standard in a lot of languages.**
 
