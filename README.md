@@ -85,6 +85,7 @@ When reading on GitHub, you can click in the upper-left corner, near the file na
     1. [List notation for `List`-like types](#list-notation)
     1. [Mixfix operators, notation mechanism and macros](#macros)
     1. [Ideas](#ideas)
+1. [Scratchpad](#scratchpad)
 
 ## The Guiding Principle of Syntax <a id="guiding-principle"></a> [↩](#toc)
 
@@ -7040,3 +7041,52 @@ TODO:
 1. Rethink once more the subtyping with parameters and indices.
 1. Boom Hierarchy vs Closure Operators for relations (Reflexive Closure is like identity element, Transitive Closure is like `List`, symmetric closure is like a commutative monoid, but there also are some closures, like dense closure, which do not really correspond to anything from the Boom hierarchy).
 1. Combine Overlapping and Order-Independent Patterns and the ordinary pattern matching.
+
+## Scratchpad <a id="scratchpad"></a> [↩](#toc)
+
+### Flexible typing for constructors
+
+If we have lower-bounded quantification, we can type sum constructors with it.
+
+```
+data Expr0 : Type
+| Lit of Nat
+| Add of (l r : Expr0)
+
+data Expr1 : Type
+| Lit of Nat
+| Add of (l r : Expr1)
+| Sub of (l r : Expr1)
+
+data Expr2 : Type
+| Lit of Nat
+| Add of (l r : Expr2)
+| Neg of (e : Expr2)
+
+data Expr3 : Type
+| Lit of Nat
+| Add of (l r : Expr3)
+| Sub of (l r : Expr1)
+| Neg of (e : Expr3)
+```
+
+We have `Expr0 <: Expr1, Expr2 <: Expr3`. What type to give to `Add`? If we assign it the type `Expr3 -> Expr3` then we can use it with all four `Expr` types, but the result gets upcasted to `Expr3`, which means we lost some information in the process. If we type it as `Expr0 -> Expr0`, the result type is very precise, but we can only use it with arguments of type `Expr0`, which is very restrictive.
+
+```
+Add : #(E :> Expr0) -> E -> E -> E
+```
+
+Now `Add` can take argumetns from any supertype of `Expr0`, which is flexible, and the result is of the biggest of these types, which guarantees maximal precision.
+
+But we can in fact do better. What we would really like to say is that `Add`s type is `E -> E -> E` where `E` is anything that supports the `Add` constructor. This is precisely what we can achieve using lower-bounded quantification.
+
+```
+// Note: this is too recursive and self-referential...
+Add : #(A B : Type, E :> [Add of (l : A, r : B)]) -> E -> E -> E```
+
+```
+data ADD : Type
+| Add of (l r : ADD)
+
+Add : #(E :> ADD) -> E -> E -> E
+```
