@@ -7044,7 +7044,7 @@ TODO:
 
 ## Scratchpad <a id="scratchpad"></a> [↩](#toc)
 
-### Flexible typing for constructors
+### Lower-bounded quantification for constructor typing
 
 If we have lower-bounded quantification, we can type sum constructors with it.
 
@@ -7081,12 +7081,18 @@ Now `Add` can take argumetns from any supertype of `Expr0`, which is flexible, a
 But we can in fact do better. What we would really like to say is that `Add`s type is `E -> E -> E` where `E` is anything that supports the `Add` constructor. This is precisely what we can achieve using lower-bounded quantification.
 
 ```
-// Note: this is too recursive and self-referential...
-Add : #(A B : Type, E :> [Add of (l : A, r : B)]) -> E -> E -> E```
-
-```
 data ADD : Type
 | Add of (l r : ADD)
 
 Add : #(E :> ADD) -> E -> E -> E
 ```
+
+### Flexible typing for constructors
+
+But we can strive for an even more general type for `Add`.
+
+```
+Add : #(A B : Type, C :> [Add of (l : A, r : B)]) -> A -> B -> C
+```
+
+This time, the type of `Add` basically says that `Add` is a binary constructor. It takes arguments of arbitrary types `A` and `B`, and its result type is `C` which is a supertype of any sum type that allows the `Add` constructor.
