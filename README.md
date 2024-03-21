@@ -7044,6 +7044,13 @@ TODO:
 
 ## Scratchpad <a id="scratchpad"></a> [↩](#toc)
 
+### Implicit quantification
+
+Quick idea: implicit arguments can be formally modeled by calculi with implicit polymorphism.
+
+Papers:
+- [MLF: Raising ML to the Power of System F](https://cambium.inria.fr/~remy/work/mlf/icfp.pdf)
+
 ### Lower-bounded quantification for constructor typing
 
 If we have lower-bounded quantification, we can type sum constructors with it.
