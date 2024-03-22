@@ -7050,6 +7050,7 @@ Quick idea: implicit arguments can be formally modeled by calculi with implicit 
 
 Papers:
 - [MLF: Raising ML to the Power of System F](https://cambium.inria.fr/~remy/work/mlf/icfp.pdf)
+- [The Implicit Calculus of Constructions: Extending Pure Type Systems with an Intersection Type Binder and Subtyping](https://www.fing.edu.uy/~amiquel/publis/tlca01.pdf)
 
 ### Lower-bounded quantification for constructor typing
 
