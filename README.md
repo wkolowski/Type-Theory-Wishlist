@@ -5875,6 +5875,7 @@ Additionally we have `Type h p <: hType h p` for `2 <= h`, i.e. we may go from a
 
 Not very relevant papers:
 - [Subtyping dependent types](https://www.sciencedirect.com/science/article/pii/S0304397500001754)
+- [Subtyping with Power Types](https://homepages.inf.ed.ac.uk/da/papers/lambdapower/lambdapower.pdf)
 
 **Status: Universe cumulativity is semi-standard, as some proof assistants don't have it. Subtyping for records is standard in languages that have "structural" record types. Subtyping of anything else in type theory is mostly wild speculations.**
 
