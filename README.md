@@ -5874,8 +5874,8 @@ For non-strict universes things are simpler, as we don't need a giant wall to av
 Additionally we have `Type h p <: hType h p` for `2 <= h`, i.e. we may go from a strict universe to a non-strict one if we are at or above the set level, but not the other way around.
 
 Not very relevant papers:
-- [Subtyping dependent types](https://www.sciencedirect.com/science/article/pii/S0304397500001754)
-- [Subtyping with Power Types](https://homepages.inf.ed.ac.uk/da/papers/lambdapower/lambdapower.pdf)
+- [Subtyping dependent types](https://homepages.inf.ed.ac.uk/da/papers/psub-long/psub-long.pdf) - introduces Lambda P sub, a first-order dependently typed calculus with subtyping, and proves that it has decidable type checking
+- [Subtyping with Power Types](https://homepages.inf.ed.ac.uk/da/papers/lambdapower/lambdapower.pdf) - introduces a predicative version of power types, a forerunner to subtype universes
 
 **Status: Universe cumulativity is semi-standard, as some proof assistants don't have it. Subtyping for records is standard in languages that have "structural" record types. Subtyping of anything else in type theory is mostly wild speculations.**
 
