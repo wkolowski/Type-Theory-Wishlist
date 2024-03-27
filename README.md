@@ -5803,6 +5803,7 @@ Newest papers:
 - [Recursive Subtyping for All](https://dl.acm.org/doi/pdf/10.1145/3571241) - a very good paper on subtyping in System F with recursive types, the most interesting thing is that the system has lower-bounded quantification, which enables very flexible typing of sum constructors
 - [Polarized Higher-Order Subtyping](https://martinsteffen.github.io/assets/download/theses/diss/diss.pdf) - a paper on subtyping in System F sub omega and an extension of this system with variance annotations
 - [A Theory of Higher-Order Subtyping with Type Intervals](https://arxiv.org/pdf/2107.01883.pdf) - presents a system with quantification which is both lower- and upper- bounded, but sadly subtyping is not decidable
+- [Polarized Subtyping](https://arxiv.org/pdf/2201.10998.pdf) - subtyping in a polarized lambda calculus with (equi)recursive types
 
 **Status: Coercions have been implemented in Coq for a long time. Implicit coercions between primitive types are standard in a lot of languages.**
 
