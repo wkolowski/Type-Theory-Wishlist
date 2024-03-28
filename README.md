@@ -159,6 +159,9 @@ TODO:
 | Non-strict universes        | `hType h p`               | see below                        | impossible       |
 | Subtype universes           | `Sub A`                   | see below                        | see below        |
 
+Papers:
+- [Bidirectional Typing](https://arxiv.org/pdf/1908.05839.pdf) - a tutorial on bidirectional typing
+
 ## Primitive types and arrays <a id="primitives"></a> [↩](#toc)
 
 We have a variety of primitive integer types:
@@ -630,8 +633,8 @@ doc-comment : Doc :=
 {{
   This is a doc comment. I like trains. Trains like me, too.
 
-  The basic syntax is markdown-like. We can _underline_ words, make them **bold** or
-  ~~strike them through~~.
+  The basic syntax is markdown-like. We can _underline_ words, make them
+  **bold** or ~~strike them through~~.
 
   Here's a numbered list:
   1. First item.
