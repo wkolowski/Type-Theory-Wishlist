@@ -7111,3 +7111,35 @@ Add : #(A B : Type, C :> [Add of (l : A, r : B)]) -> A -> B -> C
 ```
 
 This time, the type of `Add` basically says that `Add` is a binary constructor. It takes arguments of arbitrary types `A` and `B`, and its result type is `C` which is a supertype of any sum type that allows the `Add` constructor.
+
+### Subtyping and coercions vs dependent types
+
+Subtyping seems to react just ok with dependent types and HoTT-like equality, but taking care of coercions may be crucial for user comfort.
+
+Example: let `f, g : (x : A, y : B) -> (x : A)` as `f r := {x => r.x}` (explicit) and `g r := r` (implicit through subtyping).
+
+We should have `∀ r, f r = g r` or else the system is shit. Using intuitive (univalent) logic it does hold: for `f r = g r` it suffices to show that `(f r).x = (g r).x` and we have `(f r).x ≡ {x => r.x}.x ≡ r.x` and `(g r).x ≡ r.x`.
+
+I think that `f ≡ g` should hold computationally, because the invisible coercion used in `g` does exactly what's written in `f`'s definition. In short, there should be some "ŋ-expansion" rule for missing coercions. If there won't be, life could be as annoying as without ŋ for functions, if not more.
+
+### Subtyping judgement that synthesizes coercions
+
+We can have a subtyping judgement that synthesizes coercions.
+
+```
+Γ |- A <: B => c
+```
+
+It means that in context `Γ`, `A` is a subtype of `B` and the coercion witnessing it (which is an output of the judgement, not an input) is `c`.
+
+As as simple sanity check, the above judgement should entail `Γ |- c : A -> B` (correct typing for the coercion) and uniqueness: if `Γ |- A <: B => c1` and `Γ |- A <: B => c2`, then `Γ |- c1 ≡ c2 : A -> B` - even if there are multiple derivations of the judgement (e.g. because we can drop record fields in different orders), the coercion itself is unique.
+
+With such a judgement, we could insert coercion into the term during typechecking. We can have a judgement
+
+```
+Γ |- e : A => e'
+```
+
+which means that in context `Γ`, `e` has type `A` and after inserting coercions it turns into `e'`.
+
+As a sanity check, this judgement should entail `Γ |- e' : A` and `Γ |- e ≡ e' : A`. If the typechecking is bidirectional, coercions are inserted during subsumption, so they appear in more or less predictable places (if they are not identities).
