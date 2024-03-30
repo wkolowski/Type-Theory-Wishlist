@@ -7143,3 +7143,57 @@ With such a judgement, we could insert coercion into the term during typecheckin
 which means that in context `Γ`, `e` has type `A` and after inserting coercions it turns into `e'`.
 
 As a sanity check, this judgement should entail `Γ |- e' : A` and `Γ |- e ≡ e' : A`. If the typechecking is bidirectional, coercions are inserted during subsumption, so they appear in more or less predictable places (if they are not identities).
+
+### Cumulative universes and bounded quantification have interesting interactions
+
+Even if we don't have a type of universe levels, in `∀ U <: Type_l : Type_{l + 1}`, type U can be instantiated only with `Type_0, ..., Type_l`, so effectively the type of `U` is the type of universes of level `<= l`. If we had `Type_ω`, we could define the type of universe `< ω`, which is basically the type of universe levels. I did not go very deeply into this topic, but I have a bad feeling about this.
+
+### First-class case
+
+We could have a first-class pattern matching on variants.
+
+We can think that the eliminator of variants is a record of functions, even if variants are native and not defined in terms of Church encoding (or other similar encoding). Because of this, we could type turn pattern matching into a first-class `case` function.
+
+```
+case _ of _ : [l : A_l] -> (l : A_l -> R) -> R
+```
+
+where labels `l` range over a fixed (for every variant) set of labels `L` (but if we tried, maybe we could have label polymorphism or something).
+
+Besides this being interesting, it's actually very useful: if we have record prototyping in our language, we get co-inheritance of functions on variants for free. This is nice, because coming up from scratch with how it should work and how to implement it natively could be hard.
+
+Example (the basic version of the idea looks poor, because we need to manually name the records of patterns for each function which we will want to co-inherit).
+
+```
+// Record of cases of function f.
+cases_f = ...
+
+f x = case x of cases_f
+
+// Record of cases of function g, based on prototype cases_f.
+cases_g =  (..., _ => cases_f)
+
+g x = case x of cases_g
+```
+
+Another profit from first-class case is that it could be very useful for generic programming - we can manipulate records that go into `case` using ordinary functions. No typeclasses, macros or other such are needed. Of course we would first need to come up with how to generically manipulate types...
+
+Yet another profit is that we get a pretty flexible syntax for `case` for free.
+
+```
+case x of
+& inl => ...
+& inr => ...
+```
+
+This looks almost like ordinary pattern matching, except that it has the record `&` instead of the more variant-y `|`. If we assume that function fields can be applied, we get
+
+```
+case x of
+& inl a => ...
+& inr b => ...
+```
+
+which is even closer.
+
+Of course this idea also has drawbacks: it doesn't work very well for multi-argument matches or when the patterns are nested (because there we can't just give the record of cases, we actually need to turn it into a function using `case`).
