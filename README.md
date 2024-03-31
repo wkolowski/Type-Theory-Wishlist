@@ -7144,6 +7144,14 @@ which means that in context `Γ`, `e` has type `A` and after inserting coercions
 
 As a sanity check, this judgement should entail `Γ |- e' : A` and `Γ |- e ≡ e' : A`. If the typechecking is bidirectional, coercions are inserted during subsumption, so they appear in more or less predictable places (if they are not identities).
 
+### Specification for coercions
+
+If `Γ |- A <: B => c`, then `Γ, x : A |- (x : B) ≡ c x : B`
+
+Stated differently: `c` is a coercion when `#(A B : Type, x : A) -> c x ={B} x`
+
+This implies that coercions are of the form `fun x => x`.
+
 ### Cumulative universes and bounded quantification have interesting interactions
 
 Even if we don't have a type of universe levels, in `∀ U <: Type_l : Type_{l + 1}`, type U can be instantiated only with `Type_0, ..., Type_l`, so effectively the type of `U` is the type of universes of level `<= l`. If we had `Type_ω`, we could define the type of universe `< ω`, which is basically the type of universe levels. I did not go very deeply into this topic, but I have a bad feeling about this.
@@ -7197,3 +7205,61 @@ case x of
 which is even closer.
 
 Of course this idea also has drawbacks: it doesn't work very well for multi-argument matches or when the patterns are nested (because there we can't just give the record of cases, we actually need to turn it into a function using `case`).
+
+### Usefulness of subtyping together with variants and type inference for variants
+
+Let's assume that the type of a variant constructor is always inferred to be a variant with just that one constructor, i.e. if we define the type of natural numbers as
+
+```
+nat : Type := [zero, succ of nat]
+```
+
+then we have
+
+```
+zero : [zero]
+succ : nat -> [succ of nat]
+```
+
+This is actually a super-powerful feature which solves many serious problems. If we now define the type of positive natural numbers as
+
+```
+pos : Type := [succ of nat]
+```
+
+then `pos` is a subtype of `nat` (`pos <: nat`) as we expect, but somewhat more surprisingly we also have
+
+```
+succ : nat -> pos
+```
+
+i.e. we automatically know that `succ` produces a positive number! This is because `succ`'s codomain is `[succ of nat]` which is exactly how we defined `pos`.
+
+This is pretty useful, because we now can use `pos` for example to define division without leaving the world of natural numbers.
+
+It's even better on lists:
+
+```
+list (A : Type) : Type := [nil, cons of (hd : A, tl : list A)]
+```
+
+We have
+
+```
+nil : [nil]
+cons : (hd : A, tl : list A) -> [cons of (hd : A, tl : list A)]
+```
+
+If we now define the type of non-empty lists as
+
+```
+nel (A : Type) : Type := [cons of A * list A]
+```
+
+we know that it's a subtype of `list` (`nel <: list a`), but for free we also get that
+
+```
+cons : (hd : A, tl : list A) -> nel A
+```
+
+This is again super useful, because the entire cottage industry of definitions of non-empty list suddenly disappears. The above definition is probably closest to the definition `nel A = A * list A`, but we don't need to repeat all the definitions, because we can reuse some list functions.
