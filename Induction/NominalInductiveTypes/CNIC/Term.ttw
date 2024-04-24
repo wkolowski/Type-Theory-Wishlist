@@ -29,7 +29,7 @@ dec-refl : (t : Term) -> dec t t = tt
     match ν α. dec (t @ α) (t @ α) with
       | ν α. tt => refl
       | ν α. ff => (fun wut : ν α. dec (t @ α) (t @ α) = ν α. ff =>
-          ν α.
+          ν α. // TODO
           // We have `ap (@ α) wut     : dec (t @ α) (t @ α) = ff`.
           // We have `dec-refl (t @ α) : dec (t @ α) (t @ α) = tt`.
           // This yields a contradiction, which we can then extract
@@ -67,7 +67,7 @@ module Stupid2
 	| capp : (l1 l2 r1 r2 : Term) -> Code l1 r1 -> Code l2 r2 -> Code (App l1 l2) (App r1 r2)
 	| clam : (l r : ∇ α : Term. Term) -> ∇ α : Term. Code (l @ α) (r @ α) -> Code (Lam l) (Lam r)
 
-	isProp_Code #(t1 t2 : Term}) : (c1 c2 : Code t1 t2) -> c1 = c2 :=
+	isProp_Code #(t1 t2 : Term) : (c1 c2 : Code t1 t2) -> c1 = c2 :=
 	| cvar x y p, cvar .x .y q =>
 		  isSet-Name Term p q
 	| capp l1 l2 r1 r2 c11 c12, capp .l1 .l2 .r1 .r2 c21 c22 =>
