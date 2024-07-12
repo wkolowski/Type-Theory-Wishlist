@@ -7160,7 +7160,7 @@ Even if we don't have a type of universe levels, in `∀ U <: Type_l : Type_{l +
 
 We could have a first-class pattern matching on variants.
 
-We can think that the eliminator of variants is a record of functions, even if variants are native and not defined in terms of Church encoding (or other similar encoding). Because of this, we could type turn pattern matching into a first-class `case` function.
+We can think that the eliminator of variants is a record of functions, even if variants are native and not defined in terms of Church encoding (or other similar encoding). Because of this, we could turn pattern matching into a first-class `case` function.
 
 ```
 case _ of _ : [l : A_l] -> (l : A_l -> R) -> R
@@ -7227,7 +7227,7 @@ This is actually a super-powerful feature which solves many serious problems. If
 pos : Type := [succ of nat]
 ```
 
-then `pos` is a subtype of `nat` (`pos <: nat`) as we expect, but somewhat more surprisingly we also have
+then `pos` is a subtype of `nat` (i.e. `pos <: nat`) as we expect, but somewhat more surprisingly we also have
 
 ```
 succ : nat -> pos
@@ -7253,13 +7253,13 @@ cons : (hd : A, tl : list A) -> [cons of (hd : A, tl : list A)]
 If we now define the type of non-empty lists as
 
 ```
-nel (A : Type) : Type := [cons of A * list A]
+nel (A : Type) : Type := [cons of (hd : A, tl : list A]
 ```
 
-we know that it's a subtype of `list` (`nel <: list a`), but for free we also get that
+we know that it's a subtype of `list` (i.e. `nel A <: list A`), but for free we also get that
 
 ```
 cons : (hd : A, tl : list A) -> nel A
 ```
 
-This is again super useful, because the entire cottage industry of definitions of non-empty list suddenly disappears. The above definition is probably closest to the definition `nel A = A * list A`, but we don't need to repeat all the definitions, because we can reuse some list functions.
+This is again super useful, because the entire cottage industry of defining non-empty lists suddenly disappears. The above definition is probably closest to the definition `nel A = A * list A`, but we don't need to repeat all the definitions, because we can reuse some list functions.
