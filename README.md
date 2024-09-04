@@ -569,6 +569,19 @@ TODO:
 - Refresh my knowledge of and then master the machinery behind Cubical Type Theory (systems, Glue, etc.)
 - Describe these things here.
 
+Beware! There's a powerful alternative to Cubical Type Theory, namely Observational Type Theory.
+- [Observational Equality: Now For Good](https://inria.hal.science/hal-03367052v4/document)
+- [Impredicative Observational Equality](https://hal.science/hal-03857705v2/document)
+- [Observational Equality Meets CIC](https://hal.science/hal-04535982v1/document)
+
+Sadly, it's only set-level, but there also exist its higher versions:
+- [nLab page](https://ncatlab.org/nlab/show/higher+observational+type+theory)
+- [Higher Observational Type Theory](https://home.sandiego.edu/~shulman/papers/chapman-fall2022.pdf)
+- [Towards third generation HOTT (slides, part 1)](https://www.cmu.edu/dietrich/philosophy/hott/slides/shulman-2022-04-28.pdf)
+- [Towards third generation HOTT (slides, part 2)](https://www.cmu.edu/dietrich/philosophy/hott/slides/shulman-2022-05-05.pdf)
+- [Towards third generation HOTT (slides, part 3)](https://www.cmu.edu/dietrich/philosophy/hott/slides/shulman-2022-05-12.pdf)
+- [Internal Parametricity, without an Interval](https://arxiv.org/pdf/2307.06448)
+
 ## Names and Nominal Function Type <a id="names"></a> [↩](#toc)
 
 For every type `A` there is a type `Name A` whose elements can be thought of as "names for elements of `A`". There's also the nominal function type `∇ α : A. B` which expresses the idea of an element of `B` that may use the bound name `α : Name A` for an element of type `A`. The nominal function type `∇ α : A. B` is sometimes also called the nabla type, due to the notation. I don't yet have a good name for this type, but maybe we should use "nominal abstraction type"?
