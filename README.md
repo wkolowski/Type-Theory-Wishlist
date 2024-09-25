@@ -162,6 +162,7 @@ TODO:
 Papers:
 - [Bidirectional Typing](https://arxiv.org/pdf/1908.05839.pdf) - a tutorial on bidirectional typing
 - [Type Inference in Context](https://adam.gundry.co.uk/pub/type-inference-in-context/type-inference-2010-07-30.pdf) - a (somewhat) clean presentation of the Hindley-Milner algorithm for type inference, based on contexts with definitions
+- [MLF: Raising ML to the Power of System F](https://pauillac.inria.fr/~remy/work/mlf/icfp.pdf) - type inference for a calculus combining ML and System F
 
 ## Primitive types and arrays <a id="primitives"></a> [↩](#toc)
 
