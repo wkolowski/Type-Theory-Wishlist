@@ -6811,7 +6811,7 @@ Mile.(+) : Mile -> Mile -> Mile
 
 For our purposes we might think that `1` (and other such literals) and `(+)` (and other such functions) deal purely with `f64`s and have nothing to do with `Meter`s or `Mile`s (we will keep quiet about other uses of `1` and `+`, like `f32`, `u16`, `i8`, `Nat`, `Z`, etc.).
 
-However, we might think that when we copied `f64`, we also copied all its functions, so that we have `Meter.(+) : Meter -> Meter -> Meter` and `Mile.(+) : Mile -> Mile -> Mile`. In the same vein, we may think that we "copied" the literal notation used for `f64` and made it available to `Meter` and `Mile`, so that we have `Meter.1 : Meter` and `Mile.1 : Mil`.
+However, we might think that when we copied `f64`, we also copied all its functions, so that we have `Meter.(+) : Meter -> Meter -> Meter` and `Mile.(+) : Mile -> Mile -> Mile`. In the same vein, we may think that we "copied" the literal notation used for `f64` and made it available to `Meter` and `Mile`, so that we have `Meter.1 : Meter` and `Mile.1 : Mile`.
 
 Thus, when we say `eightMile + 1`, we don't mean `(+) : f64 -> f64 -> f64` and `1 : f64`, but rather `Mile.(+) : Mile -> Mile -> Mile` and `Mile.1 : Mile`. Of course we don't need to write these in full, so that `1` can refer to both an `f64` and a `Meter`/`Mile`, depending on context, and similarly `(+)` may mean either the `(+)` of `f64` or that of `Meter`/`Mile`.
 
@@ -6864,10 +6864,10 @@ If we don't want the copied type to support literals of the old type, we can dis
 Papers:
 - TODO
 
-**Status: Many functional languages, like Haskell and Rust, allow creating so called newtypes, which is a more basic version of our type copying. Using literals and functions from the original type for the new types poses some problems, especially of typing and type inference, but I believe that they can be overcome.**
+**Status: Many functional languages, like Haskell and Rust, allow creating so-called newtypes, which is a more basic version of our type copying. Using literals and functions from the original type for the new types poses some problems, especially of typing and type inference, but I believe that they can be overcome.**
 
 TODO:
-- Rething this at some point in the future.
+- Rethink this at some point in the future.
 - Find some papers.
 - What about copying records/inductives/coinductives with constructor/destructor/parameter/index/argument renames?
 - What about general management of what computes and what does not? Could we "copy" the value `5` in type `Nat` so that it is path-equal to the old `5`, but not computationally equal?
@@ -7106,7 +7106,7 @@ We have `Expr0 <: Expr1, Expr2 <: Expr3`. What type to give to `Add`? If we assi
 Add : #(E :> Expr0) -> E -> E -> E
 ```
 
-Now `Add` can take argumetns from any supertype of `Expr0`, which is flexible, and the result is of the biggest of these types, which guarantees maximal precision.
+Now `Add` can take arguments from any supertype of `Expr0`, which is flexible, and the result is of the biggest of these types, which guarantees maximal precision.
 
 But we can in fact do better. What we would really like to say is that `Add`s type is `E -> E -> E` where `E` is anything that supports the `Add` constructor. This is precisely what we can achieve using lower-bounded quantification.
 
